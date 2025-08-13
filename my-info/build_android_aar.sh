@@ -236,6 +236,7 @@ cat > "$BUILD_DIR/tts_aec3_wrapper.cc" << 'EOWRAPPER'
 #define LOG_TAG "WebRTC_AEC3_TTS"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
+#define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG, LOG_TAG, __VA_ARGS__)
 
 // Architecture-specific optimization stubs for missing SSE2 functions on ARM
 #if !defined(__i386__) && !defined(__x86_64__)
@@ -280,91 +281,110 @@ public:
     static constexpr int kChannels = 1;     // Mono
     static constexpr int kStreamDelay = 100; // Android typical delay
 
-    TtsAec3Processor() {
-        Initialize();
-    }
+    TtsAec3Processor() = default;
 
     ~TtsAec3Processor() {
         std::lock_guard<std::mutex> lock(mutex_);
         echo_controller_.reset();
+        aec_factory_.reset();
+        render_buffer_.reset();
+        capture_buffer_.reset();
+        high_pass_filter_.reset();
     }
 
     bool Initialize() {
         std::lock_guard<std::mutex> lock(mutex_);
         
         try {
-            // Configure AEC3 for TTS echo cancellation
+            LOGI("Initializing WebRTC AEC3 for TTS: %dHz, %d channels", kSampleRate, kChannels);
+            
+            // Configure AEC3 with optimized settings
             webrtc::EchoCanceller3Config config;
-            config.filter.export_linear_aec_output = true;
-            config.delay.default_delay = 5;
+            config.filter.export_linear_aec_output = false;
+            config.suppressor.normal_tuning.max_dec_factor_lf = 2.0f;
+            config.suppressor.normal_tuning.max_inc_factor = 2.0f;
+            config.delay.down_sampling_factor = 4;
+            config.delay.num_filters = 6;
             config.delay.delay_headroom_samples = 32;
-            config.delay.fixed_capture_delay_samples = kStreamDelay * kSampleRate / 1000;
-            
-            // Mobile optimization
-            config.filter.main.length_blocks = 8;  // Shorter for mobile
-            config.filter.shadow.length_blocks = 8;
-            config.suppressor.normal_tuning.max_dec_factor_lf = 0.25f;
-            
+            config.delay.hysteresis_limit_blocks = 1;
+            config.delay.fixed_capture_delay_samples = 0;
+            config.delay.delay_estimate_smoothing = 0.7f;
+            config.delay.delay_candidate_detection_threshold = 0.2f;
+
             // Create AEC3 factory and controller
             aec_factory_ = std::make_unique<webrtc::EchoCanceller3Factory>(config);
+            if (!aec_factory_) {
+                LOGE("Failed to create AEC3 factory");
+                return false;
+            }
+
             echo_controller_ = aec_factory_->Create(kSampleRate, kChannels, kChannels);
-            
             if (!echo_controller_) {
                 LOGE("Failed to create AEC3 controller");
                 return false;
             }
 
-            // Create audio buffers with error handling to avoid vector exception
-            try {
-                render_buffer_ = std::make_unique<webrtc::AudioBuffer>(
-                    kSampleRate, kChannels, kSampleRate, kChannels, kSampleRate, kChannels);
-                capture_buffer_ = std::make_unique<webrtc::AudioBuffer>(
-                    kSampleRate, kChannels, kSampleRate, kChannels, kSampleRate, kChannels);
-                LOGI("AudioBuffer creation successful");
-            } catch (const std::exception& e) {
-                LOGE("AudioBuffer creation failed: %s", e.what());
-                // Try with default AudioBuffer parameters
-                try {
-                    render_buffer_ = std::make_unique<webrtc::AudioBuffer>(
-                        kSampleRate, kChannels, kSampleRate, kChannels, kSampleRate, kChannels);
-                    capture_buffer_ = std::make_unique<webrtc::AudioBuffer>(
-                        kSampleRate, kChannels, kSampleRate, kChannels, kSampleRate, kChannels);
-                    LOGI("AudioBuffer creation successful with fallback");
-                } catch (...) {
-                    LOGE("AudioBuffer creation failed completely - AEC will not work");
-                    return false;
-                }
+            // Create AudioBuffers with IDENTICAL parameters to avoid resampling/splitting
+            // This is the key fix - all rates must be the same to prevent vector allocations
+            render_buffer_ = std::make_unique<webrtc::AudioBuffer>(
+                kSampleRate, kChannels,    // input rate and channels
+                kSampleRate, kChannels,    // buffer rate and channels (SAME as input)
+                kSampleRate, kChannels);   // output rate and channels (SAME as input)
+
+            capture_buffer_ = std::make_unique<webrtc::AudioBuffer>(
+                kSampleRate, kChannels,    // input rate and channels  
+                kSampleRate, kChannels,    // buffer rate and channels (SAME as input)
+                kSampleRate, kChannels);   // output rate and channels (SAME as input)
+
+            if (!render_buffer_ || !capture_buffer_) {
+                LOGE("Failed to create audio buffers");
+                return false;
             }
 
-            LOGI("TTS AEC3 initialized: %dHz, %d channels, %dms delay", 
+            // Create high-pass filter
+            high_pass_filter_ = std::make_unique<webrtc::HighPassFilter>(kSampleRate, kChannels);
+            if (!high_pass_filter_) {
+                LOGE("Failed to create high-pass filter");
+                return false;
+            }
+
+            LOGI("WebRTC AEC3 initialized successfully: %dHz, %d channels, %dms delay", 
                  kSampleRate, kChannels, kStreamDelay);
             return true;
         } catch (const std::exception& e) {
-            LOGE("Exception during initialization: %s", e.what());
+            LOGE("Exception during AEC3 initialization: %s", e.what());
             return false;
         }
     }
 
-    // Process TTS audio (reference signal) - call this BEFORE playback
+    // Process TTS audio (reference signal)
     bool ProcessTtsAudio(const int16_t* tts_data, size_t length) {
-        if (!echo_controller_ || length != kFrameSize) {
+        if (length != kFrameSize) {
             LOGE("Invalid TTS data: length=%zu, expected=%d", length, kFrameSize);
             return false;
         }
 
         std::lock_guard<std::mutex> lock(mutex_);
         
+        if (!echo_controller_ || !render_buffer_) {
+            LOGE("AEC3 not initialized");
+            return false;
+        }
+
         try {
-            // Create audio frame for TTS data
-            webrtc::AudioFrame tts_frame;
-            tts_frame.UpdateFrame(0, tts_data, kFrameSize, kSampleRate, 
-                                webrtc::AudioFrame::kNormalSpeech, 
-                                webrtc::AudioFrame::kVadActive, kChannels);
+            // Create AudioFrame from input data
+            webrtc::AudioFrame render_frame;
+            render_frame.UpdateFrame(0, tts_data, kFrameSize, kSampleRate, 
+                                   webrtc::AudioFrame::kNormalSpeech, 
+                                   webrtc::AudioFrame::kVadActive, kChannels);
 
-            // Copy to render buffer and process
-            render_buffer_->CopyFrom(&tts_frame);
+            // Copy to buffer and process
+            render_buffer_->CopyFrom(&render_frame);
+            render_buffer_->SplitIntoFrequencyBands();
             echo_controller_->AnalyzeRender(render_buffer_.get());
+            render_buffer_->MergeFrequencyBands();
 
+            LOGD("Processed TTS reference signal: %zu samples", length);
             return true;
         } catch (const std::exception& e) {
             LOGE("Exception in ProcessTtsAudio: %s", e.what());
@@ -372,46 +392,53 @@ public:
         }
     }
 
-    // Process microphone audio and remove echo
+    // Process microphone audio and apply echo cancellation
     bool ProcessMicrophoneAudio(const int16_t* mic_data, int16_t* output_data, size_t length) {
-        if (!echo_controller_ || length != kFrameSize) {
+        if (length != kFrameSize) {
             LOGE("Invalid mic data: length=%zu, expected=%d", length, kFrameSize);
             return false;
         }
 
         std::lock_guard<std::mutex> lock(mutex_);
         
+        if (!echo_controller_ || !capture_buffer_ || !high_pass_filter_) {
+            LOGE("AEC3 not initialized");
+            return false;
+        }
+
         try {
-            // FIXED - Direct processing without AudioBuffer
-            std::vector<float> float_input(length);
-            std::vector<float> float_output(length);
+            // Create AudioFrame from input data
+            webrtc::AudioFrame capture_frame;
+            capture_frame.UpdateFrame(0, mic_data, kFrameSize, kSampleRate,
+                                    webrtc::AudioFrame::kNormalSpeech,
+                                    webrtc::AudioFrame::kVadActive, kChannels);
 
-            for (size_t i = 0; i < length; ++i) {
-                float_input[i] = mic_data[i] / 32768.0f;
-            }
-
-            const float* const capture_channels[] = { float_input.data() };
-            float* const output_channels[] = { float_output.data() };
-
-            // Create audio frame for microphone data
-            webrtc::AudioFrame mic_frame;
-            mic_frame.UpdateFrame(0, mic_data, kFrameSize, kSampleRate, 
-                                webrtc::AudioFrame::kNormalSpeech, 
-                                webrtc::AudioFrame::kVadActive, kChannels);
-
-            // Copy to capture buffer and process
-            capture_buffer_->CopyFrom(&mic_frame);
+            // Copy to buffer and process through AEC3 pipeline
+            capture_buffer_->CopyFrom(&capture_frame);
+            
+            // Pre-processing: analyze capture
             echo_controller_->AnalyzeCapture(capture_buffer_.get());
+            
+            // Split into frequency bands for processing
+            capture_buffer_->SplitIntoFrequencyBands();
+            
+            // Apply high-pass filter
+            high_pass_filter_->Process(capture_buffer_.get(), true);
+            
+            // Set audio buffer delay (important for AEC3 performance)
+            echo_controller_->SetAudioBufferDelay(kStreamDelay);
+            
+            // Apply echo cancellation
             echo_controller_->ProcessCapture(capture_buffer_.get(), false);
+            
+            // Merge frequency bands back
+            capture_buffer_->MergeFrequencyBands();
+            
+            // Copy processed data back to output
+            capture_buffer_->CopyTo(&capture_frame);
+            memcpy(output_data, capture_frame.data(), length * sizeof(int16_t));
 
-            // Convert back to int16
-            for (size_t i = 0; i < length; ++i) {
-                float sample = float_output[i] * 32768.0f;
-                if (sample > 32767.0f) sample = 32767.0f;
-                if (sample < -32768.0f) sample = -32768.0f;
-                output_data[i] = static_cast<int16_t>(sample);
-            }
-
+            LOGD("Processed microphone audio with AEC3: %zu samples", length);
             return true;
         } catch (const std::exception& e) {
             LOGE("Exception in ProcessMicrophoneAudio: %s", e.what());
@@ -419,14 +446,16 @@ public:
         }
     }
 
-    // Get current AEC metrics for monitoring
+    // Get current AEC metrics
     bool GetMetrics(double* echo_return_loss, double* echo_return_loss_enhancement, int* delay_ms) {
-        if (!echo_controller_) return false;
-        
         std::lock_guard<std::mutex> lock(mutex_);
         
+        if (!echo_controller_) {
+            return false;
+        }
+
         try {
-            auto metrics = echo_controller_->GetMetrics();
+            webrtc::EchoControl::Metrics metrics = echo_controller_->GetMetrics();
             *echo_return_loss = metrics.echo_return_loss;
             *echo_return_loss_enhancement = metrics.echo_return_loss_enhancement;
             *delay_ms = metrics.delay_ms;
@@ -437,10 +466,10 @@ public:
         }
     }
 
-    // Update stream delay if needed
+    // Update stream delay
     void SetStreamDelay(int delay_ms) {
+        std::lock_guard<std::mutex> lock(mutex_);
         if (echo_controller_) {
-            std::lock_guard<std::mutex> lock(mutex_);
             echo_controller_->SetAudioBufferDelay(delay_ms);
             LOGI("Stream delay updated to %dms", delay_ms);
         }
@@ -452,6 +481,7 @@ private:
     std::unique_ptr<webrtc::EchoControl> echo_controller_;
     std::unique_ptr<webrtc::AudioBuffer> render_buffer_;
     std::unique_ptr<webrtc::AudioBuffer> capture_buffer_;
+    std::unique_ptr<webrtc::HighPassFilter> high_pass_filter_;
 };
 
 // Global processor instance
