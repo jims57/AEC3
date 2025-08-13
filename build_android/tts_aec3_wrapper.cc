@@ -45,12 +45,6 @@ public:
     }
 };
 }
-
-float SincResampler::Convolve_SSE(const float* input_ptr, const float* k1,
-                                 const float* k2, double kernel_interpolation_factor) {
-    // Fallback to C implementation 
-    return 0.0f; // Simplified for compilation
-}
 }
 #endif
 
