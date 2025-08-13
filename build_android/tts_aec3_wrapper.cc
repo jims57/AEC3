@@ -91,11 +91,27 @@ public:
                 return false;
             }
 
-            // Create audio buffers
-            render_buffer_ = std::make_unique<webrtc::AudioBuffer>(
-                kSampleRate, kChannels, kSampleRate, kChannels, kSampleRate, kChannels);
-            capture_buffer_ = std::make_unique<webrtc::AudioBuffer>(
-                kSampleRate, kChannels, kSampleRate, kChannels, kSampleRate, kChannels);
+            // Create audio buffers with error handling to avoid vector exception
+            try {
+                render_buffer_ = std::make_unique<webrtc::AudioBuffer>(
+                    kSampleRate, kChannels, kSampleRate, kChannels, kSampleRate, kChannels);
+                capture_buffer_ = std::make_unique<webrtc::AudioBuffer>(
+                    kSampleRate, kChannels, kSampleRate, kChannels, kSampleRate, kChannels);
+                LOGI("AudioBuffer creation successful");
+            } catch (const std::exception& e) {
+                LOGE("AudioBuffer creation failed: %s", e.what());
+                // Try with default AudioBuffer parameters
+                try {
+                    render_buffer_ = std::make_unique<webrtc::AudioBuffer>(
+                        kSampleRate, kChannels, kSampleRate, kChannels, kSampleRate, kChannels);
+                    capture_buffer_ = std::make_unique<webrtc::AudioBuffer>(
+                        kSampleRate, kChannels, kSampleRate, kChannels, kSampleRate, kChannels);
+                    LOGI("AudioBuffer creation successful with fallback");
+                } catch (...) {
+                    LOGE("AudioBuffer creation failed completely - AEC will not work");
+                    return false;
+                }
+            }
 
             LOGI("TTS AEC3 initialized: %dHz, %d channels, %dms delay", 
                  kSampleRate, kChannels, kStreamDelay);
