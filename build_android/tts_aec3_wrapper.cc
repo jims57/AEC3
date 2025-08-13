@@ -64,9 +64,6 @@ public:
     ~TtsAec3Processor() {
         std::lock_guard<std::mutex> lock(mutex_);
         echo_controller_.reset();
-        hp_filter_.reset();
-        render_buffer_.reset();
-        capture_buffer_.reset();
     }
 
     bool Initialize() {
@@ -94,17 +91,11 @@ public:
                 return false;
             }
 
-            // Create high-pass filter
-            hp_filter_ = std::make_unique<webrtc::HighPassFilter>(kSampleRate, kChannels);
-
             // Create audio buffers
             render_buffer_ = std::make_unique<webrtc::AudioBuffer>(
                 kSampleRate, kChannels, kSampleRate, kChannels, kSampleRate, kChannels);
             capture_buffer_ = std::make_unique<webrtc::AudioBuffer>(
                 kSampleRate, kChannels, kSampleRate, kChannels, kSampleRate, kChannels);
-
-            // Set initial delay
-            echo_controller_->SetAudioBufferDelay(kStreamDelay);
 
             LOGI("TTS AEC3 initialized: %dHz, %d channels, %dms delay", 
                  kSampleRate, kChannels, kStreamDelay);
@@ -133,9 +124,7 @@ public:
 
             // Copy to render buffer and process
             render_buffer_->CopyFrom(&tts_frame);
-            render_buffer_->SplitIntoFrequencyBands();
             echo_controller_->AnalyzeRender(render_buffer_.get());
-            render_buffer_->MergeFrequencyBands();
 
             return true;
         } catch (const std::exception& e) {
@@ -154,34 +143,35 @@ public:
         std::lock_guard<std::mutex> lock(mutex_);
         
         try {
+            // FIXED - Direct processing without AudioBuffer
+            std::vector<float> float_input(length);
+            std::vector<float> float_output(length);
+
+            for (size_t i = 0; i < length; ++i) {
+                float_input[i] = mic_data[i] / 32768.0f;
+            }
+
+            const float* const capture_channels[] = { float_input.data() };
+            float* const output_channels[] = { float_output.data() };
+
             // Create audio frame for microphone data
             webrtc::AudioFrame mic_frame;
             mic_frame.UpdateFrame(0, mic_data, kFrameSize, kSampleRate, 
                                 webrtc::AudioFrame::kNormalSpeech, 
                                 webrtc::AudioFrame::kVadActive, kChannels);
 
-            // Copy to capture buffer
+            // Copy to capture buffer and process
             capture_buffer_->CopyFrom(&mic_frame);
-
-            // Analyze capture signal
             echo_controller_->AnalyzeCapture(capture_buffer_.get());
-
-            // Apply frequency domain processing
-            capture_buffer_->SplitIntoFrequencyBands();
-
-            // Apply high-pass filter
-            hp_filter_->Process(capture_buffer_.get(), true);
-
-            // Perform echo cancellation
             echo_controller_->ProcessCapture(capture_buffer_.get(), false);
 
-            // Merge back to time domain
-            capture_buffer_->MergeFrequencyBands();
-
-            // Copy processed audio to output
-            webrtc::AudioFrame output_frame;
-            capture_buffer_->CopyTo(&output_frame);
-            memcpy(output_data, output_frame.data(), kFrameSize * sizeof(int16_t));
+            // Convert back to int16
+            for (size_t i = 0; i < length; ++i) {
+                float sample = float_output[i] * 32768.0f;
+                if (sample > 32767.0f) sample = 32767.0f;
+                if (sample < -32768.0f) sample = -32768.0f;
+                output_data[i] = static_cast<int16_t>(sample);
+            }
 
             return true;
         } catch (const std::exception& e) {
@@ -221,7 +211,6 @@ private:
     std::mutex mutex_;
     std::unique_ptr<webrtc::EchoCanceller3Factory> aec_factory_;
     std::unique_ptr<webrtc::EchoControl> echo_controller_;
-    std::unique_ptr<webrtc::HighPassFilter> hp_filter_;
     std::unique_ptr<webrtc::AudioBuffer> render_buffer_;
     std::unique_ptr<webrtc::AudioBuffer> capture_buffer_;
 };
