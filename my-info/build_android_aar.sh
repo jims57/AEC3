@@ -298,19 +298,52 @@ public:
         try {
             LOGI("Initializing WebRTC AEC3 for TTS: %dHz, %d channels", kSampleRate, kChannels);
             
-            // Configure AEC3 with optimized settings
+            // Configure AEC3 with production-optimized settings for TTS
             webrtc::EchoCanceller3Config config;
+            
+            // Filter settings - aggressive echo suppression
             config.filter.export_linear_aec_output = false;
-            config.suppressor.normal_tuning.max_dec_factor_lf = 2.0f;
-            config.suppressor.normal_tuning.max_inc_factor = 2.0f;
-            config.delay.down_sampling_factor = 4;
-            config.delay.num_filters = 6;
-            config.delay.delay_headroom_samples = 32;
-            config.delay.hysteresis_limit_blocks = 1;
+            config.filter.main.length_blocks = 13;  // Longer filter for better echo modeling
+            config.filter.main.leakage_converged = 0.00001f;  // Aggressive leakage control
+            config.filter.main.leakage_diverged = 0.1f;
+            config.filter.main.error_floor = 0.001f;  // Lower error floor for better performance
+            config.filter.main.noise_gate = 0.5f;  // Reduce noise gate for TTS clarity
+            
+            // Suppressor settings - optimized for TTS echo patterns
+            config.suppressor.normal_tuning.max_dec_factor_lf = 3.0f;  // More aggressive low-freq suppression
+            config.suppressor.normal_tuning.max_inc_factor = 1.5f;     // Slower recovery for stability
+            config.suppressor.nearend_tuning.max_inc_factor = 1.2f;
+            config.suppressor.nearend_tuning.max_dec_factor_lf = 2.5f;
+            
+            // Delay estimation - critical for TTS performance
+            config.delay.down_sampling_factor = 2;  // Higher resolution delay estimation
+            config.delay.num_filters = 8;  // More filters for better accuracy
+            config.delay.delay_headroom_samples = 64;  // More headroom for Android delays
+            config.delay.hysteresis_limit_blocks = 2;  // More stable delay tracking
             config.delay.fixed_capture_delay_samples = 0;
-            config.delay.delay_estimate_smoothing = 0.7f;
-            config.delay.delay_candidate_detection_threshold = 0.2f;
+            config.delay.delay_estimate_smoothing = 0.8f;  // Smoother delay tracking
+            config.delay.delay_candidate_detection_threshold = 0.15f;  // More sensitive detection
+            
+            // Echo audibility - aggressive echo control
+            config.echo_audibility.low_render_limit = 4 * 64;
+            config.echo_audibility.normal_render_limit = 64;
+            config.echo_audibility.use_stationarity_properties = true;
+            
+            // Render levels - optimize for TTS signals
+            config.render_levels.active_render_limit = 100.0f;
+            config.render_levels.poor_excitation_render_limit = 150.0f;
+            config.render_levels.poor_excitation_render_limit_ds8 = 20.0f;
+            
+            // Enhanced suppressor for production performance
+            config.suppressor.dominant_nearend_detection.enr_threshold = 1.5f;  // Better nearend detection
+            config.suppressor.dominant_nearend_detection.enr_exit_threshold = 1.2f;
+            config.suppressor.dominant_nearend_detection.snr_threshold = 25.0f;
+            config.suppressor.dominant_nearend_detection.hold_duration = 50;
+            config.suppressor.dominant_nearend_detection.trigger_threshold = 12;
 
+            // Filter length optimization for 48kHz (production setting)
+            config.filter.main.length_blocks = 13;  // Optimized for 48kHz TTS processing
+            
             // Create AEC3 factory and controller
             aec_factory_ = std::make_unique<webrtc::EchoCanceller3Factory>(config);
             if (!aec_factory_) {
