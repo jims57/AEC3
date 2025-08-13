@@ -1,0 +1,161 @@
+#define RTC_DISABLE_CHECK_MSG
+        ^
+<command line>:7:9: note: previous definition is here
+#define RTC_DISABLE_CHECK_MSG 1
+        ^
+1 warning generated.
+1 error generated.
+make[2]: *** [CMakeFiles/webrtc_aec3_tts.dir/Users/mac/Documents/GitHub/AEC3/base/rtc_base/strings/json.cc.o] Error 1
+1 warning generated.
+In file included from /Users/mac/Documents/GitHub/AEC3/build_android/tts_aec3_wrapper.cc:7:
+In file included from /Users/mac/Documents/GitHub/AEC3/build_android/../api/echo_canceller3_factory.h:17:
+In file included from /Users/mac/Documents/GitHub/AEC3/build_android/../api/echo_control.h:16:
+In file included from /Users/mac/Documents/GitHub/AEC3/build_android/../base/rtc_base/checks.h:41:
+/Users/mac/Documents/GitHub/AEC3/build_android/../build_config.h:6:9: warning: 'RTC_DISABLE_CHECK_MSG' macro redefined [-Wmacro-redefined]
+#define RTC_DISABLE_CHECK_MSG
+        ^
+<command line>:7:9: note: previous definition is here
+#define RTC_DISABLE_CHECK_MSG 1
+        ^
+1 warning generated.
+1 warning generated.
+1 warning generated.
+1 warning generated.
+1 warning generated.
+1 warning generated.
+/Users/mac/Documents/GitHub/AEC3/base/abseil/absl/base/internal/spinlock_benchmark.cc:22:10: fatal error: 'benchmark/benchmark.h' file not found
+#include "benchmark/benchmark.h"
+         ^~~~~~~~~~~~~~~~~~~~~~~
+/Users/mac/Documents/GitHub/AEC3/base/abseil/absl/strings/internal/ostringstream_benchmark.cc:20:10: fatal error: 'benchmark/benchmark.h' file not found
+#include "benchmark/benchmark.h"
+         ^~~~~~~~~~~~~~~~~~~~~~~
+1 error generated.
+make[2]: *** [CMakeFiles/webrtc_aec3_tts.dir/Users/mac/Documents/GitHub/AEC3/base/abseil/absl/strings/internal/ostringstream_benchmark.cc.o] Error 1
+1 error generated.
+1 warning generated.
+make[2]: *** [CMakeFiles/webrtc_aec3_tts.dir/Users/mac/Documents/GitHub/AEC3/base/abseil/absl/base/internal/spinlock_benchmark.cc.o] Error 1
+1 warning generated.
+1 warning generated.
+1 error generated.
+make[2]: *** [CMakeFiles/webrtc_aec3_tts.dir/Users/mac/Documents/GitHub/AEC3/base/abseil/absl/strings/str_replace_benchmark.cc.o] Error 1
+1 warning generated.
+1 warning generated.
+1 warning generated.
+1 warning generated.
+1 warning generated.
+In file included from /Users/mac/Documents/GitHub/AEC3/base/rtc_base/logging.cc:11:
+In file included from /Users/mac/Documents/GitHub/AEC3/build_android/../base/rtc_base/logging.h:57:
+In file included from /Users/mac/Documents/GitHub/AEC3/build_android/../base/rtc_base/strings/string_builder.h:19:
+In file included from /Users/mac/Documents/GitHub/AEC3/build_android/../base/rtc_base/array_view.h:18:
+In file included from /Users/mac/Documents/GitHub/AEC3/build_android/../base/rtc_base/checks.h:41:
+/Users/mac/Documents/GitHub/AEC3/build_android/../build_config.h:6:9: warning: 'RTC_DISABLE_CHECK_MSG' macro redefined [-Wmacro-redefined]
+#define RTC_DISABLE_CHECK_MSG
+        ^
+<command line>:7:9: note: previous definition is here
+#define RTC_DISABLE_CHECK_MSG 1
+        ^
+1 warning generated.
+In file included from /Users/mac/Documents/GitHub/AEC3/api/echo_canceller3_config_json.cc:19:
+/Users/mac/Documents/GitHub/AEC3/build_android/../base/rtc_base/strings/json.h:18:10: fatal error: 'json/json.h' file not found
+#include "json/json.h"
+         ^~~~~~~~~~~~~
+/Users/mac/Documents/GitHub/AEC3/base/abseil/absl/strings/str_join_benchmark.cc:22:10: fatal error: 'benchmark/benchmark.h' file not found
+#include "benchmark/benchmark.h"
+         ^~~~~~~~~~~~~~~~~~~~~~~
+1 warning generated.
+1 error generated.
+make[2]: *** [CMakeFiles/webrtc_aec3_tts.dir/Users/mac/Documents/GitHub/AEC3/base/abseil/absl/strings/str_join_benchmark.cc.o] Error 1
+1 warning and 1 error generated.
+make[2]: *** [CMakeFiles/webrtc_aec3_tts.dir/Users/mac/Documents/GitHub/AEC3/api/echo_canceller3_config_json.cc.o] Error 1
+1 warning generated.
+1 warning generated.
+1 warning generated.
+1 warning generated.
+1 warning generated.
+1 warning generated.
+/Users/mac/Documents/GitHub/AEC3/base/abseil/absl/strings/ascii_benchmark.cc:22:10: fatal error: 'benchmark/benchmark.h' file not found
+#include "benchmark/benchmark.h"
+         ^~~~~~~~~~~~~~~~~~~~~~~
+1 error generated.
+1 warning generated.
+1 warning generated.
+make[2]: *** [CMakeFiles/webrtc_aec3_tts.dir/Users/mac/Documents/GitHub/AEC3/base/abseil/absl/strings/ascii_benchmark.cc.o] Error 1
+/Users/mac/Documents/GitHub/AEC3/base/abseil/absl/strings/numbers_benchmark.cc:21:10: fatal error: 'benchmark/benchmark.h' file not found
+#include "benchmark/benchmark.h"
+         ^~~~~~~~~~~~~~~~~~~~~~~
+1 warning generated.
+/Users/mac/Documents/GitHub/AEC3/base/abseil/absl/numeric/int128_benchmark.cc:22:10: fatal error: 'benchmark/benchmark.h' file not found
+#include "benchmark/benchmark.h"
+         ^~~~~~~~~~~~~~~~~~~~~~~
+1 error generated.
+1 error generated.
+make[2]: *** [CMakeFiles/webrtc_aec3_tts.dir/Users/mac/Documents/GitHub/AEC3/base/abseil/absl/numeric/int128_benchmark.cc.o] Error 1
+make[2]: *** [CMakeFiles/webrtc_aec3_tts.dir/Users/mac/Documents/GitHub/AEC3/base/abseil/absl/strings/str_cat_benchmark.cc.o] Error 1
+1 warning generated.
+1 warning generated.
+1 warning generated.
+1 warning generated.
+1 warning generated.
+1 warning generated.
+/Users/mac/Documents/GitHub/AEC3/base/abseil/absl/strings/escaping_benchmark.cc:21:10: fatal error: 'benchmark/benchmark.h' file not found
+#include "benchmark/benchmark.h"
+         ^~~~~~~~~~~~~~~~~~~~~~~
+1 error generated.
+make[2]: *** [CMakeFiles/webrtc_aec3_tts.dir/Users/mac/Documents/GitHub/AEC3/base/abseil/absl/strings/escaping_benchmark.cc.o] Error 1
+1 warning generated.
+/Users/mac/Documents/GitHub/AEC3/base/abseil/absl/strings/str_split_benchmark.cc:23:10: fatal error: 'benchmark/benchmark.h' file not found
+#include "benchmark/benchmark.h"
+         ^~~~~~~~~~~~~~~~~~~~~~~
+/Users/mac/Documents/GitHub/AEC3/build_android/tts_aec3_wrapper.cc:52:20: error: no member named 'suppression_gain' in 'webrtc::EchoCanceller3Config'
+            config.suppression_gain.normal_tuning.max_dec_factor_lf = 0.25f;
+            ~~~~~~ ^
+1 error generated.
+make[2]: *** [CMakeFiles/webrtc_aec3_tts.dir/Users/mac/Documents/GitHub/AEC3/base/abseil/absl/strings/str_split_benchmark.cc.o] Error 1
+/Users/mac/Documents/GitHub/AEC3/base/abseil/absl/strings/string_view_benchmark.cc:25:10: fatal error: 'benchmark/benchmark.h' file not found
+#include "benchmark/benchmark.h"
+         ^~~~~~~~~~~~~~~~~~~~~~~
+1 warning generated.
+1 warning generated.
+1 error generated.
+make[2]: *** [CMakeFiles/webrtc_aec3_tts.dir/Users/mac/Documents/GitHub/AEC3/base/abseil/absl/strings/numbers_benchmark.cc.o] Error 1
+1 warning and 1 error generated.
+make[2]: *** [CMakeFiles/webrtc_aec3_tts.dir/tts_aec3_wrapper.cc.o] Error 1
+1 warning generated.
+1 error generated.
+make[2]: *** [CMakeFiles/webrtc_aec3_tts.dir/Users/mac/Documents/GitHub/AEC3/base/abseil/absl/strings/string_view_benchmark.cc.o] Error 1
+1 warning generated.
+1 warning generated.
+1 warning generated.
+1 warning generated.
+1 warning generated.
+1 warning generated.
+1 warning generated.
+1 warning generated.
+1 warning generated.
+1 warning generated.
+1 warning generated.
+1 warning generated.
+1 warning generated.
+1 warning generated.
+1 warning generated.
+1 warning generated.
+1 warning generated.
+1 warning generated.
+1 warning generated.
+1 warning generated.
+1 warning generated.
+1 warning generated.
+1 warning generated.
+1 warning generated.
+1 warning generated.
+1 warning generated.
+1 warning generated.
+1 warning generated.
+1 warning generated.
+1 warning generated.
+1 warning generated.
+1 warning generated.
+1 warning generated.
+make[1]: *** [CMakeFiles/webrtc_aec3_tts.dir/all] Error 2
+make: *** [all] Error 2
+❌ Build failed for x86G_DUMP=0 -DRTC_DISABLE_CHECK_MSG -DWEBRTC_INCLUDE_INTERNAL_AUDIO_DEVICE -O3 -DNDEBUG  -std=gnu++17 -fPIC -MD -MT CMakeFiles/webrtc_aec3_tts.dir/Users/mac/Documents/GitHub/AEC3/base/rtc_base/memory/aligned_malloc.cc.o -MF CMakeFiles/webrtc_aec3_tts.dir/Users/mac/Documents/GitHub/AEC3/base/rtc

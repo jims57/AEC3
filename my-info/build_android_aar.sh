@@ -72,8 +72,12 @@ endif()
 # Compiler flags for optimization and WebRTC compatibility
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-rtti -ffast-math -O3")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DWEBRTC_APM_DEBUG_DUMP=0")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DRTC_DISABLE_CHECK_MSG")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DRTC_DISABLE_CHECK_MSG=1")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DWEBRTC_INCLUDE_INTERNAL_AUDIO_DEVICE")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DWEBRTC_EXCLUDE_FIELD_TRIAL_DEFAULT")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DRTC_DISABLE_METRICS")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DWEBRTC_LINUX")  # Enable Linux-specific features
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_GNU_SOURCE")   # Enable GNU extensions for prctl
 
 # Include directories
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/..)
@@ -85,12 +89,12 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../base/rtc_base)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../base/system_wrappers)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../base/abseil)
 
-# Define WebRTC AEC3 Core Sources
+# Define WebRTC AEC3 Core Sources with all required utilities
 set(AEC3_CORE_SOURCES
     # API Layer
     ../api/echo_canceller3_factory.cc
     ../api/echo_canceller3_config.cc
-    ../api/echo_canceller3_config_json.cc
+    # Note: excluding echo_canceller3_config_json.cc due to missing json/json.h
     
     # Audio Processing Core
     ../audio_processing/audio_buffer.cc
@@ -102,6 +106,41 @@ set(AEC3_CORE_SOURCES
     ../audio_processing/splitting_filter.cc
     ../audio_processing/splitting_filter_c.c
     ../audio_processing/sparse_fir_filter.cc
+    
+    # Critical Utility Components (missing linker symbols)
+    ../audio_processing/utility/ooura_fft.cc
+    ../audio_processing/utility/ooura_fft_sse2.cc
+    ../audio_processing/utility/cascaded_biquad_filter.cc
+    ../audio_processing/utility/delay_estimator.cc
+    ../audio_processing/utility/delay_estimator_wrapper.cc
+    
+    # Resampler Components (PushSincResampler)
+    ../audio_processing/resampler/push_sinc_resampler.cc
+    ../audio_processing/resampler/sinc_resampler.cc
+    ../audio_processing/resampler/sinc_resampler_sse.cc
+    
+    # Logging Components (ApmDataDumper)
+    ../audio_processing/logging/apm_data_dumper.cc
+    
+    # Essential Base Components (missing implementations)
+    ../base/rtc_base/memory/aligned_malloc.cc
+    ../base/system_wrappers/source/cpu_features.cc
+)
+
+# Additional required sources to fix remaining linker errors
+set(ADDITIONAL_SOURCES 
+    # Essential abseil implementations (missing linker symbols)
+    ../base/abseil/absl/base/internal/raw_logging.cc
+    ../base/abseil/absl/strings/charconv.cc
+    ../base/abseil/absl/strings/internal/charconv_parse.cc
+    ../base/abseil/absl/strings/internal/charconv_bigint.cc
+    ../base/abseil/absl/numeric/int128.cc
+    
+    # Essential rtc_base strings (missing SimpleStringBuilder)
+    ../base/rtc_base/strings/string_builder.cc
+    
+    # Platform thread utilities (missing CurrentThreadId, CurrentThreadRef)
+    ../base/rtc_base/platform_thread_types.cc
 )
 
 # Find all AEC3 implementation files
@@ -110,32 +149,22 @@ file(GLOB_RECURSE AEC3_IMPL_SOURCES
     "../audio_processing/aec3/*.c"
 )
 
-# Find base utility sources
-file(GLOB_RECURSE BASE_SOURCES
-    "../base/rtc_base/*.cc"
-    "../base/system_wrappers/*.cc"
-    "../base/abseil/absl/base/*.cc"
-    "../base/abseil/absl/numeric/*.cc"
-    "../base/abseil/absl/strings/*.cc"
-    "../base/abseil/absl/types/*.cc"
-)
-
-# Filter out test files and unwanted sources
+# Aggressive filtering to remove problematic files
 list(FILTER AEC3_IMPL_SOURCES EXCLUDE REGEX ".*test.*")
 list(FILTER AEC3_IMPL_SOURCES EXCLUDE REGEX ".*_test\\.cc$")
 list(FILTER AEC3_IMPL_SOURCES EXCLUDE REGEX ".*_unittest\\.cc$")
-list(FILTER BASE_SOURCES EXCLUDE REGEX ".*test.*")
-list(FILTER BASE_SOURCES EXCLUDE REGEX ".*_test\\.cc$")
+list(FILTER AEC3_IMPL_SOURCES EXCLUDE REGEX ".*_bench.*")
+list(FILTER AEC3_IMPL_SOURCES EXCLUDE REGEX ".*benchmark.*")
 
-# Combine all sources
+# Combine all sources with additional required implementations
 set(ALL_SOURCES 
     ${AEC3_CORE_SOURCES}
     ${AEC3_IMPL_SOURCES}
-    ${BASE_SOURCES}
+    ${ADDITIONAL_SOURCES}
     tts_aec3_wrapper.cc
 )
 
-# Create static library
+# Create shared library
 add_library(webrtc_aec3_tts SHARED ${ALL_SOURCES})
 
 # Link Android libraries
@@ -211,7 +240,7 @@ public:
             // Mobile optimization
             config.filter.main.length_blocks = 8;  // Shorter for mobile
             config.filter.shadow.length_blocks = 8;
-            config.suppression_gain.normal_tuning.max_dec_factor_lf = 0.25f;
+            config.suppressor.normal_tuning.max_dec_factor_lf = 0.25f;
             
             // Create AEC3 factory and controller
             aec_factory_ = std::make_unique<webrtc::EchoCanceller3Factory>(config);
