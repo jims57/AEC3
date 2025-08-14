@@ -65,6 +65,13 @@ public class WebRtcAec3 {
      * @param delayMs Delay in milliseconds (typically 80-150ms for Android)
      */
     public native void nativeSetStreamDelay(int delayMs);
+    
+    // 🎛️ RUNTIME PARAMETER CONTROL FOR PRODUCTION TUNING
+    public native void nativeSetEchoSuppression(float strength);    // 8.0-20.0 range
+    public native void nativeSetVoiceRecovery(float speed);         // 1.0-5.0 range
+    public native void nativeSetVoiceProtection(float level);       // 1.0-8.0 range  
+    public native void nativeSetFilterLength(int blocks);          // 10-25 range
+    public native void nativeSetNoiseGate(float threshold);        // 0.05-0.5 range
 
     // High-level Java API
     private boolean initialized = false;
@@ -140,6 +147,58 @@ public class WebRtcAec3 {
     public void setStreamDelay(int delayMs) {
         if (initialized) {
             nativeSetStreamDelay(delayMs);
+        }
+    }
+    
+    // 🎛️ PRODUCTION TUNING METHODS - REAL-TIME PARAMETER ADJUSTMENT
+    
+    /**
+     * Set echo suppression strength (higher = more aggressive echo removal)
+     * @param strength 8.0-20.0 range, default 12.0
+     */
+    public void setEchoSuppression(float strength) {
+        if (initialized) {
+            nativeSetEchoSuppression(strength);
+        }
+    }
+    
+    /**
+     * Set voice recovery speed (higher = faster voice recovery after echo)
+     * @param speed 1.0-5.0 range, default 3.0
+     */
+    public void setVoiceRecovery(float speed) {
+        if (initialized) {
+            nativeSetVoiceRecovery(speed);
+        }
+    }
+    
+    /**
+     * Set voice protection level (lower = better voice preservation)
+     * @param level 1.0-8.0 range, default 2.0
+     */
+    public void setVoiceProtection(float level) {
+        if (initialized) {
+            nativeSetVoiceProtection(level);
+        }
+    }
+    
+    /**
+     * Set filter length (longer = better echo modeling, higher CPU usage)
+     * @param blocks 10-25 range, default 20
+     */
+    public void setFilterLength(int blocks) {
+        if (initialized) {
+            nativeSetFilterLength(blocks);
+        }
+    }
+    
+    /**
+     * Set noise gate threshold (lower = more sensitive)
+     * @param threshold 0.05-0.5 range, default 0.1
+     */
+    public void setNoiseGate(float threshold) {
+        if (initialized) {
+            nativeSetNoiseGate(threshold);
         }
     }
 

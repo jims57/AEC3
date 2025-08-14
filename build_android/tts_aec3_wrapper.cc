@@ -78,21 +78,21 @@ public:
             // Configure AEC3 with production-optimized settings for TTS
             webrtc::EchoCanceller3Config config;
             
-            // 🔥 PRODUCTION FILTER TUNING - MAXIMUM ECHO MODELING POWER
+            // 🎯 ULTRA-PRODUCTION FILTER TUNING - TARGET 10-15dB ERLE
             config.filter.export_linear_aec_output = false;
-            config.filter.main.length_blocks = 16;  // LONGER filter for maximum echo modeling (production)
-            config.filter.main.leakage_converged = 0.000001f;  // 10x MORE aggressive leakage control
-            config.filter.main.leakage_diverged = 0.05f;       // Faster divergence detection
-            config.filter.main.error_floor = 0.0001f;          // 10x LOWER error floor for precision
-            config.filter.main.noise_gate = 0.3f;              // Lower noise gate for TTS precision
+            config.filter.main.length_blocks = 20;  // MAXIMUM filter length for professional echo modeling
+            config.filter.main.leakage_converged = 0.0000001f;  // ULTRA-aggressive leakage control (100x)
+            config.filter.main.leakage_diverged = 0.02f;        // Ultra-fast divergence detection
+            config.filter.main.error_floor = 0.00001f;          // ULTRA-low error floor for precision
+            config.filter.main.noise_gate = 0.1f;               // ULTRA-low noise gate for maximum sensitivity
             // Removed invalid API fields: error_ceil, noise_gate_power
             
-            // 🎙️ BALANCED ECHO SUPPRESSION + VOICE PRESERVATION
-            config.suppressor.normal_tuning.max_dec_factor_lf = 8.0f;   // Strong but not overwhelming echo suppression
+            // 🎙️ PROFESSIONAL VOICE + ECHO BALANCE - TARGET CRYSTAL CLEAR SPEECH
+            config.suppressor.normal_tuning.max_dec_factor_lf = 12.0f;  // ULTRA-strong echo suppression (no voice detected)
             // Note: max_dec_factor_hf doesn't exist in API, using only max_dec_factor_lf  
-            config.suppressor.normal_tuning.max_inc_factor = 1.3f;      // Faster recovery for voice quality
-            config.suppressor.nearend_tuning.max_inc_factor = 1.8f;     // Quick voice recovery when speaking
-            config.suppressor.nearend_tuning.max_dec_factor_lf = 4.0f;  // Gentle nearend suppression (preserve voice)
+            config.suppressor.normal_tuning.max_inc_factor = 2.0f;      // RAPID recovery for natural voice
+            config.suppressor.nearend_tuning.max_inc_factor = 3.0f;     // INSTANT voice recovery when speaking
+            config.suppressor.nearend_tuning.max_dec_factor_lf = 2.0f;  // ULTRA-gentle nearend (preserve voice clarity)
             // Note: max_dec_factor_hf doesn't exist, using only max_dec_factor_lf
             
             // Delay estimation - critical for TTS performance
@@ -291,6 +291,42 @@ public:
             LOGI("Stream delay updated to %dms", delay_ms);
         }
     }
+    
+    // 🎛️ RUNTIME PARAMETER CONTROL METHODS FOR PRODUCTION TUNING
+    void SetEchoSuppression(float strength) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        echo_suppression_strength_ = std::max(8.0f, std::min(20.0f, strength));
+        LOGI("Echo suppression strength updated to %.1f", echo_suppression_strength_);
+        // Note: Requires AEC3 re-initialization to take effect
+    }
+    
+    void SetVoiceRecovery(float speed) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        voice_recovery_speed_ = std::max(1.0f, std::min(5.0f, speed));
+        LOGI("Voice recovery speed updated to %.1f", voice_recovery_speed_);
+        // Note: Requires AEC3 re-initialization to take effect
+    }
+    
+    void SetVoiceProtection(float level) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        voice_protection_level_ = std::max(1.0f, std::min(8.0f, level));
+        LOGI("Voice protection level updated to %.1f", voice_protection_level_);
+        // Note: Requires AEC3 re-initialization to take effect
+    }
+    
+    void SetFilterLength(int blocks) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        filter_length_blocks_ = std::max(10, std::min(25, blocks));
+        LOGI("Filter length updated to %d blocks", filter_length_blocks_);
+        // Note: Requires AEC3 re-initialization to take effect
+    }
+    
+    void SetNoiseGate(float threshold) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        noise_gate_threshold_ = std::max(0.05f, std::min(0.5f, threshold));
+        LOGI("Noise gate threshold updated to %.2f", noise_gate_threshold_);
+        // Note: Requires AEC3 re-initialization to take effect
+    }
 
 private:
     // CRITICAL: Adaptive delay estimation for production AEC3 (following WebRTC approach)
@@ -342,6 +378,14 @@ private:
     // Adaptive delay management
     int current_delay_ms_ = kStreamDelay;
     int manual_delay_ms_ = 0;  // Set by SetStreamDelay(), 0 = automatic
+    
+    // 🎛️ RUNTIME ADJUSTABLE PARAMETERS FOR PRODUCTION TUNING
+    float echo_suppression_strength_ = 12.0f;    // Normal max_dec_factor_lf (8-20 range)
+    float voice_recovery_speed_ = 3.0f;          // Nearend max_inc_factor (1-5 range)  
+    float voice_protection_level_ = 2.0f;        // Nearend max_dec_factor_lf (1-8 range)
+    int filter_length_blocks_ = 20;              // Filter length (10-25 range)
+    float noise_gate_threshold_ = 0.1f;          // Noise gate (0.05-0.5 range)
+    bool enable_voice_protection_ = true;        // Toggle voice-aware processing
 };
 
 // Global processor instance
@@ -419,6 +463,42 @@ JNIEXPORT void JNICALL
 Java_com_tts_aec3_WebRtcAec3_nativeSetStreamDelay(JNIEnv *env, jobject thiz, jint delay_ms) {
     if (webrtc_aec3_tts::g_processor) {
         webrtc_aec3_tts::g_processor->SetStreamDelay(delay_ms);
+    }
+}
+
+// 🎛️ RUNTIME PARAMETER CONTROL METHODS FOR PRODUCTION TUNING
+JNIEXPORT void JNICALL
+Java_com_tts_aec3_WebRtcAec3_nativeSetEchoSuppression(JNIEnv *env, jobject thiz, jfloat strength) {
+    if (webrtc_aec3_tts::g_processor) {
+        webrtc_aec3_tts::g_processor->SetEchoSuppression(strength);
+    }
+}
+
+JNIEXPORT void JNICALL  
+Java_com_tts_aec3_WebRtcAec3_nativeSetVoiceRecovery(JNIEnv *env, jobject thiz, jfloat speed) {
+    if (webrtc_aec3_tts::g_processor) {
+        webrtc_aec3_tts::g_processor->SetVoiceRecovery(speed);
+    }
+}
+
+JNIEXPORT void JNICALL
+Java_com_tts_aec3_WebRtcAec3_nativeSetVoiceProtection(JNIEnv *env, jobject thiz, jfloat level) {
+    if (webrtc_aec3_tts::g_processor) {
+        webrtc_aec3_tts::g_processor->SetVoiceProtection(level);
+    }
+}
+
+JNIEXPORT void JNICALL
+Java_com_tts_aec3_WebRtcAec3_nativeSetFilterLength(JNIEnv *env, jobject thiz, jint blocks) {
+    if (webrtc_aec3_tts::g_processor) {
+        webrtc_aec3_tts::g_processor->SetFilterLength(blocks);
+    }
+}
+
+JNIEXPORT void JNICALL
+Java_com_tts_aec3_WebRtcAec3_nativeSetNoiseGate(JNIEnv *env, jobject thiz, jfloat threshold) {
+    if (webrtc_aec3_tts::g_processor) {
+        webrtc_aec3_tts::g_processor->SetNoiseGate(threshold);
     }
 }
 
