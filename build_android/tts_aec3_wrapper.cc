@@ -87,12 +87,12 @@ public:
             config.filter.main.noise_gate = 0.3f;              // Lower noise gate for TTS precision
             // Removed invalid API fields: error_ceil, noise_gate_power
             
-            // 🚀 PRODUCTION AGGRESSIVE SUPPRESSION - 10x STRONGER ECHO REMOVAL
-            config.suppressor.normal_tuning.max_dec_factor_lf = 10.0f;  // 10x ULTRA-aggressive low-freq
+            // 🎙️ BALANCED ECHO SUPPRESSION + VOICE PRESERVATION
+            config.suppressor.normal_tuning.max_dec_factor_lf = 8.0f;   // Strong but not overwhelming echo suppression
             // Note: max_dec_factor_hf doesn't exist in API, using only max_dec_factor_lf  
-            config.suppressor.normal_tuning.max_inc_factor = 1.1f;      // VERY slow recovery for stability
-            config.suppressor.nearend_tuning.max_inc_factor = 1.05f;    // Minimal recovery during speech
-            config.suppressor.nearend_tuning.max_dec_factor_lf = 8.0f;  // 8x aggressive nearend low-freq
+            config.suppressor.normal_tuning.max_inc_factor = 1.3f;      // Faster recovery for voice quality
+            config.suppressor.nearend_tuning.max_inc_factor = 1.8f;     // Quick voice recovery when speaking
+            config.suppressor.nearend_tuning.max_dec_factor_lf = 4.0f;  // Gentle nearend suppression (preserve voice)
             // Note: max_dec_factor_hf doesn't exist, using only max_dec_factor_lf
             
             // Delay estimation - critical for TTS performance
@@ -114,13 +114,13 @@ public:
             config.render_levels.poor_excitation_render_limit = 150.0f;
             config.render_levels.poor_excitation_render_limit_ds8 = 20.0f;
             
-            // 🎯 PRODUCTION NEAREND DETECTION - ULTRA-SENSITIVE FOR TTS ECHO
-            config.suppressor.dominant_nearend_detection.enr_threshold = 0.8f;   // More sensitive detection
-            config.suppressor.dominant_nearend_detection.enr_exit_threshold = 0.6f; // Earlier exit
-            config.suppressor.dominant_nearend_detection.snr_threshold = 35.0f;  // Higher SNR requirement
-            config.suppressor.dominant_nearend_detection.hold_duration = 25;     // Faster response
-            config.suppressor.dominant_nearend_detection.trigger_threshold = 8;  // Lower trigger for better detection
-            config.suppressor.high_bands_suppression.enr_threshold = 0.5f;       // Aggressive high-band suppression
+            // 🎙️ PRODUCTION VOICE PRESERVATION - PROTECT USER SPEECH QUALITY
+            config.suppressor.dominant_nearend_detection.enr_threshold = 1.0f;   // Balanced for voice protection
+            config.suppressor.dominant_nearend_detection.enr_exit_threshold = 0.8f; // Quick nearend detection
+            config.suppressor.dominant_nearend_detection.snr_threshold = 20.0f;  // Lower SNR for voice preservation
+            config.suppressor.dominant_nearend_detection.hold_duration = 15;     // Faster voice recovery
+            config.suppressor.dominant_nearend_detection.trigger_threshold = 6;  // Easy voice detection
+            config.suppressor.high_bands_suppression.enr_threshold = 0.3f;       // Gentler high-band suppression for voice
             // Note: high_bands_suppression.max_dec_factor_hf doesn't exist in API
 
             // Filter length optimization for 48kHz (production setting)
