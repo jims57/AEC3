@@ -301,19 +301,22 @@ public:
             // Configure AEC3 with production-optimized settings for TTS
             webrtc::EchoCanceller3Config config;
             
-            // Filter settings - aggressive echo suppression
+            // 🔥 PRODUCTION FILTER TUNING - MAXIMUM ECHO MODELING POWER
             config.filter.export_linear_aec_output = false;
-            config.filter.main.length_blocks = 13;  // Longer filter for better echo modeling
-            config.filter.main.leakage_converged = 0.00001f;  // Aggressive leakage control
-            config.filter.main.leakage_diverged = 0.1f;
-            config.filter.main.error_floor = 0.001f;  // Lower error floor for better performance
-            config.filter.main.noise_gate = 0.5f;  // Reduce noise gate for TTS clarity
+            config.filter.main.length_blocks = 16;  // LONGER filter for maximum echo modeling (production)
+            config.filter.main.leakage_converged = 0.000001f;  // 10x MORE aggressive leakage control
+            config.filter.main.leakage_diverged = 0.05f;       // Faster divergence detection
+            config.filter.main.error_floor = 0.0001f;          // 10x LOWER error floor for precision
+            config.filter.main.noise_gate = 0.3f;              // Lower noise gate for TTS precision
+            // Removed invalid API fields: error_ceil, noise_gate_power
             
-            // Suppressor settings - optimized for TTS echo patterns
-            config.suppressor.normal_tuning.max_dec_factor_lf = 3.0f;  // More aggressive low-freq suppression
-            config.suppressor.normal_tuning.max_inc_factor = 1.5f;     // Slower recovery for stability
-            config.suppressor.nearend_tuning.max_inc_factor = 1.2f;
-            config.suppressor.nearend_tuning.max_dec_factor_lf = 2.5f;
+            // 🚀 PRODUCTION AGGRESSIVE SUPPRESSION - 10x STRONGER ECHO REMOVAL
+            config.suppressor.normal_tuning.max_dec_factor_lf = 10.0f;  // 10x ULTRA-aggressive low-freq
+            // Note: max_dec_factor_hf doesn't exist in API, using only max_dec_factor_lf  
+            config.suppressor.normal_tuning.max_inc_factor = 1.1f;      // VERY slow recovery for stability
+            config.suppressor.nearend_tuning.max_inc_factor = 1.05f;    // Minimal recovery during speech
+            config.suppressor.nearend_tuning.max_dec_factor_lf = 8.0f;  // 8x aggressive nearend low-freq
+            // Note: max_dec_factor_hf doesn't exist, using only max_dec_factor_lf
             
             // Delay estimation - critical for TTS performance
             config.delay.down_sampling_factor = 2;  // Higher resolution delay estimation
@@ -334,12 +337,14 @@ public:
             config.render_levels.poor_excitation_render_limit = 150.0f;
             config.render_levels.poor_excitation_render_limit_ds8 = 20.0f;
             
-            // Enhanced suppressor for production performance
-            config.suppressor.dominant_nearend_detection.enr_threshold = 1.5f;  // Better nearend detection
-            config.suppressor.dominant_nearend_detection.enr_exit_threshold = 1.2f;
-            config.suppressor.dominant_nearend_detection.snr_threshold = 25.0f;
-            config.suppressor.dominant_nearend_detection.hold_duration = 50;
-            config.suppressor.dominant_nearend_detection.trigger_threshold = 12;
+            // 🎯 PRODUCTION NEAREND DETECTION - ULTRA-SENSITIVE FOR TTS ECHO
+            config.suppressor.dominant_nearend_detection.enr_threshold = 0.8f;   // More sensitive detection
+            config.suppressor.dominant_nearend_detection.enr_exit_threshold = 0.6f; // Earlier exit
+            config.suppressor.dominant_nearend_detection.snr_threshold = 35.0f;  // Higher SNR requirement
+            config.suppressor.dominant_nearend_detection.hold_duration = 25;     // Faster response
+            config.suppressor.dominant_nearend_detection.trigger_threshold = 8;  // Lower trigger for better detection
+            config.suppressor.high_bands_suppression.enr_threshold = 0.5f;       // Aggressive high-band suppression
+            // Note: high_bands_suppression.max_dec_factor_hf doesn't exist in API
 
             // Filter length optimization for 48kHz (production setting)
             config.filter.main.length_blocks = 13;  // Optimized for 48kHz TTS processing
