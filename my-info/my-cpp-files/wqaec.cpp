@@ -712,18 +712,13 @@ private:
         // Export linear AEC output for better quality (as in demo.cc)
         webrtc_config.filter.export_linear_aec_output = true;
         
-        // Suppression configuration - more conservative values
-        webrtc_config.suppressor.normal_tuning.max_dec_factor_lf = 8.0f;        // Conservative suppression
-        webrtc_config.suppressor.normal_tuning.max_dec_factor_hf = 4.0f;        // High freq suppression
-        webrtc_config.suppressor.normal_tuning.max_inc_factor = 2.0f;           // Slower recovery
-        webrtc_config.suppressor.normal_tuning.max_gain_decrease_factor = 0.1f; // Gradual gain changes
-        webrtc_config.suppressor.normal_tuning.max_gain_increase_factor = 0.05f;// Very gradual increase
+        // Suppression configuration - using actual WebRTC config fields
+        webrtc_config.suppressor.normal_tuning.max_dec_factor_lf = 0.25f;      // Conservative suppression
+        webrtc_config.suppressor.normal_tuning.max_inc_factor = 2.0f;          // Slower recovery
         
         // Near-end tuning for voice protection
         webrtc_config.suppressor.nearend_tuning.max_inc_factor = config_.suppression.voice_recovery;
-        webrtc_config.suppressor.nearend_tuning.max_dec_factor_lf = config_.suppression.voice_protection;
-        webrtc_config.suppressor.nearend_tuning.max_gain_decrease_factor = 0.2f;
-        webrtc_config.suppressor.nearend_tuning.max_gain_increase_factor = 0.1f;
+        webrtc_config.suppressor.nearend_tuning.max_dec_factor_lf = 0.25f;
         
         // Delay configuration for better tracking
         webrtc_config.delay.down_sampling_factor = 4;
@@ -734,13 +729,13 @@ private:
         webrtc_config.delay.delay_estimate_smoothing = 0.8f;     // More smoothing
         webrtc_config.delay.delay_candidate_detection_threshold = 0.15f; // Lower threshold for better detection
         
-        // Enable high-pass filter for cleaner output
-        webrtc_config.high_pass_filter.enabled = true;
-        webrtc_config.high_pass_filter.apply_in_test_mode = true;
+        // High-pass filter configuration (WebRTC AEC3 handles this internally)
+        // Note: high_pass_filter is not directly configurable in this WebRTC version
         
-        // Disable noisy processing components that can add artifacts
-        webrtc_config.gain_controller2.enabled = false;         // Disable AGC2 to avoid artifacts
-        webrtc_config.level_estimator.enabled = false;          // Disable level estimation
+        // Echo path modeling settings for better quality
+        webrtc_config.erle.min = 1.0f;
+        webrtc_config.erle.max_l = 4.0f;
+        webrtc_config.erle.max_h = 1.5f;
         
         LOGD("Created optimized WebRTC config: filter_length=%d, shadow_filter=%d, linear_output=%s",
              config_.suppression.filter_length_blocks, webrtc_config.filter.shadow.length_blocks,
