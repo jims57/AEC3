@@ -47,7 +47,7 @@ AEC3Config AEC3Config::CreateDefaultConfig() {
     config.mobile.max_processing_time_us = 8000;       // Allow more processing time
     
     config.environment = Environment::OFFICE;
-    config.current_delay_ms = 0;  // Start with 0, let AEC3 detect automatically
+    config.current_delay_ms = 10;  // Small initial delay for better AEC3 convergence
     
     LOGI("Created default AEC3 config: echo_suppression=%.1f, voice_recovery=%.1f, filter_blocks=%d", 
          config.suppression.echo_suppression, config.suppression.voice_recovery, config.suppression.filter_length_blocks);
