@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <memory>
 
 namespace wqaec {
 
@@ -170,7 +171,7 @@ private:
     
     std::unique_ptr<FilterState> filter_state_;
     std::unique_ptr<DelayEstimator> delay_estimator_;
-    AEC3Config config_;
+    mutable AEC3Config config_;
     
     // Timing analysis state
     int64_t last_reference_timestamp_ = 0;

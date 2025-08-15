@@ -14,6 +14,9 @@
 #include <chrono>
 #include <atomic>
 #include <cstring>
+#include <algorithm>
+#include <string>
+#include <cctype>
 
 #ifdef __ANDROID__
 #include <android/log.h>
@@ -21,18 +24,21 @@
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
 #define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG, LOG_TAG, __VA_ARGS__)
+#define LOGW(...) __android_log_print(ANDROID_LOG_WARN, LOG_TAG, __VA_ARGS__)
 #define LOGV(...) if(debug_logging_enabled) __android_log_print(ANDROID_LOG_VERBOSE, LOG_TAG, __VA_ARGS__)
 #elif defined(__APPLE__)
 #include <os/log.h>
 #define LOGI(...) os_log(OS_LOG_DEFAULT, __VA_ARGS__)
 #define LOGE(...) os_log_error(OS_LOG_DEFAULT, __VA_ARGS__)
 #define LOGD(...) os_log_debug(OS_LOG_DEFAULT, __VA_ARGS__)
+#define LOGW(...) os_log(OS_LOG_DEFAULT, __VA_ARGS__)
 #define LOGV(...) if(debug_logging_enabled) os_log_debug(OS_LOG_DEFAULT, __VA_ARGS__)
 #else
 #include <iostream>
 #define LOGI(...) printf(__VA_ARGS__); printf("\n")
 #define LOGE(...) printf(__VA_ARGS__); printf("\n")
 #define LOGD(...) printf(__VA_ARGS__); printf("\n")
+#define LOGW(...) printf(__VA_ARGS__); printf("\n")
 #define LOGV(...) if(debug_logging_enabled) { printf(__VA_ARGS__); printf("\n"); }
 #endif
 
@@ -374,9 +380,9 @@ public:
                 metrics.is_voice_detected = (timing_sync_->GetCaptureEnergy() > config_.MIN_ENERGY_THRESHOLD);
             }
             
-            // Update cached values
-            current_erle_.store(static_cast<float>(metrics.echo_return_loss_enhancement));
-            current_convergence_.store(metrics.filter_convergence);
+            // Update cached values (remove const from atomic access)
+            const_cast<std::atomic<float>&>(current_erle_).store(static_cast<float>(metrics.echo_return_loss_enhancement));
+            const_cast<std::atomic<float>&>(current_convergence_).store(metrics.filter_convergence);
             
         } catch (const std::exception& e) {
             LOGE("Exception in GetMetrics: %s", e.what());

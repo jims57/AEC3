@@ -1,0 +1,109 @@
+_aec3_tts.dir/Users/mac/Documents/GitHub/AEC3/audio_processing/resampler/sinc_resampler_sse.cc.o.d -o CMakeFiles/webrtc_aec3_tts.dir/Users/mac/Documents/GitHub/AEC3/audio_processing/resampler/sinc_resampler_sse.cc.o -c /Users/mac/Documents/GitHub/AEC3/audio_processing/resampler/sinc_resampler_sse.cc
+In file included from /Users/mac/Documents/GitHub/AEC3/build_android/wqaec.cpp:1:
+In file included from /Users/mac/Documents/GitHub/AEC3/build_android/wqaec.h:3:
+/Users/mac/Documents/GitHub/AEC3/build_android/wqaec_config.h:171:10: error: no template named 'unique_ptr' in namespace 'std'
+    std::unique_ptr<FilterState> filter_state_;
+    ~~~~~^
+/Users/mac/Documents/GitHub/AEC3/build_android/wqaec_config.h:172:10: error: no template named 'unique_ptr' in namespace 'std'
+    std::unique_ptr<DelayEstimator> delay_estimator_;
+    ~~~~~^
+In file included from /Users/mac/Documents/GitHub/AEC3/build_android/wqaec_config.cpp:1:
+/Users/mac/Documents/GitHub/AEC3/build_android/wqaec_config.h:171:10: error: no template named 'unique_ptr' in namespace 'std'
+    std::unique_ptr<FilterState> filter_state_;
+    ~~~~~^
+/Users/mac/Documents/GitHub/AEC3/build_android/wqaec_config.h:172:10: error: no template named 'unique_ptr' in namespace 'std'
+    std::unique_ptr<DelayEstimator> delay_estimator_;
+    ~~~~~^
+In file included from /Users/mac/Documents/GitHub/AEC3/build_android/android_jni_wrapper.cc:3:
+In file included from /Users/mac/Documents/GitHub/AEC3/build_android/wqaec.h:3:
+/Users/mac/Documents/GitHub/AEC3/build_android/wqaec_config.h:171:10: error: no template named 'unique_ptr' in namespace 'std'
+    std::unique_ptr<FilterState> filter_state_;
+    ~~~~~^
+/Users/mac/Documents/GitHub/AEC3/build_android/wqaec_config.h:172:10: error: no template named 'unique_ptr' in namespace 'std'
+    std::unique_ptr<DelayEstimator> delay_estimator_;
+    ~~~~~^
+/Users/mac/Documents/GitHub/AEC3/build_android/android_jni_wrapper.cc:246:2: error: #endif without #if
+#endif
+ ^
+/Users/mac/Documents/GitHub/AEC3/build_android/android_jni_wrapper.cc:524:10: error: no type named 'mutex' in namespace 'std'
+    std::mutex mutex_;
+    ~~~~~^
+/Users/mac/Documents/GitHub/AEC3/build_android/android_jni_wrapper.cc:525:29: error: no member named 'EchoCanceller3Factory' in namespace 'webrtc'
+    std::unique_ptr<webrtc::EchoCanceller3Factory> aec_factory_;
+                    ~~~~~~~~^
+/Users/mac/Documents/GitHub/AEC3/build_android/android_jni_wrapper.cc:526:29: error: no member named 'EchoControl' in namespace 'webrtc'
+    std::unique_ptr<webrtc::EchoControl> echo_controller_;
+                    ~~~~~~~~^
+/Users/mac/Documents/GitHub/AEC3/build_android/android_jni_wrapper.cc:527:29: error: no member named 'AudioBuffer' in namespace 'webrtc'
+    std::unique_ptr<webrtc::AudioBuffer> render_buffer_;
+                    ~~~~~~~~^
+/Users/mac/Documents/GitHub/AEC3/build_android/android_jni_wrapper.cc:528:29: error: no member named 'AudioBuffer' in namespace 'webrtc'
+    std::unique_ptr<webrtc::AudioBuffer> capture_buffer_;
+                    ~~~~~~~~^
+/Users/mac/Documents/GitHub/AEC3/build_android/android_jni_wrapper.cc:529:29: error: no member named 'HighPassFilter' in namespace 'webrtc'
+    std::unique_ptr<webrtc::HighPassFilter> high_pass_filter_;
+                    ~~~~~~~~^
+/Users/mac/Documents/GitHub/AEC3/build_android/android_jni_wrapper.cc:260:14: error: no member named 'lock_guard' in namespace 'std'
+        std::lock_guard<std::mutex> lock(mutex_);
+        ~~~~~^
+/Users/mac/Documents/GitHub/AEC3/build_android/android_jni_wrapper.cc:260:30: error: no member named 'mutex' in namespace 'std'
+        std::lock_guard<std::mutex> lock(mutex_);
+                        ~~~~~^
+/Users/mac/Documents/GitHub/AEC3/build_android/android_jni_wrapper.cc:269:14: error: no member named 'lock_guard' in namespace 'std'
+        std::lock_guard<std::mutex> lock(mutex_);
+        ~~~~~^
+/Users/mac/Documents/GitHub/AEC3/build_android/android_jni_wrapper.cc:269:30: error: no member named 'mutex' in namespace 'std'
+        std::lock_guard<std::mutex> lock(mutex_);
+                        ~~~~~^
+/Users/mac/Documents/GitHub/AEC3/build_android/android_jni_wrapper.cc:276:21: error: no type named 'EchoCanceller3Config' in namespace 'webrtc'
+            webrtc::EchoCanceller3Config config;
+            ~~~~~~~~^
+/Users/mac/Documents/GitHub/AEC3/build_android/android_jni_wrapper.cc:320:53: error: no member named 'EchoCanceller3Factory' in namespace 'webrtc'
+            aec_factory_ = std::make_unique<webrtc::EchoCanceller3Factory>(config);
+                                            ~~~~~~~~^
+/Users/mac/Documents/GitHub/AEC3/build_android/android_jni_wrapper.cc:334:55: error: no member named 'AudioBuffer' in namespace 'webrtc'
+            render_buffer_ = std::make_unique<webrtc::AudioBuffer>(
+                                              ~~~~~~~~^
+/Users/mac/Documents/GitHub/AEC3/build_android/android_jni_wrapper.cc:339:56: error: no member named 'AudioBuffer' in namespace 'webrtc'
+            capture_buffer_ = std::make_unique<webrtc::AudioBuffer>(
+                                               ~~~~~~~~^
+/Users/mac/Documents/GitHub/AEC3/build_android/android_jni_wrapper.cc:350:58: error: no member named 'HighPassFilter' in namespace 'webrtc'
+            high_pass_filter_ = std::make_unique<webrtc::HighPassFilter>(kSampleRate, kChannels);
+                                                 ~~~~~~~~^
+/Users/mac/Documents/GitHub/AEC3/build_android/android_jni_wrapper.cc:372:14: error: no member named 'lock_guard' in namespace 'std'
+        std::lock_guard<std::mutex> lock(mutex_);
+        ~~~~~^
+fatal error: too many errors emitted, stopping now [-ferror-limit=]
+20 errors generated.
+make[2]: *** [CMakeFiles/webrtc_aec3_tts.dir/android_jni_wrapper.cc.o] Error 1
+make[2]: *** Waiting for unfinished jobs....
+2 errors generated.
+make[2]: *** [CMakeFiles/webrtc_aec3_tts.dir/wqaec_config.cpp.o] Error 1
+/Users/mac/Documents/GitHub/AEC3/build_android/wqaec.cpp:122:13: error: use of undeclared identifier 'LOGW'
+            LOGW("WQAEC already initialized");
+            ^
+/Users/mac/Documents/GitHub/AEC3/build_android/wqaec.cpp:378:27: error: no matching member function for call to 'store'
+            current_erle_.store(static_cast<float>(metrics.echo_return_loss_enhancement));
+            ~~~~~~~~~~~~~~^~~~~
+/Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include/c++/v1/atomic:1567:10: note: candidate function not viable: no known conversion from 'const std::atomic<float>' to 'volatile std::__atomic_base<float, false>' for object argument
+    void store(_Tp __d, memory_order __m = memory_order_seq_cst) volatile _NOEXCEPT
+         ^
+/Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include/c++/v1/atomic:1571:10: note: candidate function not viable: no known conversion from 'const std::atomic<float>' to 'std::__atomic_base<float, false>' for object argument
+    void store(_Tp __d, memory_order __m = memory_order_seq_cst) _NOEXCEPT
+         ^
+/Users/mac/Documents/GitHub/AEC3/build_android/wqaec.cpp:379:34: error: no matching member function for call to 'store'
+            current_convergence_.store(metrics.filter_convergence);
+            ~~~~~~~~~~~~~~~~~~~~~^~~~~
+/Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include/c++/v1/atomic:1567:10: note: candidate function not viable: no known conversion from 'const std::atomic<float>' to 'volatile std::__atomic_base<float, false>' for object argument
+    void store(_Tp __d, memory_order __m = memory_order_seq_cst) volatile _NOEXCEPT
+         ^
+/Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include/c++/v1/atomic:1571:10: note: candidate function not viable: no known conversion from 'const std::atomic<float>' to 'std::__atomic_base<float, false>' for object argument
+    void store(_Tp __d, memory_order __m = memory_order_seq_cst) _NOEXCEPT
+         ^
+5 errors generated.
+make[2]: *** [CMakeFiles/webrtc_aec3_tts.dir/wqaec.cpp.o] Error 1
+make[1]: *** [CMakeFiles/webrtc_aec3_tts.dir/all] Error 2
+make: *** [all] Error 2
+❌ Build failed for x86
+📦 Creating Android AAR package...
+cp: /Users/mac/Documents/GitHub/AEC3/android_output/jni: No such file or directory
