@@ -681,7 +681,7 @@ public:
         auto avg_time = frames > 0 ? total_processing_time_us_.load() / frames : 0;
         
         if (avg_time > 10000) {  // More than 10ms average
-            LOGE("PROCESSING HEALTH WARNING: Average processing time %lld us > 10ms", avg_time);
+            LOGE("PROCESSING HEALTH WARNING: Average processing time %ld us > 10ms", avg_time);
             return false;
         }
         
@@ -737,7 +737,7 @@ private:
         webrtc_config.erle.max_l = 4.0f;
         webrtc_config.erle.max_h = 1.5f;
         
-        LOGD("Created optimized WebRTC config: filter_length=%d, shadow_filter=%d, linear_output=%s",
+        LOGD("Created optimized WebRTC config: filter_length=%d, shadow_filter=%zu, linear_output=%s",
              config_.suppression.filter_length_blocks, webrtc_config.filter.shadow.length_blocks,
              webrtc_config.filter.export_linear_aec_output ? "enabled" : "disabled");
         
