@@ -187,13 +187,15 @@ list(FILTER AEC3_IMPL_SOURCES EXCLUDE REGEX ".*_unittest\\.cc$")
 list(FILTER AEC3_IMPL_SOURCES EXCLUDE REGEX ".*_bench.*")
 list(FILTER AEC3_IMPL_SOURCES EXCLUDE REGEX ".*benchmark.*")
 
-# Combine all sources with additional required implementations
+# Combine all sources with WQAEC implementation
 set(ALL_SOURCES 
     ${AEC3_CORE_SOURCES}
     ${AEC3_IMPL_SOURCES}
     ${ADDITIONAL_SOURCES}
     ${ARCH_SPECIFIC_SOURCES}
-    tts_aec3_wrapper.cc
+    wqaec.cpp
+    wqaec_config.cpp
+    android_jni_wrapper.cc
 )
 
 # Create shared library
@@ -216,30 +218,238 @@ set_target_properties(webrtc_aec3_tts PROPERTIES
 EOCMAKE
 
 # ============================================================================
-# Generate TTS AEC3 Wrapper (C++ Implementation)
+# Copy WQAEC C++ files to build directory
 # ============================================================================
-echo "📝 Generating TTS AEC3 Wrapper..."
+echo "📝 Copying WQAEC C++ implementation files..."
 
-cat > "$BUILD_DIR/tts_aec3_wrapper.cc" << 'EOWRAPPER'
+# Copy WQAEC C++ files from my-cpp-files
+cp "$PROJECT_ROOT/my-info/my-cpp-files/wqaec.h" "$BUILD_DIR/"
+cp "$PROJECT_ROOT/my-info/my-cpp-files/wqaec.cpp" "$BUILD_DIR/"
+cp "$PROJECT_ROOT/my-info/my-cpp-files/wqaec_config.h" "$BUILD_DIR/"
+cp "$PROJECT_ROOT/my-info/my-cpp-files/wqaec_config.cpp" "$BUILD_DIR/"
+
+echo "✅ WQAEC C++ files copied successfully"
+
+# Generate JNI Wrapper for Android integration
+# ============================================================================
+echo "📝 Generating Android JNI Wrapper..."
+
+cat > "$BUILD_DIR/android_jni_wrapper.cc" << 'EOWRAPPER'
 #include <jni.h>
 #include <android/log.h>
-#include <memory>
-#include <vector>
-#include <mutex>
+#include "wqaec.h"
 
-#include "api/echo_canceller3_factory.h"
-#include "api/echo_canceller3_config.h"
-#include "audio_processing/audio_buffer.h"
-#include "audio_processing/audio_frame.h"
-#include "audio_processing/high_pass_filter.h"
-
-#define LOG_TAG "WebRTC_AEC3_TTS"
+#define LOG_TAG "WQAEC_Android"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
 #define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG, LOG_TAG, __VA_ARGS__)
 
-// Architecture-specific optimization stubs for missing SSE2 functions on ARM
-#if !defined(__i386__) && !defined(__x86_64__)
+using namespace wqaec;
+
+extern "C" {
+
+// JNI function implementations using WQAEC C API
+
+JNIEXPORT jlong JNICALL
+Java_com_tts_aec3_WebRtcAec3_nativeCreate(JNIEnv *env, jobject thiz) {
+    WQAECHandle handle = wqaec_create();
+    LOGI("WQAEC instance created: %p", handle);
+    return reinterpret_cast<jlong>(handle);
+}
+
+JNIEXPORT jlong JNICALL
+Java_com_tts_aec3_WebRtcAec3_nativeCreateForEnvironment(JNIEnv *env, jobject thiz, jint environment) {
+    WQAECHandle handle = wqaec_create_for_environment(environment);
+    LOGI("WQAEC instance created for environment %d: %p", environment, handle);
+    return reinterpret_cast<jlong>(handle);
+}
+
+JNIEXPORT jboolean JNICALL
+Java_com_tts_aec3_WebRtcAec3_nativeInitialize(JNIEnv *env, jobject thiz, jlong handle) {
+    if (handle == 0) return JNI_FALSE;
+    
+    WQAECHandle wqaec_handle = reinterpret_cast<WQAECHandle>(handle);
+    int result = wqaec_initialize(wqaec_handle);
+    
+    LOGI("WQAEC initialization result: %s", result ? "success" : "failed");
+    return result ? JNI_TRUE : JNI_FALSE;
+}
+
+JNIEXPORT void JNICALL
+Java_com_tts_aec3_WebRtcAec3_nativeDestroy(JNIEnv *env, jobject thiz, jlong handle) {
+    if (handle != 0) {
+        WQAECHandle wqaec_handle = reinterpret_cast<WQAECHandle>(handle);
+        wqaec_destroy(wqaec_handle);
+        LOGI("WQAEC instance destroyed: %p", wqaec_handle);
+    }
+}
+
+JNIEXPORT jboolean JNICALL
+Java_com_tts_aec3_WebRtcAec3_nativeProcessTtsAudio(JNIEnv *env, jobject thiz, jlong handle, jshortArray tts_data) {
+    if (handle == 0 || !tts_data) return JNI_FALSE;
+    
+    WQAECHandle wqaec_handle = reinterpret_cast<WQAECHandle>(handle);
+    
+    jsize length = env->GetArrayLength(tts_data);
+    if (length != 480) {  // Must be exactly 480 samples (10ms at 48kHz)
+        LOGE("Invalid TTS frame size: %d, expected 480", length);
+        return JNI_FALSE;
+    }
+    
+    jshort* data = env->GetShortArrayElements(tts_data, nullptr);
+    if (!data) return JNI_FALSE;
+    
+    int result = wqaec_process_reference_audio(wqaec_handle, 
+                                              reinterpret_cast<const int16_t*>(data), 
+                                              length);
+    
+    env->ReleaseShortArrayElements(tts_data, data, JNI_ABORT);
+    
+    return result ? JNI_TRUE : JNI_FALSE;
+}
+
+JNIEXPORT jshortArray JNICALL
+Java_com_tts_aec3_WebRtcAec3_nativeProcessMicrophoneAudio(JNIEnv *env, jobject thiz, jlong handle, jshortArray mic_data) {
+    if (handle == 0 || !mic_data) return nullptr;
+    
+    WQAECHandle wqaec_handle = reinterpret_cast<WQAECHandle>(handle);
+    
+    jsize length = env->GetArrayLength(mic_data);
+    if (length != 480) {  // Must be exactly 480 samples (10ms at 48kHz)
+        LOGE("Invalid microphone frame size: %d, expected 480", length);
+        return nullptr;
+    }
+    
+    jshort* input = env->GetShortArrayElements(mic_data, nullptr);
+    if (!input) return nullptr;
+    
+    // Create output array
+    jshortArray output_array = env->NewShortArray(length);
+    if (!output_array) {
+        env->ReleaseShortArrayElements(mic_data, input, JNI_ABORT);
+        return nullptr;
+    }
+    
+    jshort* output = env->GetShortArrayElements(output_array, nullptr);
+    if (!output) {
+        env->ReleaseShortArrayElements(mic_data, input, JNI_ABORT);
+        return nullptr;
+    }
+    
+    int result = wqaec_process_capture_audio(wqaec_handle,
+                                           reinterpret_cast<const int16_t*>(input),
+                                           reinterpret_cast<int16_t*>(output),
+                                           length);
+    
+    env->ReleaseShortArrayElements(mic_data, input, JNI_ABORT);
+    
+    if (result) {
+        env->ReleaseShortArrayElements(output_array, output, 0);  // Copy back
+        return output_array;
+    } else {
+        env->ReleaseShortArrayElements(output_array, output, JNI_ABORT);  // Don't copy back
+        return nullptr;
+    }
+}
+
+JNIEXPORT jdoubleArray JNICALL
+Java_com_tts_aec3_WebRtcAec3_nativeGetMetrics(JNIEnv *env, jobject thiz, jlong handle) {
+    if (handle == 0) return nullptr;
+    
+    WQAECHandle wqaec_handle = reinterpret_cast<WQAECHandle>(handle);
+    
+    double erl, erle;
+    int delay_ms;
+    float convergence;
+    
+    int result = wqaec_get_metrics(wqaec_handle, &erl, &erle, &delay_ms, &convergence);
+    
+    if (!result) return nullptr;
+    
+    jdoubleArray metrics_array = env->NewDoubleArray(4);
+    if (!metrics_array) return nullptr;
+    
+    double metrics[] = {erl, erle, static_cast<double>(delay_ms), static_cast<double>(convergence)};
+    env->SetDoubleArrayRegion(metrics_array, 0, 4, metrics);
+    
+    return metrics_array;
+}
+
+JNIEXPORT void JNICALL
+Java_com_tts_aec3_WebRtcAec3_nativeSetStreamDelay(JNIEnv *env, jobject thiz, jlong handle, jint delay_ms) {
+    if (handle != 0) {
+        WQAECHandle wqaec_handle = reinterpret_cast<WQAECHandle>(handle);
+        wqaec_set_stream_delay(wqaec_handle, delay_ms);
+    }
+}
+
+JNIEXPORT void JNICALL
+Java_com_tts_aec3_WebRtcAec3_nativeSetEchoSuppression(JNIEnv *env, jobject thiz, jlong handle, jfloat strength) {
+    if (handle != 0) {
+        WQAECHandle wqaec_handle = reinterpret_cast<WQAECHandle>(handle);
+        wqaec_set_echo_suppression(wqaec_handle, strength);
+    }
+}
+
+JNIEXPORT void JNICALL  
+Java_com_tts_aec3_WebRtcAec3_nativeSetVoiceRecovery(JNIEnv *env, jobject thiz, jlong handle, jfloat speed) {
+    if (handle != 0) {
+        WQAECHandle wqaec_handle = reinterpret_cast<WQAECHandle>(handle);
+        wqaec_set_voice_recovery(wqaec_handle, speed);
+    }
+}
+
+JNIEXPORT void JNICALL
+Java_com_tts_aec3_WebRtcAec3_nativeSetVoiceProtection(JNIEnv *env, jobject thiz, jlong handle, jfloat level) {
+    if (handle != 0) {
+        WQAECHandle wqaec_handle = reinterpret_cast<WQAECHandle>(handle);
+        wqaec_set_voice_protection(wqaec_handle, level);
+    }
+}
+
+JNIEXPORT void JNICALL
+Java_com_tts_aec3_WebRtcAec3_nativeSetEnvironment(JNIEnv *env, jobject thiz, jlong handle, jint environment) {
+    if (handle != 0) {
+        WQAECHandle wqaec_handle = reinterpret_cast<WQAECHandle>(handle);
+        wqaec_set_environment(wqaec_handle, environment);
+    }
+}
+
+JNIEXPORT void JNICALL
+Java_com_tts_aec3_WebRtcAec3_nativeEnableAutoDelayDetection(JNIEnv *env, jobject thiz, jlong handle, jboolean enable) {
+    if (handle != 0) {
+        WQAECHandle wqaec_handle = reinterpret_cast<WQAECHandle>(handle);
+        wqaec_enable_auto_delay_detection(wqaec_handle, enable ? 1 : 0);
+    }
+}
+
+JNIEXPORT void JNICALL
+Java_com_tts_aec3_WebRtcAec3_nativeTriggerAdaptation(JNIEnv *env, jobject thiz, jlong handle) {
+    if (handle != 0) {
+        WQAECHandle wqaec_handle = reinterpret_cast<WQAECHandle>(handle);
+        wqaec_trigger_adaptation(wqaec_handle);
+    }
+}
+
+JNIEXPORT jboolean JNICALL
+Java_com_tts_aec3_WebRtcAec3_nativeIsTimingSynced(JNIEnv *env, jobject thiz, jlong handle) {
+    if (handle == 0) return JNI_FALSE;
+    
+    WQAECHandle wqaec_handle = reinterpret_cast<WQAECHandle>(handle);
+    int result = wqaec_is_timing_synced(wqaec_handle);
+    
+    return result ? JNI_TRUE : JNI_FALSE;
+}
+
+JNIEXPORT jfloat JNICALL
+Java_com_tts_aec3_WebRtcAec3_nativeGetConvergenceQuality(JNIEnv *env, jobject thiz, jlong handle) {
+    if (handle == 0) return 0.0f;
+    
+    WQAECHandle wqaec_handle = reinterpret_cast<WQAECHandle>(handle);
+    return wqaec_get_convergence_quality(wqaec_handle);
+}
+
+} // extern "C"
 namespace webrtc {
 // Provide fallback implementations for SSE2 functions when building for ARM
 void rftfsub_128_SSE2(float* a) {
@@ -696,18 +906,27 @@ cat > "$BUILD_DIR/java/com/tts/aec3/WebRtcAec3.java" << 'EOJAVA'
 package com.tts.aec3;
 
 /**
- * WebRTC AEC3 wrapper for TTS echo cancellation
+ * WQAEC - Production WebRTC AEC3 wrapper with automatic timing synchronization
  * 
- * This class provides a simple interface to WebRTC's Acoustic Echo Cancellation (AEC3)
- * specifically optimized for TTS (Text-to-Speech) applications.
+ * This class provides a minimal, zero-configuration interface for mobile developers.
+ * All timing synchronization, adaptive delay detection, and optimization is handled
+ * automatically at the C++ level for maximum stability and cross-platform performance.
  * 
- * Usage:
- * 1. Initialize the AEC processor
- * 2. For each TTS audio chunk: call processTtsAudio() BEFORE playing it
- * 3. For each microphone chunk: call processMicrophoneAudio() to get clean audio
- * 4. Monitor performance with getMetrics()
+ * Key Features:
+ * - Automatic timing synchronization (5-filter NLMS approach)
+ * - Real-time adaptive delay detection and optimization  
+ * - Zero-configuration for basic usage
+ * - Production-optimized for TTS applications
+ * - Cross-platform C++ core (works on iOS and Android)
  * 
- * Important: All audio must be 48kHz, 16-bit PCM, mono, 480 samples (10ms chunks)
+ * Basic Usage:
+ * 1. Create and initialize: aec3 = new WebRtcAec3(); aec3.initialize();
+ * 2. Process TTS audio: aec3.processTtsAudio(tts_data) BEFORE playing
+ * 3. Process microphone: clean_audio = aec3.processMicrophoneAudio(mic_data)
+ * 4. Monitor performance: metrics = aec3.getMetrics()
+ * 
+ * All audio must be: 48kHz, 16-bit PCM, mono, 480 samples (10ms chunks)
+ * Date: 2025-01-30
  */
 public class WebRtcAec3 {
     static {
@@ -719,202 +938,355 @@ public class WebRtcAec3 {
     public static final int FRAME_SIZE = 480;  // 10ms at 48kHz
     public static final int CHANNELS = 1;      // Mono
     public static final int BITS_PER_SAMPLE = 16;
+    
+    // Environment presets
+    public static final int ENVIRONMENT_OFFICE = 0;   // Balanced for office use (default)
+    public static final int ENVIRONMENT_OUTDOOR = 1;  // Aggressive for noisy outdoor
+    public static final int ENVIRONMENT_QUIET = 2;    // Gentle for quiet indoor
+
+    // Native instance handle
+    private long nativeHandle = 0;
+
+    /**
+     * Create native instance (factory method support)
+     * @return native handle
+     */
+    private native long nativeCreate();
+    
+    /**
+     * Create native instance for specific environment
+     * @param environment Environment preset (ENVIRONMENT_* constants)
+     * @return native handle
+     */
+    private native long nativeCreateForEnvironment(int environment);
 
     /**
      * Initialize the AEC3 processor
+     * @param handle Native handle
      * @return true if initialization successful
      */
-    public native boolean nativeInitialize();
+    private native boolean nativeInitialize(long handle);
 
     /**
      * Clean up resources
+     * @param handle Native handle
      */
-    public native void nativeDestroy();
+    private native void nativeDestroy(long handle);
 
     /**
-     * Process TTS audio (reference signal)
-     * Call this BEFORE playing the TTS audio through speakers
-     * 
-     * @param ttsData TTS audio data (480 samples, 16-bit PCM)
+     * Process TTS audio (reference signal) - Call BEFORE playing audio
+     * @param handle Native handle
+     * @param ttsData TTS audio data (must be exactly 480 samples, 16-bit PCM)
      * @return true if processing successful
      */
-    public native boolean nativeProcessTtsAudio(short[] ttsData);
+    private native boolean nativeProcessTtsAudio(long handle, short[] ttsData);
 
     /**
      * Process microphone audio and remove echo
-     * 
-     * @param micData Microphone audio data (480 samples, 16-bit PCM)
-     * @param outputData Output buffer for processed audio (480 samples)
-     * @return true if processing successful
+     * @param handle Native handle  
+     * @param micData Microphone audio data (must be exactly 480 samples, 16-bit PCM)
+     * @return Clean audio with echo removed, or null if error
      */
-    public native boolean nativeProcessMicrophoneAudio(short[] micData, short[] outputData);
+    private native short[] nativeProcessMicrophoneAudio(long handle, short[] micData);
 
     /**
      * Get current AEC metrics for monitoring performance
-     * @return double array: [echo_return_loss, echo_return_loss_enhancement, delay_ms]
+     * @param handle Native handle
+     * @return double array: [echo_return_loss, echo_return_loss_enhancement, delay_ms, convergence]
      */
-    public native double[] nativeGetMetrics();
+    private native double[] nativeGetMetrics(long handle);
 
     /**
-     * Update stream delay compensation
-     * @param delayMs Delay in milliseconds (typically 80-150ms for Android)
+     * Set manual stream delay compensation
+     * @param handle Native handle
+     * @param delayMs Delay in milliseconds (5-512ms range)
      */
-    public native void nativeSetStreamDelay(int delayMs);
+    private native void nativeSetStreamDelay(long handle, int delayMs);
     
-    // 🎛️ RUNTIME PARAMETER CONTROL FOR PRODUCTION TUNING
-    public native void nativeSetEchoSuppression(float strength);    // 8.0-20.0 range
-    public native void nativeSetVoiceRecovery(float speed);         // 1.0-5.0 range
-    public native void nativeSetVoiceProtection(float level);       // 1.0-8.0 range  
-    public native void nativeSetFilterLength(int blocks);          // 10-25 range
-    public native void nativeSetNoiseGate(float threshold);        // 0.05-0.5 range
+    /**
+     * Set echo suppression strength (8.0-20.0 range, default 15.0)
+     * @param handle Native handle
+     * @param strength Echo suppression level
+     */
+    private native void nativeSetEchoSuppression(long handle, float strength);
+    
+    /**
+     * Set voice recovery speed (1.0-5.0 range, default 3.5)
+     * @param handle Native handle  
+     * @param speed Voice recovery speed
+     */
+    private native void nativeSetVoiceRecovery(long handle, float speed);
+    
+    /**
+     * Set voice protection level (1.0-8.0 range, default 1.5)
+     * @param handle Native handle
+     * @param level Voice protection level
+     */
+    private native void nativeSetVoiceProtection(long handle, float level);
+    
+    /**
+     * Set environment preset for optimal performance
+     * @param handle Native handle
+     * @param environment Environment type (ENVIRONMENT_* constants)
+     */
+    private native void nativeSetEnvironment(long handle, int environment);
+    
+    /**
+     * Enable/disable automatic delay detection (default enabled)
+     * @param handle Native handle
+     * @param enable true to enable automatic delay detection
+     */
+    private native void nativeEnableAutoDelayDetection(long handle, boolean enable);
+    
+    /**
+     * Force immediate adaptation/re-convergence
+     * @param handle Native handle
+     */
+    private native void nativeTriggerAdaptation(long handle);
+    
+    /**
+     * Check if timing is well synchronized
+     * @param handle Native handle
+     * @return true if timing is well synchronized
+     */
+    private native boolean nativeIsTimingSynced(long handle);
+    
+    /**
+     * Get filter convergence quality (0.0-1.0, higher is better)
+     * @param handle Native handle
+     * @return Convergence quality
+     */
+    private native float nativeGetConvergenceQuality(long handle);
 
-    // High-level Java API
+    // High-level Java API - Simplified for mobile developers
     private boolean initialized = false;
 
     /**
-     * Initialize the AEC processor
+     * Default constructor - creates with optimal office environment settings
+     */
+    public WebRtcAec3() {
+        nativeHandle = nativeCreate();
+    }
+    
+    /**
+     * Constructor with environment preset
+     * @param environment Environment preset (ENVIRONMENT_OFFICE, ENVIRONMENT_OUTDOOR, ENVIRONMENT_QUIET)
+     */
+    public WebRtcAec3(int environment) {
+        nativeHandle = nativeCreateForEnvironment(environment);
+    }
+
+    /**
+     * Initialize the AEC processor with automatic optimization
      * @return true if successful
      */
     public boolean initialize() {
+        if (nativeHandle == 0) {
+            return false;
+        }
         if (!initialized) {
-            initialized = nativeInitialize();
+            initialized = nativeInitialize(nativeHandle);
         }
         return initialized;
     }
 
     /**
-     * Clean up and release resources
+     * Clean up and release all resources
      */
     public void destroy() {
-        if (initialized) {
-            nativeDestroy();
+        if (nativeHandle != 0) {
+            nativeDestroy(nativeHandle);
+            nativeHandle = 0;
             initialized = false;
         }
     }
 
     /**
-     * Process TTS audio chunk
-     * @param ttsData Audio data (must be exactly 480 samples)
-     * @return true if successful
+     * Process TTS audio chunk - Call BEFORE playing the audio through speakers
+     * 
+     * The C++ layer automatically handles timing synchronization and adaptive optimization.
+     * 
+     * @param ttsData TTS audio data (must be exactly 480 samples, 16-bit PCM, 48kHz)
+     * @return true if processing successful
      */
     public boolean processTtsAudio(short[] ttsData) {
-        if (!initialized || ttsData.length != FRAME_SIZE) {
+        if (!initialized || nativeHandle == 0 || ttsData == null || ttsData.length != FRAME_SIZE) {
             return false;
         }
-        return nativeProcessTtsAudio(ttsData);
+        return nativeProcessTtsAudio(nativeHandle, ttsData);
     }
 
     /**
      * Process microphone audio and get echo-cancelled output
-     * @param micData Microphone input (must be exactly 480 samples)
-     * @return Echo-cancelled audio, or null if error
+     * 
+     * The C++ layer automatically performs timing synchronization, delay detection,
+     * and adaptive optimization for optimal ERLE performance.
+     * 
+     * @param micData Microphone input (must be exactly 480 samples, 16-bit PCM, 48kHz)
+     * @return Clean audio with echo removed, or null if error
      */
     public short[] processMicrophoneAudio(short[] micData) {
-        if (!initialized || micData.length != FRAME_SIZE) {
+        if (!initialized || nativeHandle == 0 || micData == null || micData.length != FRAME_SIZE) {
             return null;
         }
-        
-        short[] output = new short[FRAME_SIZE];
-        if (nativeProcessMicrophoneAudio(micData, output)) {
-            return output;
-        }
-        return null;
+        return nativeProcessMicrophoneAudio(nativeHandle, micData);
     }
 
     /**
-     * Get AEC performance metrics
-     * @return AecMetrics object with performance data
+     * Get current AEC performance metrics
+     * @return AecMetrics object with current performance data
      */
     public AecMetrics getMetrics() {
-        if (!initialized) return null;
+        if (!initialized || nativeHandle == 0) return null;
         
-        double[] metrics = nativeGetMetrics();
-        if (metrics != null && metrics.length == 3) {
-            return new AecMetrics(metrics[0], metrics[1], (int)metrics[2]);
+        double[] metrics = nativeGetMetrics(nativeHandle);
+        if (metrics != null && metrics.length >= 4) {
+            return new AecMetrics(metrics[0], metrics[1], (int)metrics[2], (float)metrics[3]);
         }
         return null;
     }
 
     /**
-     * Adjust stream delay for optimal performance
-     * @param delayMs Delay in milliseconds
+     * Set manual stream delay (disables automatic delay detection)
+     * 
+     * Note: It's recommended to rely on automatic delay detection unless you have
+     * specific timing requirements.
+     * 
+     * @param delayMs Delay in milliseconds (5-512ms range)
      */
     public void setStreamDelay(int delayMs) {
-        if (initialized) {
-            nativeSetStreamDelay(delayMs);
+        if (initialized && nativeHandle != 0) {
+            nativeSetStreamDelay(nativeHandle, delayMs);
         }
     }
     
-    // 🎛️ PRODUCTION TUNING METHODS - REAL-TIME PARAMETER ADJUSTMENT
-    
     /**
-     * Set echo suppression strength (higher = more aggressive echo removal)
-     * @param strength 8.0-20.0 range, default 12.0
+     * Set echo suppression strength
+     * @param strength Echo suppression level (8.0-20.0 range, default 15.0)
      */
     public void setEchoSuppression(float strength) {
-        if (initialized) {
-            nativeSetEchoSuppression(strength);
+        if (initialized && nativeHandle != 0) {
+            nativeSetEchoSuppression(nativeHandle, strength);
         }
     }
     
     /**
-     * Set voice recovery speed (higher = faster voice recovery after echo)
-     * @param speed 1.0-5.0 range, default 3.0
+     * Set voice recovery speed  
+     * @param speed Voice recovery speed (1.0-5.0 range, default 3.5)
      */
     public void setVoiceRecovery(float speed) {
-        if (initialized) {
-            nativeSetVoiceRecovery(speed);
+        if (initialized && nativeHandle != 0) {
+            nativeSetVoiceRecovery(nativeHandle, speed);
         }
     }
     
     /**
-     * Set voice protection level (lower = better voice preservation)
-     * @param level 1.0-8.0 range, default 2.0
+     * Set voice protection level
+     * @param level Voice protection level (1.0-8.0 range, default 1.5)
      */
     public void setVoiceProtection(float level) {
-        if (initialized) {
-            nativeSetVoiceProtection(level);
+        if (initialized && nativeHandle != 0) {
+            nativeSetVoiceProtection(nativeHandle, level);
         }
     }
     
     /**
-     * Set filter length (longer = better echo modeling, higher CPU usage)
-     * @param blocks 10-25 range, default 20
+     * Set environment preset for automatic optimization
+     * @param environment Environment type (ENVIRONMENT_* constants)
      */
-    public void setFilterLength(int blocks) {
-        if (initialized) {
-            nativeSetFilterLength(blocks);
+    public void setEnvironment(int environment) {
+        if (initialized && nativeHandle != 0) {
+            nativeSetEnvironment(nativeHandle, environment);
         }
     }
     
     /**
-     * Set noise gate threshold (lower = more sensitive)
-     * @param threshold 0.05-0.5 range, default 0.1
+     * Enable/disable automatic delay detection (enabled by default)
+     * @param enable true to enable automatic delay detection and optimization
      */
-    public void setNoiseGate(float threshold) {
-        if (initialized) {
-            nativeSetNoiseGate(threshold);
+    public void enableAutoDelayDetection(boolean enable) {
+        if (initialized && nativeHandle != 0) {
+            nativeEnableAutoDelayDetection(nativeHandle, enable);
         }
+    }
+    
+    /**
+     * Force immediate adaptation when acoustic conditions change
+     * 
+     * Use this when user moves location, changes device orientation, etc.
+     */
+    public void triggerAdaptation() {
+        if (initialized && nativeHandle != 0) {
+            nativeTriggerAdaptation(nativeHandle);
+        }
+    }
+    
+    /**
+     * Check if timing is well synchronized
+     * @return true if automatic timing synchronization is working well
+     */
+    public boolean isTimingSynced() {
+        if (!initialized || nativeHandle == 0) return false;
+        return nativeIsTimingSynced(nativeHandle);
+    }
+    
+    /**
+     * Get filter convergence quality
+     * @return Convergence quality (0.0-1.0, higher is better, >0.7 is good)
+     */
+    public float getConvergenceQuality() {
+        if (!initialized || nativeHandle == 0) return 0.0f;
+        return nativeGetConvergenceQuality(nativeHandle);
     }
 
     /**
-     * Class to hold AEC performance metrics
+     * Class to hold AEC performance metrics with convergence information
      */
     public static class AecMetrics {
-        public final double echoReturnLoss;
-        public final double echoReturnLossEnhancement;
-        public final int delayMs;
+        public final double echoReturnLoss;           // ERL in dB  
+        public final double echoReturnLossEnhancement; // ERLE in dB (main quality indicator)
+        public final int delayMs;                     // Detected delay in milliseconds
+        public final float convergence;               // Filter convergence quality (0.0-1.0)
 
-        public AecMetrics(double erl, double erle, int delay) {
+        public AecMetrics(double erl, double erle, int delay, float conv) {
             this.echoReturnLoss = erl;
             this.echoReturnLossEnhancement = erle;
             this.delayMs = delay;
+            this.convergence = conv;
+        }
+
+        /**
+         * Check if AEC performance is good
+         * @return true if ERLE > 5dB and convergence > 0.7
+         */
+        public boolean isGoodPerformance() {
+            return echoReturnLossEnhancement > 5.0 && convergence > 0.7;
+        }
+        
+        /**
+         * Check if AEC performance is excellent  
+         * @return true if ERLE > 10dB and convergence > 0.9
+         */
+        public boolean isExcellentPerformance() {
+            return echoReturnLossEnhancement > 10.0 && convergence > 0.9;
         }
 
         @Override
         public String toString() {
-            return String.format("AEC Metrics: ERL=%.2fdB, ERLE=%.2fdB, Delay=%dms", 
-                               echoReturnLoss, echoReturnLossEnhancement, delayMs);
+            return String.format("AEC Metrics: ERL=%.1fdB, ERLE=%.1fdB, Delay=%dms, Convergence=%.2f", 
+                               echoReturnLoss, echoReturnLossEnhancement, delayMs, convergence);
+        }
+    }
+    
+    /**
+     * Finalizer to ensure native resources are cleaned up
+     */
+    @Override
+    protected void finalize() throws Throwable {
+        try {
+            destroy();
+        } finally {
+            super.finalize();
         }
     }
 }
