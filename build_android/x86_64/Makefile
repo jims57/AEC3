@@ -2388,29 +2388,77 @@ Users/mac/Documents/GitHub/AEC3/base/system_wrappers/source/field_trial.cc.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/webrtc_aec3_tts.dir/build.make CMakeFiles/webrtc_aec3_tts.dir/Users/mac/Documents/GitHub/AEC3/base/system_wrappers/source/field_trial.cc.s
 .PHONY : Users/mac/Documents/GitHub/AEC3/base/system_wrappers/source/field_trial.cc.s
 
-tts_aec3_wrapper.o: tts_aec3_wrapper.cc.o
-.PHONY : tts_aec3_wrapper.o
+android_jni_wrapper.o: android_jni_wrapper.cc.o
+.PHONY : android_jni_wrapper.o
 
 # target to build an object file
-tts_aec3_wrapper.cc.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/webrtc_aec3_tts.dir/build.make CMakeFiles/webrtc_aec3_tts.dir/tts_aec3_wrapper.cc.o
-.PHONY : tts_aec3_wrapper.cc.o
+android_jni_wrapper.cc.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/webrtc_aec3_tts.dir/build.make CMakeFiles/webrtc_aec3_tts.dir/android_jni_wrapper.cc.o
+.PHONY : android_jni_wrapper.cc.o
 
-tts_aec3_wrapper.i: tts_aec3_wrapper.cc.i
-.PHONY : tts_aec3_wrapper.i
+android_jni_wrapper.i: android_jni_wrapper.cc.i
+.PHONY : android_jni_wrapper.i
 
 # target to preprocess a source file
-tts_aec3_wrapper.cc.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/webrtc_aec3_tts.dir/build.make CMakeFiles/webrtc_aec3_tts.dir/tts_aec3_wrapper.cc.i
-.PHONY : tts_aec3_wrapper.cc.i
+android_jni_wrapper.cc.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/webrtc_aec3_tts.dir/build.make CMakeFiles/webrtc_aec3_tts.dir/android_jni_wrapper.cc.i
+.PHONY : android_jni_wrapper.cc.i
 
-tts_aec3_wrapper.s: tts_aec3_wrapper.cc.s
-.PHONY : tts_aec3_wrapper.s
+android_jni_wrapper.s: android_jni_wrapper.cc.s
+.PHONY : android_jni_wrapper.s
 
 # target to generate assembly for a file
-tts_aec3_wrapper.cc.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/webrtc_aec3_tts.dir/build.make CMakeFiles/webrtc_aec3_tts.dir/tts_aec3_wrapper.cc.s
-.PHONY : tts_aec3_wrapper.cc.s
+android_jni_wrapper.cc.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/webrtc_aec3_tts.dir/build.make CMakeFiles/webrtc_aec3_tts.dir/android_jni_wrapper.cc.s
+.PHONY : android_jni_wrapper.cc.s
+
+wqaec.o: wqaec.cpp.o
+.PHONY : wqaec.o
+
+# target to build an object file
+wqaec.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/webrtc_aec3_tts.dir/build.make CMakeFiles/webrtc_aec3_tts.dir/wqaec.cpp.o
+.PHONY : wqaec.cpp.o
+
+wqaec.i: wqaec.cpp.i
+.PHONY : wqaec.i
+
+# target to preprocess a source file
+wqaec.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/webrtc_aec3_tts.dir/build.make CMakeFiles/webrtc_aec3_tts.dir/wqaec.cpp.i
+.PHONY : wqaec.cpp.i
+
+wqaec.s: wqaec.cpp.s
+.PHONY : wqaec.s
+
+# target to generate assembly for a file
+wqaec.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/webrtc_aec3_tts.dir/build.make CMakeFiles/webrtc_aec3_tts.dir/wqaec.cpp.s
+.PHONY : wqaec.cpp.s
+
+wqaec_config.o: wqaec_config.cpp.o
+.PHONY : wqaec_config.o
+
+# target to build an object file
+wqaec_config.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/webrtc_aec3_tts.dir/build.make CMakeFiles/webrtc_aec3_tts.dir/wqaec_config.cpp.o
+.PHONY : wqaec_config.cpp.o
+
+wqaec_config.i: wqaec_config.cpp.i
+.PHONY : wqaec_config.i
+
+# target to preprocess a source file
+wqaec_config.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/webrtc_aec3_tts.dir/build.make CMakeFiles/webrtc_aec3_tts.dir/wqaec_config.cpp.i
+.PHONY : wqaec_config.cpp.i
+
+wqaec_config.s: wqaec_config.cpp.s
+.PHONY : wqaec_config.s
+
+# target to generate assembly for a file
+wqaec_config.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/webrtc_aec3_tts.dir/build.make CMakeFiles/webrtc_aec3_tts.dir/wqaec_config.cpp.s
+.PHONY : wqaec_config.cpp.s
 
 # Help Target
 help:
@@ -2703,9 +2751,15 @@ help:
 	@echo "... Users/mac/Documents/GitHub/AEC3/base/system_wrappers/source/field_trial.o"
 	@echo "... Users/mac/Documents/GitHub/AEC3/base/system_wrappers/source/field_trial.i"
 	@echo "... Users/mac/Documents/GitHub/AEC3/base/system_wrappers/source/field_trial.s"
-	@echo "... tts_aec3_wrapper.o"
-	@echo "... tts_aec3_wrapper.i"
-	@echo "... tts_aec3_wrapper.s"
+	@echo "... android_jni_wrapper.o"
+	@echo "... android_jni_wrapper.i"
+	@echo "... android_jni_wrapper.s"
+	@echo "... wqaec.o"
+	@echo "... wqaec.i"
+	@echo "... wqaec.s"
+	@echo "... wqaec_config.o"
+	@echo "... wqaec_config.i"
+	@echo "... wqaec_config.s"
 .PHONY : help
 
 

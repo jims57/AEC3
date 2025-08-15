@@ -129,13 +129,15 @@ list(FILTER AEC3_IMPL_SOURCES EXCLUDE REGEX ".*_unittest\\.cc$")
 list(FILTER AEC3_IMPL_SOURCES EXCLUDE REGEX ".*_bench.*")
 list(FILTER AEC3_IMPL_SOURCES EXCLUDE REGEX ".*benchmark.*")
 
-# Combine all sources with additional required implementations
+# Combine all sources with WQAEC implementation
 set(ALL_SOURCES 
     ${AEC3_CORE_SOURCES}
     ${AEC3_IMPL_SOURCES}
     ${ADDITIONAL_SOURCES}
     ${ARCH_SPECIFIC_SOURCES}
-    tts_aec3_wrapper.cc
+    wqaec.cpp
+    wqaec_config.cpp
+    android_jni_wrapper.cc
 )
 
 # Create shared library

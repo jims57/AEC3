@@ -102,7 +102,9 @@ set(CMAKE_DEPENDS_DEPENDENCY_FILES
   "/Users/mac/Documents/GitHub/AEC3/base/rtc_base/time_utils.cc" "CMakeFiles/webrtc_aec3_tts.dir/Users/mac/Documents/GitHub/AEC3/base/rtc_base/time_utils.cc.o" "gcc" "CMakeFiles/webrtc_aec3_tts.dir/Users/mac/Documents/GitHub/AEC3/base/rtc_base/time_utils.cc.o.d"
   "/Users/mac/Documents/GitHub/AEC3/base/system_wrappers/source/cpu_features.cc" "CMakeFiles/webrtc_aec3_tts.dir/Users/mac/Documents/GitHub/AEC3/base/system_wrappers/source/cpu_features.cc.o" "gcc" "CMakeFiles/webrtc_aec3_tts.dir/Users/mac/Documents/GitHub/AEC3/base/system_wrappers/source/cpu_features.cc.o.d"
   "/Users/mac/Documents/GitHub/AEC3/base/system_wrappers/source/field_trial.cc" "CMakeFiles/webrtc_aec3_tts.dir/Users/mac/Documents/GitHub/AEC3/base/system_wrappers/source/field_trial.cc.o" "gcc" "CMakeFiles/webrtc_aec3_tts.dir/Users/mac/Documents/GitHub/AEC3/base/system_wrappers/source/field_trial.cc.o.d"
-  "/Users/mac/Documents/GitHub/AEC3/build_android/tts_aec3_wrapper.cc" "CMakeFiles/webrtc_aec3_tts.dir/tts_aec3_wrapper.cc.o" "gcc" "CMakeFiles/webrtc_aec3_tts.dir/tts_aec3_wrapper.cc.o.d"
+  "/Users/mac/Documents/GitHub/AEC3/build_android/android_jni_wrapper.cc" "CMakeFiles/webrtc_aec3_tts.dir/android_jni_wrapper.cc.o" "gcc" "CMakeFiles/webrtc_aec3_tts.dir/android_jni_wrapper.cc.o.d"
+  "/Users/mac/Documents/GitHub/AEC3/build_android/wqaec.cpp" "CMakeFiles/webrtc_aec3_tts.dir/wqaec.cpp.o" "gcc" "CMakeFiles/webrtc_aec3_tts.dir/wqaec.cpp.o.d"
+  "/Users/mac/Documents/GitHub/AEC3/build_android/wqaec_config.cpp" "CMakeFiles/webrtc_aec3_tts.dir/wqaec_config.cpp.o" "gcc" "CMakeFiles/webrtc_aec3_tts.dir/wqaec_config.cpp.o.d"
   "" "libwebrtc_aec3_tts.so" "gcc" "CMakeFiles/webrtc_aec3_tts.dir/link.d"
   )
 

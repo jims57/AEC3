@@ -94,7 +94,9 @@ libwebrtc_aec3_tts.so: \
  CMakeFiles/webrtc_aec3_tts.dir/Users/mac/Documents/GitHub/AEC3/base/system_wrappers/source/field_trial.cc.o \
  CMakeFiles/webrtc_aec3_tts.dir/Users/mac/Documents/GitHub/AEC3/audio_processing/utility/ooura_fft_sse2.cc.o \
  CMakeFiles/webrtc_aec3_tts.dir/Users/mac/Documents/GitHub/AEC3/audio_processing/resampler/sinc_resampler_sse.cc.o \
- CMakeFiles/webrtc_aec3_tts.dir/tts_aec3_wrapper.cc.o \
+ CMakeFiles/webrtc_aec3_tts.dir/wqaec.cpp.o \
+ CMakeFiles/webrtc_aec3_tts.dir/wqaec_config.cpp.o \
+ CMakeFiles/webrtc_aec3_tts.dir/android_jni_wrapper.cc.o \
  /Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/lib/i686-linux-android/27/libandroid.so \
  /Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/lib/i686-linux-android/27/liblog.so \
  /Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/lib/i686-linux-android/27/libOpenSLES.so \
@@ -299,7 +301,11 @@ CMakeFiles/webrtc_aec3_tts.dir/Users/mac/Documents/GitHub/AEC3/audio_processing/
 
 CMakeFiles/webrtc_aec3_tts.dir/Users/mac/Documents/GitHub/AEC3/audio_processing/resampler/sinc_resampler_sse.cc.o:
 
-CMakeFiles/webrtc_aec3_tts.dir/tts_aec3_wrapper.cc.o:
+CMakeFiles/webrtc_aec3_tts.dir/wqaec.cpp.o:
+
+CMakeFiles/webrtc_aec3_tts.dir/wqaec_config.cpp.o:
+
+CMakeFiles/webrtc_aec3_tts.dir/android_jni_wrapper.cc.o:
 
 /Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/lib/i686-linux-android/27/libandroid.so:
 

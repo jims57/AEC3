@@ -1391,19 +1391,47 @@ CMakeFiles/webrtc_aec3_tts.dir/Users/mac/Documents/GitHub/AEC3/audio_processing/
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/webrtc_aec3_tts.dir/Users/mac/Documents/GitHub/AEC3/audio_processing/resampler/sinc_resampler_sse.cc.s"
 	/Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/bin/clang++ --target=i686-none-linux-android27 --sysroot=/Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /Users/mac/Documents/GitHub/AEC3/audio_processing/resampler/sinc_resampler_sse.cc -o CMakeFiles/webrtc_aec3_tts.dir/Users/mac/Documents/GitHub/AEC3/audio_processing/resampler/sinc_resampler_sse.cc.s
 
-CMakeFiles/webrtc_aec3_tts.dir/tts_aec3_wrapper.cc.o: CMakeFiles/webrtc_aec3_tts.dir/flags.make
-CMakeFiles/webrtc_aec3_tts.dir/tts_aec3_wrapper.cc.o: /Users/mac/Documents/GitHub/AEC3/build_android/tts_aec3_wrapper.cc
-CMakeFiles/webrtc_aec3_tts.dir/tts_aec3_wrapper.cc.o: CMakeFiles/webrtc_aec3_tts.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/Users/mac/Documents/GitHub/AEC3/build_android/x86/CMakeFiles --progress-num=$(CMAKE_PROGRESS_95) "Building CXX object CMakeFiles/webrtc_aec3_tts.dir/tts_aec3_wrapper.cc.o"
-	/Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/bin/clang++ --target=i686-none-linux-android27 --sysroot=/Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/webrtc_aec3_tts.dir/tts_aec3_wrapper.cc.o -MF CMakeFiles/webrtc_aec3_tts.dir/tts_aec3_wrapper.cc.o.d -o CMakeFiles/webrtc_aec3_tts.dir/tts_aec3_wrapper.cc.o -c /Users/mac/Documents/GitHub/AEC3/build_android/tts_aec3_wrapper.cc
+CMakeFiles/webrtc_aec3_tts.dir/wqaec.cpp.o: CMakeFiles/webrtc_aec3_tts.dir/flags.make
+CMakeFiles/webrtc_aec3_tts.dir/wqaec.cpp.o: /Users/mac/Documents/GitHub/AEC3/build_android/wqaec.cpp
+CMakeFiles/webrtc_aec3_tts.dir/wqaec.cpp.o: CMakeFiles/webrtc_aec3_tts.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/Users/mac/Documents/GitHub/AEC3/build_android/x86/CMakeFiles --progress-num=$(CMAKE_PROGRESS_95) "Building CXX object CMakeFiles/webrtc_aec3_tts.dir/wqaec.cpp.o"
+	/Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/bin/clang++ --target=i686-none-linux-android27 --sysroot=/Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/webrtc_aec3_tts.dir/wqaec.cpp.o -MF CMakeFiles/webrtc_aec3_tts.dir/wqaec.cpp.o.d -o CMakeFiles/webrtc_aec3_tts.dir/wqaec.cpp.o -c /Users/mac/Documents/GitHub/AEC3/build_android/wqaec.cpp
 
-CMakeFiles/webrtc_aec3_tts.dir/tts_aec3_wrapper.cc.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/webrtc_aec3_tts.dir/tts_aec3_wrapper.cc.i"
-	/Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/bin/clang++ --target=i686-none-linux-android27 --sysroot=/Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /Users/mac/Documents/GitHub/AEC3/build_android/tts_aec3_wrapper.cc > CMakeFiles/webrtc_aec3_tts.dir/tts_aec3_wrapper.cc.i
+CMakeFiles/webrtc_aec3_tts.dir/wqaec.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/webrtc_aec3_tts.dir/wqaec.cpp.i"
+	/Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/bin/clang++ --target=i686-none-linux-android27 --sysroot=/Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /Users/mac/Documents/GitHub/AEC3/build_android/wqaec.cpp > CMakeFiles/webrtc_aec3_tts.dir/wqaec.cpp.i
 
-CMakeFiles/webrtc_aec3_tts.dir/tts_aec3_wrapper.cc.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/webrtc_aec3_tts.dir/tts_aec3_wrapper.cc.s"
-	/Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/bin/clang++ --target=i686-none-linux-android27 --sysroot=/Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /Users/mac/Documents/GitHub/AEC3/build_android/tts_aec3_wrapper.cc -o CMakeFiles/webrtc_aec3_tts.dir/tts_aec3_wrapper.cc.s
+CMakeFiles/webrtc_aec3_tts.dir/wqaec.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/webrtc_aec3_tts.dir/wqaec.cpp.s"
+	/Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/bin/clang++ --target=i686-none-linux-android27 --sysroot=/Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /Users/mac/Documents/GitHub/AEC3/build_android/wqaec.cpp -o CMakeFiles/webrtc_aec3_tts.dir/wqaec.cpp.s
+
+CMakeFiles/webrtc_aec3_tts.dir/wqaec_config.cpp.o: CMakeFiles/webrtc_aec3_tts.dir/flags.make
+CMakeFiles/webrtc_aec3_tts.dir/wqaec_config.cpp.o: /Users/mac/Documents/GitHub/AEC3/build_android/wqaec_config.cpp
+CMakeFiles/webrtc_aec3_tts.dir/wqaec_config.cpp.o: CMakeFiles/webrtc_aec3_tts.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/Users/mac/Documents/GitHub/AEC3/build_android/x86/CMakeFiles --progress-num=$(CMAKE_PROGRESS_96) "Building CXX object CMakeFiles/webrtc_aec3_tts.dir/wqaec_config.cpp.o"
+	/Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/bin/clang++ --target=i686-none-linux-android27 --sysroot=/Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/webrtc_aec3_tts.dir/wqaec_config.cpp.o -MF CMakeFiles/webrtc_aec3_tts.dir/wqaec_config.cpp.o.d -o CMakeFiles/webrtc_aec3_tts.dir/wqaec_config.cpp.o -c /Users/mac/Documents/GitHub/AEC3/build_android/wqaec_config.cpp
+
+CMakeFiles/webrtc_aec3_tts.dir/wqaec_config.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/webrtc_aec3_tts.dir/wqaec_config.cpp.i"
+	/Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/bin/clang++ --target=i686-none-linux-android27 --sysroot=/Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /Users/mac/Documents/GitHub/AEC3/build_android/wqaec_config.cpp > CMakeFiles/webrtc_aec3_tts.dir/wqaec_config.cpp.i
+
+CMakeFiles/webrtc_aec3_tts.dir/wqaec_config.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/webrtc_aec3_tts.dir/wqaec_config.cpp.s"
+	/Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/bin/clang++ --target=i686-none-linux-android27 --sysroot=/Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /Users/mac/Documents/GitHub/AEC3/build_android/wqaec_config.cpp -o CMakeFiles/webrtc_aec3_tts.dir/wqaec_config.cpp.s
+
+CMakeFiles/webrtc_aec3_tts.dir/android_jni_wrapper.cc.o: CMakeFiles/webrtc_aec3_tts.dir/flags.make
+CMakeFiles/webrtc_aec3_tts.dir/android_jni_wrapper.cc.o: /Users/mac/Documents/GitHub/AEC3/build_android/android_jni_wrapper.cc
+CMakeFiles/webrtc_aec3_tts.dir/android_jni_wrapper.cc.o: CMakeFiles/webrtc_aec3_tts.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/Users/mac/Documents/GitHub/AEC3/build_android/x86/CMakeFiles --progress-num=$(CMAKE_PROGRESS_97) "Building CXX object CMakeFiles/webrtc_aec3_tts.dir/android_jni_wrapper.cc.o"
+	/Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/bin/clang++ --target=i686-none-linux-android27 --sysroot=/Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/webrtc_aec3_tts.dir/android_jni_wrapper.cc.o -MF CMakeFiles/webrtc_aec3_tts.dir/android_jni_wrapper.cc.o.d -o CMakeFiles/webrtc_aec3_tts.dir/android_jni_wrapper.cc.o -c /Users/mac/Documents/GitHub/AEC3/build_android/android_jni_wrapper.cc
+
+CMakeFiles/webrtc_aec3_tts.dir/android_jni_wrapper.cc.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/webrtc_aec3_tts.dir/android_jni_wrapper.cc.i"
+	/Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/bin/clang++ --target=i686-none-linux-android27 --sysroot=/Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /Users/mac/Documents/GitHub/AEC3/build_android/android_jni_wrapper.cc > CMakeFiles/webrtc_aec3_tts.dir/android_jni_wrapper.cc.i
+
+CMakeFiles/webrtc_aec3_tts.dir/android_jni_wrapper.cc.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/webrtc_aec3_tts.dir/android_jni_wrapper.cc.s"
+	/Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/bin/clang++ --target=i686-none-linux-android27 --sysroot=/Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /Users/mac/Documents/GitHub/AEC3/build_android/android_jni_wrapper.cc -o CMakeFiles/webrtc_aec3_tts.dir/android_jni_wrapper.cc.s
 
 # Object files for target webrtc_aec3_tts
 webrtc_aec3_tts_OBJECTS = \
@@ -1501,7 +1529,9 @@ webrtc_aec3_tts_OBJECTS = \
 "CMakeFiles/webrtc_aec3_tts.dir/Users/mac/Documents/GitHub/AEC3/base/system_wrappers/source/field_trial.cc.o" \
 "CMakeFiles/webrtc_aec3_tts.dir/Users/mac/Documents/GitHub/AEC3/audio_processing/utility/ooura_fft_sse2.cc.o" \
 "CMakeFiles/webrtc_aec3_tts.dir/Users/mac/Documents/GitHub/AEC3/audio_processing/resampler/sinc_resampler_sse.cc.o" \
-"CMakeFiles/webrtc_aec3_tts.dir/tts_aec3_wrapper.cc.o"
+"CMakeFiles/webrtc_aec3_tts.dir/wqaec.cpp.o" \
+"CMakeFiles/webrtc_aec3_tts.dir/wqaec_config.cpp.o" \
+"CMakeFiles/webrtc_aec3_tts.dir/android_jni_wrapper.cc.o"
 
 # External object files for target webrtc_aec3_tts
 webrtc_aec3_tts_EXTERNAL_OBJECTS =
@@ -1600,11 +1630,13 @@ libwebrtc_aec3_tts.so: CMakeFiles/webrtc_aec3_tts.dir/Users/mac/Documents/GitHub
 libwebrtc_aec3_tts.so: CMakeFiles/webrtc_aec3_tts.dir/Users/mac/Documents/GitHub/AEC3/base/system_wrappers/source/field_trial.cc.o
 libwebrtc_aec3_tts.so: CMakeFiles/webrtc_aec3_tts.dir/Users/mac/Documents/GitHub/AEC3/audio_processing/utility/ooura_fft_sse2.cc.o
 libwebrtc_aec3_tts.so: CMakeFiles/webrtc_aec3_tts.dir/Users/mac/Documents/GitHub/AEC3/audio_processing/resampler/sinc_resampler_sse.cc.o
-libwebrtc_aec3_tts.so: CMakeFiles/webrtc_aec3_tts.dir/tts_aec3_wrapper.cc.o
+libwebrtc_aec3_tts.so: CMakeFiles/webrtc_aec3_tts.dir/wqaec.cpp.o
+libwebrtc_aec3_tts.so: CMakeFiles/webrtc_aec3_tts.dir/wqaec_config.cpp.o
+libwebrtc_aec3_tts.so: CMakeFiles/webrtc_aec3_tts.dir/android_jni_wrapper.cc.o
 libwebrtc_aec3_tts.so: CMakeFiles/webrtc_aec3_tts.dir/build.make
 libwebrtc_aec3_tts.so: CMakeFiles/webrtc_aec3_tts.dir/compiler_depend.ts
 libwebrtc_aec3_tts.so: CMakeFiles/webrtc_aec3_tts.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/Users/mac/Documents/GitHub/AEC3/build_android/x86/CMakeFiles --progress-num=$(CMAKE_PROGRESS_96) "Linking CXX shared library libwebrtc_aec3_tts.so"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/Users/mac/Documents/GitHub/AEC3/build_android/x86/CMakeFiles --progress-num=$(CMAKE_PROGRESS_98) "Linking CXX shared library libwebrtc_aec3_tts.so"
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/webrtc_aec3_tts.dir/link.txt --verbose=$(VERBOSE)
 
 # Rule to build all files generated by this target.
