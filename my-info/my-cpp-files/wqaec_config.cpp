@@ -457,7 +457,7 @@ void TimingSyncManager::AnalyzeReferenceFrame(const int16_t* reference_audio,
     
     reference_energy_sum_ = (reference_energy_sum_ + energy) / 2.0f;  // Running average
     
-    LOGD("Reference frame analyzed: energy=%.1f, timestamp=%lld", energy, timestamp);
+    LOGD("Reference frame analyzed: energy=%.1f, timestamp=%ld", energy, timestamp);
 }
 
 void TimingSyncManager::AnalyzeCaptureFrame(const int16_t* capture_audio, 
@@ -500,7 +500,7 @@ void TimingSyncManager::AnalyzeCaptureFrame(const int16_t* capture_audio,
     
     frame_count_++;
     
-    LOGD("Capture frame analyzed: energy=%.1f, timestamp=%lld, frame=%d", 
+    LOGD("Capture frame analyzed: energy=%.1f, timestamp=%ld, frame=%d", 
          energy, timestamp, frame_count_);
 }
 
