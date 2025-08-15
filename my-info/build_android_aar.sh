@@ -69,15 +69,16 @@ if(ANDROID)
     add_definitions(-DWEBRTC_ANDROID -DWEBRTC_POSIX)
 endif()
 
-# Compiler flags for optimization and WebRTC compatibility
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-rtti -ffast-math -O3")
+# Compiler flags for optimization and WebRTC AEC3 compatibility - 2025-01-31
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-rtti -O2")  # O2 instead of O3 for better quality
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DWEBRTC_APM_DEBUG_DUMP=0")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DRTC_DISABLE_CHECK_MSG=1")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DRTC_DISABLE_CHECK_MSG=0")  # Enable checks for better debugging
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DWEBRTC_INCLUDE_INTERNAL_AUDIO_DEVICE")
 # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DWEBRTC_EXCLUDE_FIELD_TRIAL_DEFAULT") # This line is commented out to fix the FindFullName issue
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DRTC_DISABLE_METRICS")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DWEBRTC_LINUX")  # Enable Linux-specific features
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_GNU_SOURCE")   # Enable GNU extensions for prctl
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DWEBRTC_AEC3_ENABLE_SHADOW_FILTER")  # Enable shadow filter for better adaptation
 
 # Include directories
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/..)
