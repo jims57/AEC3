@@ -348,6 +348,17 @@ public:
             const int16_t* processed_data = output_frame.data();
             std::memcpy(clean_output, processed_data, length * sizeof(int16_t));
             
+            // Debug: Check output energy to verify AEC3 is working properly
+            if ((frames_processed_.load() % 50) == 0) {
+                long input_energy = 0, output_energy = 0;
+                for (size_t i = 0; i < std::min(length, static_cast<size_t>(50)); i++) {
+                    input_energy += std::abs(capture_audio[i]);
+                    output_energy += std::abs(processed_data[i]);
+                }
+                LOGD("AEC3 processing check: input_energy=%ld, output_energy=%ld, frame=%d", 
+                     input_energy, output_energy, frames_processed_.load());
+            }
+            
             // Update frame counter
             frames_processed_.fetch_add(1);
             
@@ -712,13 +723,13 @@ private:
         // Export linear AEC output for better quality (as in demo.cc)
         webrtc_config.filter.export_linear_aec_output = true;
         
-        // Suppression configuration - using actual WebRTC config fields
-        webrtc_config.suppressor.normal_tuning.max_dec_factor_lf = 0.25f;      // Conservative suppression
-        webrtc_config.suppressor.normal_tuning.max_inc_factor = 2.0f;          // Slower recovery
+        // Enhanced suppression configuration for improved ERLE - 2025-01-31
+        webrtc_config.suppressor.normal_tuning.max_dec_factor_lf = 0.2f;       // More aggressive suppression
+        webrtc_config.suppressor.normal_tuning.max_inc_factor = 2.2f;          // Balanced recovery
         
-        // Near-end tuning for voice protection
+        // Near-end tuning for better voice protection
         webrtc_config.suppressor.nearend_tuning.max_inc_factor = config_.suppression.voice_recovery;
-        webrtc_config.suppressor.nearend_tuning.max_dec_factor_lf = 0.25f;
+        webrtc_config.suppressor.nearend_tuning.max_dec_factor_lf = 0.3f;      // Better voice preservation
         
         // Delay configuration for better tracking
         webrtc_config.delay.down_sampling_factor = 4;

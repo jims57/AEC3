@@ -27,12 +27,12 @@ namespace wqaec {
 AEC3Config AEC3Config::CreateDefaultConfig() {
     AEC3Config config;
     
-    // Set WebRTC AEC3 optimal defaults based on demo.cc and research papers
-    config.suppression.echo_suppression = 12.0f;     // Conservative start (demo.cc style)
-    config.suppression.voice_recovery = 2.8f;        // Moderate recovery speed
-    config.suppression.voice_protection = 2.0f;      // Balanced voice protection
-    config.suppression.noise_gate = 0.05f;           // Lower noise gate for cleaner output
-    config.suppression.filter_length_blocks = 20;    // Longer filter for better modeling (demo.cc uses more blocks)
+    // Enhanced WebRTC AEC3 configuration for improved ERLE - 2025-01-31
+    config.suppression.echo_suppression = 14.0f;     // Increased for better echo removal
+    config.suppression.voice_recovery = 2.5f;        // Slightly faster recovery
+    config.suppression.voice_protection = 2.2f;      // Better voice protection
+    config.suppression.noise_gate = 0.08f;           // Optimized noise gate
+    config.suppression.filter_length_blocks = 22;    // Longer filter for superior modeling
     
     config.adaptation.enable_auto_delay = true;
     config.adaptation.enable_energy_adaptation = true;
