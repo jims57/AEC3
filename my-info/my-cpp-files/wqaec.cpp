@@ -348,15 +348,22 @@ public:
             const int16_t* processed_data = output_frame.data();
             std::memcpy(clean_output, processed_data, length * sizeof(int16_t));
             
-            // Debug: Check output energy to verify AEC3 is working properly
-            if ((frames_processed_.load() % 50) == 0) {
-                long input_energy = 0, output_energy = 0;
-                for (size_t i = 0; i < std::min(length, static_cast<size_t>(50)); i++) {
-                    input_energy += std::abs(capture_audio[i]);
-                    output_energy += std::abs(processed_data[i]);
-                }
-                LOGD("AEC3 processing check: input_energy=%ld, output_energy=%ld, frame=%d", 
-                     input_energy, output_energy, frames_processed_.load());
+            // 【jimmy timing sync】Debug: Check output energy to verify AEC3 is working properly
+            long input_energy = 0, output_energy = 0;
+            for (size_t i = 0; i < std::min(length, static_cast<size_t>(50)); i++) {
+                input_energy += std::abs(capture_audio[i]);
+                output_energy += std::abs(processed_data[i]);
+            }
+            
+            // Log every 25 frames to reduce main thread load but maintain debugging
+            if ((frames_processed_.load() % 25) == 0) {
+                LOGD("【jimmy timing sync】AEC3 frame %d: input_energy=%ld, output_energy=%ld, ratio=%.3f", 
+                     frames_processed_.load(), input_energy, output_energy, 
+                     output_energy > 0 ? (float)output_energy/input_energy : 0.0f);
+            }
+            
+            if (output_energy == 0 && input_energy > 1000) {
+                LOGE("【jimmy timing sync】❌ CRITICAL: Output is ZERO but input has energy! AEC3 problem!");
             }
             
             // Update frame counter
