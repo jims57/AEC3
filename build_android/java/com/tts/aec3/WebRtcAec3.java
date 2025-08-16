@@ -73,6 +73,12 @@ public class WebRtcAec3 {
     public native void nativeSetFilterLength(int blocks);          // 10-25 range
     public native void nativeSetNoiseGate(float threshold);        // 0.05-0.5 range
     
+    // 🎙️ VOICE CLARITY RUNTIME CONTROLS (2025-01-30)
+    public native void nativeSetEchoSuppressionStrength(float strength);  // 3.0-10.0 range
+    public native void nativeSetVoiceRecoverySpeed(float speed);           // 1.5-5.0 range
+    public native void nativeSetVoiceDetectionSensitivity(float sensitivity); // 0.2-0.8 range
+    public native void nativeSetVoiceTriggerSpeed(int speed);              // 1-5 range
+    
     // 🎯 ENHANCED ERLE OPTIMIZATION METHODS (2025-01-30)
     public native boolean nativeAutoOptimizeDelay();               // Automatic delay optimization
     public native double[] nativeGetEnhancedMetrics();             // [ERL, ERLE, delay, render_frames, capture_frames, optimal_delay]
@@ -204,6 +210,52 @@ public class WebRtcAec3 {
     public void setNoiseGate(float threshold) {
         if (initialized) {
             nativeSetNoiseGate(threshold);
+        }
+    }
+    
+    // 🎙️ VOICE CLARITY RUNTIME CONTROLS FOR UI ADJUSTMENT (2025-01-30)
+    
+    /**
+     * Set echo suppression strength for voice clarity tuning
+     * Lower values = less aggressive suppression = clearer voice but potentially more echo
+     * @param strength 3.0-10.0 range, default 6.0, recommended 4.0-8.0 for voice clarity
+     */
+    public void setEchoSuppressionStrength(float strength) {
+        if (initialized) {
+            nativeSetEchoSuppressionStrength(strength);
+        }
+    }
+    
+    /**
+     * Set voice recovery speed for faster voice restoration
+     * Higher values = faster voice recovery after echo suppression
+     * @param speed 1.5-5.0 range, default 2.5, recommended 2.0-4.0 for balance
+     */
+    public void setVoiceRecoverySpeed(float speed) {
+        if (initialized) {
+            nativeSetVoiceRecoverySpeed(speed);
+        }
+    }
+    
+    /**
+     * Set voice detection sensitivity 
+     * Lower values = more sensitive to voice = better voice preservation
+     * @param sensitivity 0.2-0.8 range, default 0.4, recommended 0.3-0.5 for clarity
+     */
+    public void setVoiceDetectionSensitivity(float sensitivity) {
+        if (initialized) {
+            nativeSetVoiceDetectionSensitivity(sensitivity);
+        }
+    }
+    
+    /**
+     * Set voice trigger speed for faster voice detection
+     * Lower values = faster voice trigger = quicker voice preservation
+     * @param speed 1-5 range, default 2, recommended 1-3 for responsive voice
+     */
+    public void setVoiceTriggerSpeed(int speed) {
+        if (initialized) {
+            nativeSetVoiceTriggerSpeed(speed);
         }
     }
     

@@ -117,12 +117,12 @@ public:
             config.filter.main.error_floor = 0.01f;         // Higher error floor for real-world conditions
             config.filter.main.noise_gate = 0.1f;           // Default noise gate threshold
             
-            // 🎙️ VOICE CLARITY ENHANCEMENT: Optimized Suppression for Clearer Voice (2025-01-30)
-            // Success: Devices now converge to 6.2dB ERLE - now optimizing for voice clarity while preserving echo cancellation
-            config.suppressor.normal_tuning.max_dec_factor_lf = 6.0f;   // Reduced from 8.0f for better voice preservation
-            config.suppressor.normal_tuning.max_inc_factor = 2.5f;      // Increased from 2.0f for faster voice recovery
-            config.suppressor.nearend_tuning.max_inc_factor = 4.0f;     // Increased from 3.0f for clearer nearend voice
-            config.suppressor.nearend_tuning.max_dec_factor_lf = 2.5f;  // Reduced from 3.0f for gentler voice suppression
+            // 🎙️ VOICE CLARITY ENHANCEMENT: Runtime-Adjustable Suppression (2025-01-30)
+            // Success: Devices now converge to 6.2dB ERLE - now using runtime parameters for voice clarity tuning
+            config.suppressor.normal_tuning.max_dec_factor_lf = echo_suppression_strength_;   // Runtime adjustable (3-10 range)
+            config.suppressor.normal_tuning.max_inc_factor = voice_recovery_speed_;           // Runtime adjustable (1.5-5 range)
+            config.suppressor.nearend_tuning.max_inc_factor = voice_recovery_speed_ * 1.6f;   // 1.6x for clearer nearend voice
+            config.suppressor.nearend_tuning.max_dec_factor_lf = voice_protection_level_;     // Runtime adjustable (1-8 range)
             
             // 🔧 CRITICAL FIX: Standard Delay Configuration for Universal Compatibility (2025-01-30)
             // Issue: Complex delay settings prevent proper convergence across devices
@@ -147,14 +147,14 @@ public:
             config.render_levels.poor_excitation_render_limit = 100.0f;  // Default poor excitation limit
             config.render_levels.poor_excitation_render_limit_ds8 = 20.0f;  // Default downsampled limit
             
-            // 🎙️ VOICE CLARITY ENHANCEMENT: Improved Nearend Detection for Voice Preservation (2025-01-30)
-            // Optimized for clearer voice while maintaining 6.2dB ERLE performance
-            config.suppressor.dominant_nearend_detection.enr_threshold = 0.4f;   // More sensitive to voice (reduced from 0.5f)
-            config.suppressor.dominant_nearend_detection.enr_exit_threshold = 0.3f;  // Faster voice detection exit (reduced from 0.4f)
-            config.suppressor.dominant_nearend_detection.snr_threshold = 12.0f;  // Lower SNR for better voice detection (reduced from 15.0f)
-            config.suppressor.dominant_nearend_detection.hold_duration = 8;      // Shorter hold for voice responsiveness (reduced from 10)  
-            config.suppressor.dominant_nearend_detection.trigger_threshold = 2;  // Faster voice trigger (reduced from 3)
-            config.suppressor.high_bands_suppression.enr_threshold = 0.25f;      // More sensitive high-band voice preservation (reduced from 0.3f)
+            // 🎙️ VOICE CLARITY ENHANCEMENT: Runtime-Adjustable Nearend Detection (2025-01-30)
+            // Optimized for clearer voice while maintaining 6.2dB ERLE performance - now runtime adjustable
+            config.suppressor.dominant_nearend_detection.enr_threshold = voice_detection_sensitivity_;  // Runtime adjustable (0.2-0.8)
+            config.suppressor.dominant_nearend_detection.enr_exit_threshold = voice_detection_sensitivity_ * 0.75f;  // 75% of main threshold
+            config.suppressor.dominant_nearend_detection.snr_threshold = 12.0f + (voice_detection_sensitivity_ - 0.4f) * 10.0f;  // Adaptive SNR
+            config.suppressor.dominant_nearend_detection.hold_duration = 8;      // Shorter hold for voice responsiveness
+            config.suppressor.dominant_nearend_detection.trigger_threshold = voice_trigger_speed_;  // Runtime adjustable (1-5)
+            config.suppressor.high_bands_suppression.enr_threshold = voice_detection_sensitivity_ * 0.625f;  // Proportional high-band
             
             // ✅ PRESERVED FEATURES: Auto-delay adjustment and timing sync remain fully intact (2025-01-30)
             // The successful 6.2dB ERLE convergence mechanisms are maintained while improving voice clarity
@@ -468,6 +468,37 @@ public:
         // Note: Requires AEC3 re-initialization to take effect
     }
     
+    // 🎙️ VOICE CLARITY RUNTIME CONTROLS (2025-01-30)
+    // These parameters directly control the same C++ settings used in initialization
+    
+    void SetEchoSuppressionStrength(float strength) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        echo_suppression_strength_ = std::max(3.0f, std::min(10.0f, strength));
+        LOGI("🎙️ Echo suppression strength updated to %.2f", echo_suppression_strength_);
+        // Note: Requires AEC3 re-initialization to take effect
+    }
+    
+    void SetVoiceRecoverySpeed(float speed) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        voice_recovery_speed_ = std::max(1.5f, std::min(5.0f, speed));
+        LOGI("🎙️ Voice recovery speed updated to %.2f", voice_recovery_speed_);
+        // Note: Requires AEC3 re-initialization to take effect
+    }
+    
+    void SetVoiceDetectionSensitivity(float sensitivity) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        voice_detection_sensitivity_ = std::max(0.2f, std::min(0.8f, sensitivity));
+        LOGI("🎙️ Voice detection sensitivity updated to %.2f", voice_detection_sensitivity_);
+        // Note: Requires AEC3 re-initialization to take effect
+    }
+    
+    void SetVoiceTriggerSpeed(int speed) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        voice_trigger_speed_ = std::max(1, std::min(5, speed));
+        LOGI("🎙️ Voice trigger speed updated to %d", voice_trigger_speed_);
+        // Note: Requires AEC3 re-initialization to take effect
+    }
+    
     // 🎯 ENHANCED ERLE OPTIMIZATION METHODS (2025-01-30)
     
     bool AutoOptimizeDelay() {
@@ -706,12 +737,16 @@ private:
     int manual_delay_ms_ = 0;  // Set by SetStreamDelay(), 0 = automatic
     
     // 🎛️ RUNTIME ADJUSTABLE PARAMETERS FOR PRODUCTION TUNING
-    float echo_suppression_strength_ = 12.0f;    // Normal max_dec_factor_lf (8-20 range)
-    float voice_recovery_speed_ = 3.0f;          // Nearend max_inc_factor (1-5 range)  
+    float echo_suppression_strength_ = 6.0f;     // Normal max_dec_factor_lf (3-10 range) - reduced for voice clarity
+    float voice_recovery_speed_ = 2.5f;          // Nearend max_inc_factor (1.5-5 range) - increased for voice clarity
     float voice_protection_level_ = 2.0f;        // Nearend max_dec_factor_lf (1-8 range)
     int filter_length_blocks_ = 20;              // Filter length (10-25 range)
     float noise_gate_threshold_ = 0.1f;          // Noise gate (0.05-0.5 range)
     bool enable_voice_protection_ = true;        // Toggle voice-aware processing
+    
+    // 🎙️ VOICE CLARITY RUNTIME PARAMETERS (2025-01-30)
+    float voice_detection_sensitivity_ = 0.4f;   // ENR threshold (0.2-0.8 range) - more sensitive to voice
+    int voice_trigger_speed_ = 2;                // Trigger threshold (1-5 range) - faster voice trigger
 };
 
 // Global processor instance
@@ -825,6 +860,36 @@ JNIEXPORT void JNICALL
 Java_com_tts_aec3_WebRtcAec3_nativeSetNoiseGate(JNIEnv *env, jobject thiz, jfloat threshold) {
     if (webrtc_aec3_tts::g_processor) {
         webrtc_aec3_tts::g_processor->SetNoiseGate(threshold);
+    }
+}
+
+// 🎙️ VOICE CLARITY RUNTIME CONTROLS JNI METHODS (2025-01-30)
+
+JNIEXPORT void JNICALL
+Java_com_tts_aec3_WebRtcAec3_nativeSetEchoSuppressionStrength(JNIEnv *env, jobject thiz, jfloat strength) {
+    if (webrtc_aec3_tts::g_processor) {
+        webrtc_aec3_tts::g_processor->SetEchoSuppressionStrength(strength);
+    }
+}
+
+JNIEXPORT void JNICALL
+Java_com_tts_aec3_WebRtcAec3_nativeSetVoiceRecoverySpeed(JNIEnv *env, jobject thiz, jfloat speed) {
+    if (webrtc_aec3_tts::g_processor) {
+        webrtc_aec3_tts::g_processor->SetVoiceRecoverySpeed(speed);
+    }
+}
+
+JNIEXPORT void JNICALL
+Java_com_tts_aec3_WebRtcAec3_nativeSetVoiceDetectionSensitivity(JNIEnv *env, jobject thiz, jfloat sensitivity) {
+    if (webrtc_aec3_tts::g_processor) {
+        webrtc_aec3_tts::g_processor->SetVoiceDetectionSensitivity(sensitivity);
+    }
+}
+
+JNIEXPORT void JNICALL
+Java_com_tts_aec3_WebRtcAec3_nativeSetVoiceTriggerSpeed(JNIEnv *env, jobject thiz, jint speed) {
+    if (webrtc_aec3_tts::g_processor) {
+        webrtc_aec3_tts::g_processor->SetVoiceTriggerSpeed(speed);
     }
 }
 
