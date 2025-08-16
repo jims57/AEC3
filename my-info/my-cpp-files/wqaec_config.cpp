@@ -27,12 +27,12 @@ namespace wqaec {
 AEC3Config AEC3Config::CreateDefaultConfig() {
     AEC3Config config;
     
-    // Enhanced WebRTC AEC3 configuration for improved ERLE - 2025-01-31
-    config.suppression.echo_suppression = 14.0f;     // Increased for better echo removal
-    config.suppression.voice_recovery = 2.5f;        // Slightly faster recovery
-    config.suppression.voice_protection = 2.2f;      // Better voice protection
-    config.suppression.noise_gate = 0.08f;           // Optimized noise gate
-    config.suppression.filter_length_blocks = 22;    // Longer filter for superior modeling
+    // 🔧 FIXED: Conservative WebRTC AEC3 configuration to prevent audio muting - 2025-01-30
+    config.suppression.echo_suppression = 10.0f;     // More conservative to prevent over-suppression
+    config.suppression.voice_recovery = 3.0f;        // Faster recovery for better voice flow
+    config.suppression.voice_protection = 3.0f;      // Higher voice protection
+    config.suppression.noise_gate = 0.04f;           // Lower noise gate for better voice detection
+    config.suppression.filter_length_blocks = 16;    // Reduced filter length for better stability
     
     config.adaptation.enable_auto_delay = true;
     config.adaptation.enable_energy_adaptation = true;
@@ -141,11 +141,13 @@ void AEC3Config::SetEnvironmentPreset(Environment env) {
     
     switch (env) {
         case Environment::OFFICE:
-            suppression.echo_suppression = 15.0f;
-            suppression.voice_recovery = 3.5f;
-            suppression.voice_protection = 1.5f;
-            suppression.noise_gate = 0.1f;
-            LOGI("Applied OFFICE environment preset");
+            // 🔧 FIXED: More conservative office settings to prevent audio muting - 2025-01-30
+            suppression.echo_suppression = 12.0f;    // Reduced from 15.0f to prevent over-suppression
+            suppression.voice_recovery = 2.8f;       // Faster recovery for better voice flow
+            suppression.voice_protection = 2.5f;     // Increased protection to preserve voice
+            suppression.noise_gate = 0.05f;          // Lower noise gate for better voice detection
+            suppression.filter_length_blocks = 16;   // Reduced from default 22 for better stability
+            LOGI("Applied OFFICE environment preset (conservative tuning)");
             break;
             
         case Environment::OUTDOOR:

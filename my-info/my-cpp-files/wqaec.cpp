@@ -346,13 +346,26 @@ public:
             
             // Copy int16_t data directly from the processed frame
             const int16_t* processed_data = output_frame.data();
-            std::memcpy(clean_output, processed_data, length * sizeof(int16_t));
             
-            // 【jimmy timing sync】Debug: Check output energy to verify AEC3 is working properly
+            // 🔧 FIXED: Safety check - prevent complete audio muting - 2025-01-30
             long input_energy = 0, output_energy = 0;
             for (size_t i = 0; i < std::min(length, static_cast<size_t>(50)); i++) {
                 input_energy += std::abs(capture_audio[i]);
                 output_energy += std::abs(processed_data[i]);
+            }
+            
+            // 🛡️ SAFETY: If AEC3 completely mutes audio with energy, use mixed output
+            if (output_energy == 0 && input_energy > 1000) {
+                LOGW("【jimmy timing sync】⚠️ AEC3 completely muted audio - using 70%% processed + 30%% original");
+                // Mix 70% processed (even if silent) with 30% original to maintain audio flow
+                for (size_t i = 0; i < length; i++) {
+                    clean_output[i] = static_cast<int16_t>(
+                        0.7f * processed_data[i] + 0.3f * capture_audio[i]
+                    );
+                }
+            } else {
+                // Normal case: use AEC3 processed output
+                std::memcpy(clean_output, processed_data, length * sizeof(int16_t));
             }
             
             // Log every 25 frames to reduce main thread load but maintain debugging
@@ -360,10 +373,6 @@ public:
                 LOGD("【jimmy timing sync】AEC3 frame %d: input_energy=%ld, output_energy=%ld, ratio=%.3f", 
                      frames_processed_.load(), input_energy, output_energy, 
                      output_energy > 0 ? (float)output_energy/input_energy : 0.0f);
-            }
-            
-            if (output_energy == 0 && input_energy > 1000) {
-                LOGE("【jimmy timing sync】❌ CRITICAL: Output is ZERO but input has energy! AEC3 problem!");
             }
             
             // Update frame counter
@@ -730,13 +739,13 @@ private:
         // Export linear AEC output for better quality (as in demo.cc)
         webrtc_config.filter.export_linear_aec_output = true;
         
-        // Enhanced suppression configuration for improved ERLE - 2025-01-31
-        webrtc_config.suppressor.normal_tuning.max_dec_factor_lf = 0.2f;       // More aggressive suppression
-        webrtc_config.suppressor.normal_tuning.max_inc_factor = 2.2f;          // Balanced recovery
+        // 🔧 FIXED: Balanced suppression configuration - prevent complete audio muting - 2025-01-30
+        webrtc_config.suppressor.normal_tuning.max_dec_factor_lf = 0.7f;       // More conservative suppression
+        webrtc_config.suppressor.normal_tuning.max_inc_factor = 2.0f;          // Balanced recovery
         
         // Near-end tuning for better voice protection
         webrtc_config.suppressor.nearend_tuning.max_inc_factor = config_.suppression.voice_recovery;
-        webrtc_config.suppressor.nearend_tuning.max_dec_factor_lf = 0.3f;      // Better voice preservation
+        webrtc_config.suppressor.nearend_tuning.max_dec_factor_lf = 0.8f;      // Much more conservative voice preservation
         
         // Delay configuration for better tracking
         webrtc_config.delay.down_sampling_factor = 4;
