@@ -93,7 +93,7 @@ public:
         aec_factory_.reset();
         audio_render_buffer_.reset();
         audio_capture_buffer_.reset();
-        audio_linear_buffer_.reset();
+        // audio_linear_buffer_.reset();  // Not used in fixed version
         high_pass_filter_.reset();
         render_buffer_.clear();
     }
@@ -108,47 +108,53 @@ public:
             // Based on zhihu blogs research and demo.cc processing order
             webrtc::EchoCanceller3Config config;
             
-            // 🎯 OPTIMAL FILTER CONFIGURATION FOR HIGH ERLE (>15dB target)
-            config.filter.export_linear_aec_output = true;  // Enable for better monitoring
-            config.filter.main.length_blocks = 20;  // Increased from 13 to 20 for better echo modeling
-            config.filter.main.leakage_converged = 0.0005f;     // More aggressive convergence for TTS
-            config.filter.main.leakage_diverged = 0.05f;        // Tighter divergence detection  
-            config.filter.main.error_floor = 0.0001f;           // Lower error floor for precision
-            config.filter.main.noise_gate = 0.02f;              // More sensitive noise gate
+            // 🔧 CRITICAL FIX: AEC3 Filter Configuration for Universal Device Compatibility (2025-01-30)
+            // Issue: ERLE stuck at 0.2dB across devices due to poor filter convergence
+            config.filter.export_linear_aec_output = false; // Disable for better performance 
+            config.filter.main.length_blocks = 13;          // Use proven default length for stability
+            config.filter.main.leakage_converged = 0.001f;  // Default convergence rate for stability
+            config.filter.main.leakage_diverged = 0.1f;     // Default divergence detection
+            config.filter.main.error_floor = 0.01f;         // Higher error floor for real-world conditions
+            config.filter.main.noise_gate = 0.1f;           // Default noise gate threshold
             
-            // 🎯 AGGRESSIVE ECHO SUPPRESSION FOR TTS (Known reference signal)
-            config.suppressor.normal_tuning.max_dec_factor_lf = 25.0f;  // Aggressive echo suppression for TTS
-            config.suppressor.normal_tuning.max_inc_factor = 1.5f;      // Moderate voice recovery
-            config.suppressor.nearend_tuning.max_inc_factor = 2.0f;     // Quick voice recovery  
-            config.suppressor.nearend_tuning.max_dec_factor_lf = 5.0f;  // Balanced nearend suppression
+            // 🔧 CRITICAL FIX: Balanced Echo Suppression for Filter Convergence (2025-01-30) 
+            // Issue: Over-aggressive suppression prevents AEC3 filter from learning echo path
+            config.suppressor.normal_tuning.max_dec_factor_lf = 8.0f;   // Moderate suppression allows filter learning
+            config.suppressor.normal_tuning.max_inc_factor = 2.0f;      // Standard voice recovery
+            config.suppressor.nearend_tuning.max_inc_factor = 3.0f;     // Quick voice recovery
+            config.suppressor.nearend_tuning.max_dec_factor_lf = 3.0f;  // Moderate nearend suppression
             
-            // 🎯 ENHANCED DELAY CONFIGURATION FOR PRECISE TIMING SYNC
-            config.delay.down_sampling_factor = 2;              // Higher resolution for mobile
-            config.delay.num_filters = 8;                       // More filters for accuracy
-            config.delay.delay_headroom_samples = 64;           // Increased headroom for mobile
-            config.delay.hysteresis_limit_blocks = 2;           // More stable hysteresis
-            config.delay.fixed_capture_delay_samples = 0;       // Let AEC3 estimate
-            config.delay.delay_estimate_smoothing = 0.9f;       // Smoother delay tracking
-            config.delay.delay_candidate_detection_threshold = 0.1f;  // More sensitive detection
+            // 🔧 CRITICAL FIX: Standard Delay Configuration for Universal Compatibility (2025-01-30)
+            // Issue: Complex delay settings prevent proper convergence across devices
+            config.delay.down_sampling_factor = 4;              // Default downsampling for stability
+            config.delay.num_filters = 6;                       // Default filter count
+            config.delay.delay_headroom_samples = 32;           // Default headroom
+            config.delay.hysteresis_limit_blocks = 1;           // Default hysteresis
+            config.delay.fixed_capture_delay_samples = 0;       // Let AEC3 estimate automatically  
+            config.delay.delay_estimate_smoothing = 0.8f;       // Default smoothing
+            config.delay.delay_candidate_detection_threshold = 0.2f;  // Default detection threshold
             
-            // 🎯 OPTIMIZED ECHO AUDIBILITY FOR TTS
-            config.echo_audibility.low_render_limit = 32;       // Lower threshold for TTS
-            config.echo_audibility.normal_render_limit = 16;    // More sensitive detection
+            // 🔧 CRITICAL FIX: Default Echo Audibility Settings (2025-01-30)
+            // Issue: Aggressive audibility settings interfere with filter convergence
+            config.echo_audibility.low_render_limit = 64;       // Default threshold
+            config.echo_audibility.normal_render_limit = 64;    // Default detection  
             config.echo_audibility.use_stationarity_properties = true;
             config.echo_audibility.use_stationarity_properties_at_init = true;
             
-            // 🎯 ENHANCED RENDER LEVELS FOR TTS SIGNALS
-            config.render_levels.active_render_limit = 30.0f;   // Lower for TTS detection
-            config.render_levels.poor_excitation_render_limit = 75.0f;
-            config.render_levels.poor_excitation_render_limit_ds8 = 10.0f;
+            // 🔧 CRITICAL FIX: Standard Render Levels (2025-01-30)
+            // Issue: Non-standard render limits prevent proper echo path learning
+            config.render_levels.active_render_limit = 64.0f;   // Default active render limit
+            config.render_levels.poor_excitation_render_limit = 100.0f;  // Default poor excitation limit
+            config.render_levels.poor_excitation_render_limit_ds8 = 20.0f;  // Default downsampled limit
             
-            // 🎯 PRECISE NEAREND DETECTION FOR VOICE PRESERVATION
-            config.suppressor.dominant_nearend_detection.enr_threshold = 0.3f;   // Sensitive voice detection
-            config.suppressor.dominant_nearend_detection.enr_exit_threshold = 0.2f;
-            config.suppressor.dominant_nearend_detection.snr_threshold = 12.0f;  // Lower SNR threshold
-            config.suppressor.dominant_nearend_detection.hold_duration = 5;      // Quick response
-            config.suppressor.dominant_nearend_detection.trigger_threshold = 2;  // Fast voice detection
-            config.suppressor.high_bands_suppression.enr_threshold = 0.15f;      // Sensitive high-band
+            // 🔧 CRITICAL FIX: Conservative Nearend Detection (2025-01-30)
+            // Issue: Over-sensitive nearend detection interferes with echo cancellation learning
+            config.suppressor.dominant_nearend_detection.enr_threshold = 0.5f;   // Default voice detection threshold
+            config.suppressor.dominant_nearend_detection.enr_exit_threshold = 0.4f;  // Default exit threshold
+            config.suppressor.dominant_nearend_detection.snr_threshold = 15.0f;  // Default SNR threshold
+            config.suppressor.dominant_nearend_detection.hold_duration = 10;     // Default hold duration  
+            config.suppressor.dominant_nearend_detection.trigger_threshold = 3;  // Default trigger threshold
+            config.suppressor.high_bands_suppression.enr_threshold = 0.3f;       // Default high-band threshold
             
             // 🎯 ADDITIONAL ERLE OPTIMIZATION SETTINGS (Removed deprecated fields)
             // Note: use_adjacent_bands_filter and max_ovr_suppress_in_hb are not available in this WebRTC version
@@ -178,14 +184,11 @@ public:
                 kSampleRate, kChannels,    // buffer rate and channels (SAME as input)
                 kSampleRate, kChannels);   // output rate and channels (SAME as input)
                 
-            // Create linear output buffer for enhanced monitoring (following demo.cc with export_linear_aec_output=true)
-            constexpr int kLinearOutputRateHz = 16000;
-            audio_linear_buffer_ = std::make_unique<webrtc::AudioBuffer>(
-                kLinearOutputRateHz, kChannels,
-                kLinearOutputRateHz, kChannels,
-                kLinearOutputRateHz, kChannels);
+            // 🔧 CRITICAL FIX: Disable linear output buffer for stability (2025-01-30)
+            // Issue: Linear output buffer causes complexity without benefit for basic ERLE
+            // audio_linear_buffer_ is now set to nullptr and not used
 
-            if (!audio_render_buffer_ || !audio_capture_buffer_ || !audio_linear_buffer_) {
+            if (!audio_render_buffer_ || !audio_capture_buffer_) {
                 LOGE("Failed to create audio buffers");
                 return false;
             }
@@ -222,9 +225,25 @@ public:
         }
 
         try {
-            // Store timestamped reference frame for precise synchronization (only if timing sync enabled)
+            // 🔧 ENHANCED REFERENCE SIGNAL PROCESSING FOR DEVICE COMPATIBILITY (2025-01-30)
             if (timing_sync_enabled_) {
-                TimedFrame timed_frame(tts_data, length, frame_counter_++);
+                // Calculate TTS frame energy for quality assessment
+                double frame_energy = CalculateFrameEnergy(tts_data, length);
+                
+                // 🎯 SILENT FRAME ENHANCEMENT: Boost weak TTS signals for better AEC3 performance
+                std::vector<int16_t> enhanced_tts_data(tts_data, tts_data + length);
+                if (frame_energy < 1000.0) {  // Very low energy threshold
+                    // Apply gentle amplification to weak signals (common with TTS tail-end)
+                    for (size_t i = 0; i < enhanced_tts_data.size(); ++i) {
+                        enhanced_tts_data[i] = static_cast<int16_t>(
+                            std::min(static_cast<int>(enhanced_tts_data[i] * 2.0f), 
+                                   static_cast<int>(INT16_MAX)));
+                    }
+                    LOGV("🔧 Enhanced weak TTS signal: energy %.1f -> %.1f", 
+                         frame_energy, CalculateFrameEnergy(enhanced_tts_data.data(), length));
+                }
+                
+                TimedFrame timed_frame(enhanced_tts_data.data(), length, frame_counter_++);
                 render_buffer_.push_back(std::move(timed_frame));
                 
                 // Maintain buffer size for optimal delay range
@@ -278,18 +297,50 @@ public:
         try {
             auto capture_timestamp = std::chrono::high_resolution_clock::now();
             
-            // 🎯 ENHANCED TIMING SYNCHRONIZATION FOR OPTIMAL ERLE (only if enabled)
+                    // 🎯 ENHANCED DEVICE-ADAPTIVE TIMING SYNCHRONIZATION FOR CROSS-DEVICE COMPATIBILITY (2025-01-30)
             if (timing_sync_enabled_) {
-                // Find the best matching reference frame based on optimal delay
-                const TimedFrame* best_reference = FindOptimalReferenceFrame(capture_timestamp);
+                // Get current AEC3 metrics for device-specific adaptation
+                webrtc::EchoControl::Metrics current_metrics = echo_controller_->GetMetrics();
+                int aec3_detected_delay = current_metrics.delay_ms;
                 
-                if (best_reference) {
-                    // Apply precise delay compensation based on timing analysis
-                    int estimated_delay = EstimateOptimalDelay(capture_timestamp, best_reference->timestamp);
-                    if (estimated_delay != current_optimal_delay_ms_) {
-                        current_optimal_delay_ms_ = estimated_delay;
-                        LOGI("🎯 Optimal delay updated: %dms (ERLE optimization)", current_optimal_delay_ms_);
+                // 🔧 DEVICE COMPATIBILITY FIX: Handle delay detection failures
+                if (aec3_detected_delay <= 0 || aec3_detected_delay > 500) {
+                    // Some devices (like Samsung) have broken delay detection, use timing sync instead
+                    const TimedFrame* best_reference = FindOptimalReferenceFrame(capture_timestamp);
+                    if (best_reference) {
+                        int timing_based_delay = EstimateOptimalDelay(capture_timestamp, best_reference->timestamp);
+                        // Force AEC3 to use our timing-based delay when detection fails
+                        if (timing_based_delay >= kMinDelayMs && timing_based_delay <= kMaxDelayMs) {
+                            current_optimal_delay_ms_ = timing_based_delay;
+                            // Force set delay multiple times for stubborn devices
+                            echo_controller_->SetAudioBufferDelay(current_optimal_delay_ms_);
+                            LOGI("🔧 Device delay fix: Forced timing-based delay %dms (AEC3 detection failed: %dms)", 
+                                 current_optimal_delay_ms_, aec3_detected_delay);
+                        }
                     }
+                } else {
+                    // Normal delay detection working - use hybrid approach
+                    const TimedFrame* best_reference = FindOptimalReferenceFrame(capture_timestamp);
+                    if (best_reference) {
+                        int timing_based_delay = EstimateOptimalDelay(capture_timestamp, best_reference->timestamp);
+                        
+                        // 🎯 CROSS-DEVICE STABILITY: Weighted average between AEC3 detection and timing sync
+                        int weighted_delay = static_cast<int>(aec3_detected_delay * 0.7f + timing_based_delay * 0.3f);
+                        
+                        // Only update if significantly different to avoid jitter
+                        if (std::abs(weighted_delay - current_optimal_delay_ms_) > 5) {
+                            current_optimal_delay_ms_ = weighted_delay;
+                            LOGI("🎯 Cross-device delay: AEC3=%dms, Timing=%dms, Weighted=%dms", 
+                                 aec3_detected_delay, timing_based_delay, current_optimal_delay_ms_);
+                        }
+                    }
+                }
+                
+                // 🔧 AGGRESSIVE DELAY ENFORCEMENT for problematic devices
+                static int delay_set_counter = 0;
+                if (++delay_set_counter % 10 == 0) {  // Every 100ms
+                    echo_controller_->SetAudioBufferDelay(current_optimal_delay_ms_);
+                    LOGV("🔧 Delay enforcement: %dms (frame %d)", current_optimal_delay_ms_, delay_set_counter);
                 }
             }
             
@@ -315,14 +366,8 @@ public:
             // Step 5: Set precise delay compensation (enhanced with timing sync)
             echo_controller_->SetAudioBufferDelay(current_optimal_delay_ms_);
             
-            // Step 6: Core AEC3 processing with linear output for monitoring
-            std::unique_ptr<webrtc::AudioBuffer> linear_output;
-            if (audio_linear_buffer_) {
-                echo_controller_->ProcessCapture(audio_capture_buffer_.get(), audio_linear_buffer_.get(), false);
-                linear_output = std::move(audio_linear_buffer_);
-            } else {
-                echo_controller_->ProcessCapture(audio_capture_buffer_.get(), false);
-            }
+            // Step 6: Core AEC3 processing (simplified for stability - 2025-01-30)
+            echo_controller_->ProcessCapture(audio_capture_buffer_.get(), false);
             
             // Step 7: Merge frequency bands back
             audio_capture_buffer_->MergeFrequencyBands();
@@ -520,37 +565,119 @@ private:
         return static_cast<int>(measured_delay);
     }
     
-    // Perform advanced delay estimation and ERLE optimization
+    // 🔧 ENHANCED DEVICE-ADAPTIVE DELAY ESTIMATION FOR CROSS-DEVICE COMPATIBILITY (2025-01-30)
     void PerformDelayEstimationOptimization() {
         if (!echo_controller_) return;
         
         try {
             // Get current AEC3 delay estimation
             webrtc::EchoControl::Metrics current_metrics = echo_controller_->GetMetrics();
-            
-            // Track ERLE improvement trend
-            static double last_erle = 0.0;
+            int aec3_delay = current_metrics.delay_ms;
             double current_erle = current_metrics.echo_return_loss_enhancement;
             
-            if (current_erle > last_erle + 1.0) {  // Improvement detected
-                LOGI("🎯 ERLE improved: %.2fdB -> %.2fdB (delay=%dms)", 
-                     last_erle, current_erle, current_optimal_delay_ms_);
-            } else if (current_erle < last_erle - 2.0) {  // Degradation detected
-                // Try slight delay adjustment for recovery
-                int adjustment = (last_delay_estimation_ > current_optimal_delay_ms_) ? 5 : -5;
-                current_optimal_delay_ms_ = std::max(kMinDelayMs, 
-                    std::min(kMaxDelayMs, current_optimal_delay_ms_ + adjustment));
+            // Track ERLE improvement trend with device-specific thresholds
+            static double last_erle = 0.0;
+            static int stable_delay_counter = 0;
+            static int best_delay_so_far = current_optimal_delay_ms_;
+            static double best_erle_so_far = 0.0;
+            
+            // 🎯 DEVICE COMPATIBILITY: Handle poor AEC3 delay detection (like Samsung)
+            bool aec3_delay_reliable = (aec3_delay > 0 && aec3_delay <= 500);
+            
+            if (!aec3_delay_reliable) {
+                // Samsung-style devices with broken delay detection
+                LOGW("🔧 Device delay detection unreliable: %dms, using adaptive search", aec3_delay);
                 
-                LOGW("🎯 ERLE degraded: %.2fdB -> %.2fdB, adjusting delay to %dms", 
-                     last_erle, current_erle, current_optimal_delay_ms_);
+                // Try systematic delay search for problematic devices
+                static int search_step = 0;
+                static bool search_direction_up = true;
+                
+                if (current_erle < 1.0) {  // ERLE is terrible, need aggressive search
+                    int new_delay = current_optimal_delay_ms_;
+                    
+                    if (search_direction_up) {
+                        new_delay += 10;  // 10ms steps up
+                        if (new_delay > 200) {
+                            search_direction_up = false;
+                            new_delay = current_optimal_delay_ms_ - 10;
+                        }
+                    } else {
+                        new_delay -= 10;  // 10ms steps down
+                        if (new_delay < 20) {
+                            search_direction_up = true;
+                            new_delay = current_optimal_delay_ms_ + 10;
+                        }
+                    }
+                    
+                    current_optimal_delay_ms_ = std::max(kMinDelayMs, std::min(kMaxDelayMs, new_delay));
+                    echo_controller_->SetAudioBufferDelay(current_optimal_delay_ms_);
+                    
+                    LOGI("🔍 Device delay search: trying %dms (step %d, ERLE=%.2fdB)", 
+                         current_optimal_delay_ms_, ++search_step, current_erle);
+                }
+            } else {
+                // Normal devices with working delay detection
+                if (current_erle > last_erle + 0.5) {  // Improvement detected
+                    stable_delay_counter++;
+                    if (current_erle > best_erle_so_far) {
+                        best_erle_so_far = current_erle;
+                        best_delay_so_far = current_optimal_delay_ms_;
+                    }
+                    LOGI("🎯 ERLE improved: %.2fdB -> %.2fdB (delay=%dms, stable=%d)", 
+                         last_erle, current_erle, current_optimal_delay_ms_, stable_delay_counter);
+                } else if (current_erle < last_erle - 1.0) {  // Degradation detected
+                    stable_delay_counter = 0;
+                    
+                    // Try reverting to best known delay first
+                    if (best_erle_so_far > current_erle + 1.0) {
+                        current_optimal_delay_ms_ = best_delay_so_far;
+                        LOGI("🔧 Reverting to best delay: %dms (ERLE %.2fdB -> %.2fdB)", 
+                             best_delay_so_far, current_erle, best_erle_so_far);
+                    } else {
+                        // Try small adjustment based on AEC3 vs timing difference
+                        int timing_estimate = GetTimingBasedDelayEstimate();
+                        if (timing_estimate > 0) {
+                            int adjustment = (timing_estimate > current_optimal_delay_ms_) ? 5 : -5;
+                            current_optimal_delay_ms_ = std::max(kMinDelayMs, 
+                                std::min(kMaxDelayMs, current_optimal_delay_ms_ + adjustment));
+                        }
+                    }
+                    
+                    echo_controller_->SetAudioBufferDelay(current_optimal_delay_ms_);
+                    LOGW("🎯 ERLE degraded: %.2fdB -> %.2fdB, adjusting delay to %dms", 
+                         last_erle, current_erle, current_optimal_delay_ms_);
+                }
             }
             
             last_erle = current_erle;
-            last_delay_estimation_ = current_metrics.delay_ms;
+            last_delay_estimation_ = aec3_delay;
+            
+            // 🔧 FORCE DELAY UPDATE for stubborn devices every 50 frames
+            if (total_capture_frames_ % 50 == 0) {
+                echo_controller_->SetAudioBufferDelay(current_optimal_delay_ms_);
+                LOGV("🔧 Periodic delay enforcement: %dms (frame %llu)", 
+                     current_optimal_delay_ms_, (unsigned long long)total_capture_frames_);
+            }
             
         } catch (const std::exception& e) {
-            LOGE("Exception in delay optimization: %s", e.what());
+            LOGE("Exception in enhanced delay optimization: %s", e.what());
         }
+    }
+    
+    // Helper method to get timing-based delay estimate from render buffer
+    int GetTimingBasedDelayEstimate() {
+        if (render_buffer_.empty()) return 0;
+        
+        auto now = std::chrono::high_resolution_clock::now();
+        auto latest_render = render_buffer_.back().timestamp;
+        
+        auto estimated_delay_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+            now - latest_render).count();
+        
+        // Clamp to reasonable range with proper type casting
+        long delay_long = static_cast<long>(estimated_delay_ms);
+        return static_cast<int>(std::max(static_cast<long>(kMinDelayMs), 
+                                        std::min(static_cast<long>(kMaxDelayMs), delay_long)));
     }
 
     std::mutex mutex_;
@@ -558,7 +685,7 @@ private:
     std::unique_ptr<webrtc::EchoControl> echo_controller_;
     std::unique_ptr<webrtc::AudioBuffer> audio_render_buffer_;  // Renamed for clarity
     std::unique_ptr<webrtc::AudioBuffer> audio_capture_buffer_; // Renamed for clarity  
-    std::unique_ptr<webrtc::AudioBuffer> audio_linear_buffer_;  // For linear output monitoring
+    // std::unique_ptr<webrtc::AudioBuffer> audio_linear_buffer_;  // Disabled for stability
     std::unique_ptr<webrtc::HighPassFilter> high_pass_filter_;
     
     // Enhanced timing synchronization buffers
