@@ -331,8 +331,8 @@ public:
                 high_pass_filter_->Process(capture_buffer_.get(), true);
             }
             
-            // Set delay compensation
-            echo_controller_->SetAudioBufferDelay(config_.current_delay_ms);
+            // 🔧 ROOT CAUSE FIX: Use automatic delay detection like demo.cc - 2025-01-30
+            echo_controller_->SetAudioBufferDelay(0);  // 0 = automatic delay detection
             
             // CORE AEC3 PROCESSING - this removes the echo
             // Using nullptr for linear output as we want the main processed output
@@ -347,25 +347,20 @@ public:
             // Copy int16_t data directly from the processed frame
             const int16_t* processed_data = output_frame.data();
             
-            // 🔧 FIXED: Safety check - prevent complete audio muting - 2025-01-30
+            // 🔧 ROOT CAUSE FIX: Remove fallback mixing - fix the actual problem - 2025-01-30
+            std::memcpy(clean_output, processed_data, length * sizeof(int16_t));
+            
+            // Debug: Monitor AEC3 output for analysis
             long input_energy = 0, output_energy = 0;
             for (size_t i = 0; i < std::min(length, static_cast<size_t>(50)); i++) {
                 input_energy += std::abs(capture_audio[i]);
                 output_energy += std::abs(processed_data[i]);
             }
             
-            // 🛡️ SAFETY: If AEC3 completely mutes audio with energy, use mixed output
+            // Log zero output for debugging (no workaround)
             if (output_energy == 0 && input_energy > 1000) {
-                LOGW("【jimmy timing sync】⚠️ AEC3 completely muted audio - using 70%% processed + 30%% original");
-                // Mix 70% processed (even if silent) with 30% original to maintain audio flow
-                for (size_t i = 0; i < length; i++) {
-                    clean_output[i] = static_cast<int16_t>(
-                        0.7f * processed_data[i] + 0.3f * capture_audio[i]
-                    );
-                }
-            } else {
-                // Normal case: use AEC3 processed output
-                std::memcpy(clean_output, processed_data, length * sizeof(int16_t));
+                LOGE("【AEC3 DEBUG】❌ AEC3 zero output - frames processed: %d, input_energy: %ld", 
+                     frames_processed_.load(), input_energy);
             }
             
             // Log every 25 frames to reduce main thread load but maintain debugging
@@ -723,50 +718,19 @@ private:
     webrtc::EchoCanceller3Config CreateOptimizedWebRTCConfig() const {
         webrtc::EchoCanceller3Config webrtc_config;
         
-        // Based on demo.cc and WebRTC AEC3 research - optimal configuration for TTS echo cancellation
-        // Filter configuration - longer filters for better echo modeling
-        webrtc_config.filter.main.length_blocks = config_.suppression.filter_length_blocks;
-        webrtc_config.filter.main.leakage_converged = 0.0005f;    // Lower leakage for better convergence
-        webrtc_config.filter.main.leakage_diverged = 0.05f;      // Reduced divergence leakage
-        webrtc_config.filter.main.error_floor = 0.0001f;        // Lower error floor for better performance
-        webrtc_config.filter.main.noise_gate = config_.suppression.noise_gate;
-        
-        // Enable shadow filter for better adaptation (from demo.cc approach)
-        webrtc_config.filter.shadow.length_blocks = config_.suppression.filter_length_blocks / 2;
-        webrtc_config.filter.shadow.rate = 0.7f;
-        webrtc_config.filter.shadow.noise_gate = config_.suppression.noise_gate;
+        // 🔧 ROOT CAUSE FIX: Use minimal config like demo.cc for stability - 2025-01-30
+        // Only set essential parameters - let WebRTC use defaults for most settings
         
         // Export linear AEC output for better quality (as in demo.cc)
         webrtc_config.filter.export_linear_aec_output = true;
         
-        // 🔧 FIXED: Balanced suppression configuration - prevent complete audio muting - 2025-01-30
-        webrtc_config.suppressor.normal_tuning.max_dec_factor_lf = 0.7f;       // More conservative suppression
-        webrtc_config.suppressor.normal_tuning.max_inc_factor = 2.0f;          // Balanced recovery
+        // 🔧 FIX: Use WebRTC default suppression values (don't override unless necessary)
+        // Let WebRTC AEC3 use its proven default values for suppression
         
-        // Near-end tuning for better voice protection
-        webrtc_config.suppressor.nearend_tuning.max_inc_factor = config_.suppression.voice_recovery;
-        webrtc_config.suppressor.nearend_tuning.max_dec_factor_lf = 0.8f;      // Much more conservative voice preservation
+        // 🔧 FIX: Use WebRTC default delay detection (proven to work in demo.cc)
+        // WebRTC's default delay detection is well-tuned and tested
         
-        // Delay configuration for better tracking
-        webrtc_config.delay.down_sampling_factor = 4;
-        webrtc_config.delay.num_filters = 5;                     // Use 5 filters as in research
-        webrtc_config.delay.delay_headroom_samples = 64;         // More headroom for mobile
-        webrtc_config.delay.hysteresis_limit_blocks = 2;         // More stable delay switching
-        webrtc_config.delay.fixed_capture_delay_samples = 0;     // Let AEC3 detect automatically
-        webrtc_config.delay.delay_estimate_smoothing = 0.8f;     // More smoothing
-        webrtc_config.delay.delay_candidate_detection_threshold = 0.15f; // Lower threshold for better detection
-        
-        // High-pass filter configuration (WebRTC AEC3 handles this internally)
-        // Note: high_pass_filter is not directly configurable in this WebRTC version
-        
-        // Echo path modeling settings for better quality
-        webrtc_config.erle.min = 1.0f;
-        webrtc_config.erle.max_l = 4.0f;
-        webrtc_config.erle.max_h = 1.5f;
-        
-        LOGD("Created optimized WebRTC config: filter_length=%d, shadow_filter=%zu, linear_output=%s",
-             config_.suppression.filter_length_blocks, webrtc_config.filter.shadow.length_blocks,
-             webrtc_config.filter.export_linear_aec_output ? "enabled" : "disabled");
+        LOGD("Created minimal WebRTC config matching demo.cc - using WebRTC defaults");
         
         return webrtc_config;
     }

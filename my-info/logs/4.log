@@ -1,0 +1,17 @@
+2025-08-16 10:49:12.597 26967-27241 WQAEC_Config            cn.watchfun.android_use_cpp_demo1    D  Capture frame analyzed: energy=1.7, timestamp=6788157111, frame=1652
+2025-08-16 10:49:12.598 26967-27241 WQAEC                   cn.watchfun.android_use_cpp_demo1    W  【jimmy timing sync】⚠️ AEC3 completely muted audio - using 70% processed + 30% original
+2025-08-16 10:49:12.599 26967-27237 WQAEC_Config            cn.watchfun.android_use_cpp_demo1    D  Reference frame analyzed: energy=3.3, timestamp=6788165979
+2025-08-16 10:49:12.599 26967-27237 MainActivity            cn.watchfun.android_use_cpp_demo1    V  Processed 1 TTS frames from chunk (energy=241303)
+2025-08-16 10:49:12.612 26967-27241 WQAEC_Config            cn.watchfun.android_use_cpp_demo1    D  Capture frame analyzed: energy=2.2, timestamp=6788172270, frame=1653
+2025-08-16 10:49:12.614 26967-27241 WQAEC                   cn.watchfun.android_use_cpp_demo1    W  【jimmy timing sync】⚠️ AEC3 completely muted audio - using 70% processed + 30% original
+2025-08-16 10:49:12.614 26967-27237 WQAEC_Config            cn.watchfun.android_use_cpp_demo1    D  Reference frame analyzed: energy=3.9, timestamp=6788174937
+2025-08-16 10:49:12.615 26967-27237 MainActivity            cn.watchfun.android_use_cpp_demo1    V  Processed 1 TTS frames from chunk (energy=329627)
+2025-08-16 10:49:12.622 26967-27241 WQAEC_Config            cn.watchfun.android_use_cpp_demo1    D  Capture frame analyzed: energy=3.1, timestamp=6788181224, frame=1654
+2025-08-16 10:49:12.624 26967-27241 WQAEC                   cn.watchfun.android_use_cpp_demo1    W  【jimmy timing sync】⚠️ AEC3 completely muted audio - using 70% processed + 30% original
+2025-08-16 10:49:12.625 26967-27237 WQAEC_Config            cn.watchfun.android_use_cpp_demo1    D  Reference frame analyzed: energy=4.6, timestamp=6788191696
+2025-08-16 10:49:12.626 26967-27237 MainActivity            cn.watchfun.android_use_cpp_demo1    V  Processed 1 TTS frames from chunk (energy=179963)
+2025-08-16 10:49:12.628 26967-27241 WQAEC_Config            cn.watchfun.android_use_cpp_demo1    D  Capture frame analyzed: energy=4.2, timestamp=6788191936, frame=1655
+2025-08-16 10:49:12.629 26967-27241 WQAEC                   cn.watchfun.android_use_cpp_demo1    W  【jimmy timing sync】⚠️ AEC3 completely muted audio - using 70% processed + 30% original
+2025-08-16 10:49:12.632 26967-27241 WQAEC_Config            cn.watchfun.android_use_cpp_demo1    D  Capture frame analyzed: energy=1.8, timestamp=6788196461, frame=1656
+2025-08-16 10:49:12.633 26967-27241 WQAEC                   cn.watchfun.android_use_cpp_demo1    W  【jimmy timing sync】⚠️ AEC3 completely muted audio - using 70% processed + 30% original
+2025-08-16 10:49:12.634 26967-27237 MainActivity            cn.watchfun.android_use_cpp_demo1    D  🎵 TTS播放进度: 1361/4320 chunks
