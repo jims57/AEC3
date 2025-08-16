@@ -144,6 +144,9 @@ CMakeFiles/webrtc_aec3_tts.dir/tts_aec3_wrapper.cc.o: \
   /Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include/c++/v1/wctype.h \
   /Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/local/include/wctype.h \
   /Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include/wctype.h \
+  /Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include/c++/v1/queue \
+  /Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include/c++/v1/deque \
+  /Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include/c++/v1/cmath \
   /Users/mac/Documents/GitHub/AEC3/build_android/../api/echo_canceller3_factory.h \
   /Users/mac/Documents/GitHub/AEC3/build_android/../api/echo_canceller3_config.h \
   /Users/mac/Documents/GitHub/AEC3/build_android/../base/rtc_base/system/rtc_export.h \
@@ -169,7 +172,6 @@ CMakeFiles/webrtc_aec3_tts.dir/tts_aec3_wrapper.cc.o: \
   /Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include/c++/v1/array \
   /Users/mac/Documents/GitHub/AEC3/build_android/../audio_processing/channel_buffer.h \
   /Users/mac/Documents/GitHub/AEC3/build_android/../audio_processing/include/audio_util.h \
-  /Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include/c++/v1/cmath \
   /Users/mac/Documents/GitHub/AEC3/build_android/../audio_processing/include/audio_processing.h \
   /Users/mac/Documents/GitHub/AEC3/build_android/../audio_processing/high_pass_filter.h \
   /Users/mac/Documents/GitHub/AEC3/build_android/../audio_processing/utility/cascaded_biquad_filter.h \

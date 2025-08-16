@@ -176,18 +176,33 @@ public class TtsWithEchoCancellation {
 }
 ```
 
-## Performance Monitoring
+## Performance Monitoring and ERLE Optimization
 ```java
-// Get AEC performance metrics
-WebRtcAec3.AecMetrics metrics = aec3.getMetrics();
+// Get enhanced AEC performance metrics with detailed information
+WebRtcAec3.EnhancedAecMetrics metrics = aec3.getEnhancedMetrics();
 if (metrics != null) {
     Log.i("AEC3", "Performance: " + metrics.toString());
+    Log.i("AEC3", "ERLE Quality: " + metrics.getErleQuality());
+    Log.i("AEC3", "Frame Sync: " + metrics.isFrameSynchronized());
     
-    // Good AEC performance indicators:
-    // - Echo Return Loss > 20dB
-    // - Echo Return Loss Enhancement > 10dB
-    // - Stable delay estimation
+    // Excellent AEC performance indicators (Enhanced 2025-01-30):
+    // - Echo Return Loss Enhancement > 15dB (Excellent)
+    // - Echo Return Loss Enhancement > 10dB (Good)  
+    // - Frame synchronization > 95%
+    // - Optimal delay within 20-500ms range
+    
+    // Auto-optimize if performance is poor
+    if (metrics.echoReturnLossEnhancement < 10.0) {
+        Log.w("AEC3", "Poor ERLE detected, running auto-optimization...");
+        if (aec3.autoOptimizeDelay()) {
+            Log.i("AEC3", "Delay optimization completed");
+        }
+    }
 }
+
+// Enable/disable timing synchronization for CPU optimization
+aec3.enableTimingSync(true); // Enable for maximum ERLE
+// aec3.enableTimingSync(false); // Disable for lower CPU usage
 ```
 
 ## Optimization Tips

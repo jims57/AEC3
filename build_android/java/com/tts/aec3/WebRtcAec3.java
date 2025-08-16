@@ -72,6 +72,11 @@ public class WebRtcAec3 {
     public native void nativeSetVoiceProtection(float level);       // 1.0-8.0 range  
     public native void nativeSetFilterLength(int blocks);          // 10-25 range
     public native void nativeSetNoiseGate(float threshold);        // 0.05-0.5 range
+    
+    // 🎯 ENHANCED ERLE OPTIMIZATION METHODS (2025-01-30)
+    public native boolean nativeAutoOptimizeDelay();               // Automatic delay optimization
+    public native double[] nativeGetEnhancedMetrics();             // [ERL, ERLE, delay, render_frames, capture_frames, optimal_delay]
+    public native boolean nativeEnableTimingSync(boolean enable);   // Enable/disable precise timing sync
 
     // High-level Java API
     private boolean initialized = false;
@@ -201,6 +206,44 @@ public class WebRtcAec3 {
             nativeSetNoiseGate(threshold);
         }
     }
+    
+    // 🎯 ENHANCED ERLE OPTIMIZATION METHODS FOR MOBILE DEVELOPERS (2025-01-30)
+    
+    /**
+     * Automatically optimize delay for maximum ERLE performance
+     * Call this when you notice poor echo cancellation performance
+     * @return true if optimization was successful
+     */
+    public boolean autoOptimizeDelay() {
+        if (!initialized) return false;
+        return nativeAutoOptimizeDelay();
+    }
+    
+    /**
+     * Get enhanced AEC performance metrics with detailed information
+     * @return EnhancedAecMetrics object with comprehensive performance data
+     */
+    public EnhancedAecMetrics getEnhancedMetrics() {
+        if (!initialized) return null;
+        
+        double[] metrics = nativeGetEnhancedMetrics();
+        if (metrics != null && metrics.length == 6) {
+            return new EnhancedAecMetrics(metrics[0], metrics[1], (int)metrics[2], 
+                                        (long)metrics[3], (long)metrics[4], (int)metrics[5]);
+        }
+        return null;
+    }
+    
+    /**
+     * Enable or disable precise timing synchronization
+     * Disable for lower CPU usage if timing sync is not critical
+     * @param enable true to enable timing sync, false to disable
+     * @return true if setting was applied successfully
+     */
+    public boolean enableTimingSync(boolean enable) {
+        if (!initialized) return false;
+        return nativeEnableTimingSync(enable);
+    }
 
     /**
      * Class to hold AEC performance metrics
@@ -220,6 +263,56 @@ public class WebRtcAec3 {
         public String toString() {
             return String.format("AEC Metrics: ERL=%.2fdB, ERLE=%.2fdB, Delay=%dms", 
                                echoReturnLoss, echoReturnLossEnhancement, delayMs);
+        }
+    }
+    
+    /**
+     * Enhanced AEC performance metrics with detailed information (2025-01-30)
+     */
+    public static class EnhancedAecMetrics {
+        public final double echoReturnLoss;
+        public final double echoReturnLossEnhancement;
+        public final int delayMs;
+        public final long renderFrames;
+        public final long captureFrames;
+        public final int optimalDelayMs;
+
+        public EnhancedAecMetrics(double erl, double erle, int delay, long renderFrames, long captureFrames, int optimalDelay) {
+            this.echoReturnLoss = erl;
+            this.echoReturnLossEnhancement = erle;
+            this.delayMs = delay;
+            this.renderFrames = renderFrames;
+            this.captureFrames = captureFrames;
+            this.optimalDelayMs = optimalDelay;
+        }
+
+        @Override
+        public String toString() {
+            return String.format("Enhanced AEC Metrics: ERL=%.2fdB, ERLE=%.2fdB, Delay=%dms, " +
+                               "RenderFrames=%d, CaptureFrames=%d, OptimalDelay=%dms", 
+                               echoReturnLoss, echoReturnLossEnhancement, delayMs, 
+                               renderFrames, captureFrames, optimalDelayMs);
+        }
+        
+        /**
+         * Get ERLE quality assessment
+         * @return Quality level: "Excellent" (>15dB), "Good" (>10dB), "Fair" (>5dB), "Poor" (<5dB)
+         */
+        public String getErleQuality() {
+            if (echoReturnLossEnhancement >= 15.0) return "Excellent";
+            else if (echoReturnLossEnhancement >= 10.0) return "Good";
+            else if (echoReturnLossEnhancement >= 5.0) return "Fair";
+            else return "Poor";
+        }
+        
+        /**
+         * Check if frames are synchronized (equal render and capture frame counts)
+         * @return true if frames are well synchronized
+         */
+        public boolean isFrameSynchronized() {
+            if (renderFrames == 0 || captureFrames == 0) return false;
+            double ratio = (double) Math.min(renderFrames, captureFrames) / Math.max(renderFrames, captureFrames);
+            return ratio > 0.95; // Within 5% is considered synchronized
         }
     }
 }
