@@ -304,7 +304,7 @@ public class WebRtcAec3 {
             nativeEnableAutoDelayDetection(nativeHandle, enable);
         }
     }
-    
+
     /**
      * Force immediate adaptation when acoustic conditions change
      * 

@@ -154,7 +154,7 @@ Java_com_tts_aec3_WebRtcAec3_nativeSetEchoSuppression(JNIEnv *env, jobject thiz,
     }
 }
 
-JNIEXPORT void JNICALL  
+JNIEXPORT void JNICALL
 Java_com_tts_aec3_WebRtcAec3_nativeSetVoiceRecovery(JNIEnv *env, jobject thiz, jlong handle, jfloat speed) {
     if (handle != 0) {
         WQAECHandle wqaec_handle = reinterpret_cast<WQAECHandle>(handle);
@@ -170,7 +170,7 @@ Java_com_tts_aec3_WebRtcAec3_nativeSetVoiceProtection(JNIEnv *env, jobject thiz,
     }
 }
 
-JNIEXPORT void JNICALL
+JNIEXPORT void JNICALL  
 Java_com_tts_aec3_WebRtcAec3_nativeSetEnvironment(JNIEnv *env, jobject thiz, jlong handle, jint environment) {
     if (handle != 0) {
         WQAECHandle wqaec_handle = reinterpret_cast<WQAECHandle>(handle);

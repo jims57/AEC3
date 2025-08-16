@@ -27,30 +27,30 @@ namespace wqaec {
 AEC3Config AEC3Config::CreateDefaultConfig() {
     AEC3Config config;
     
-    // Set optimal defaults based on production testing
-    config.suppression.echo_suppression = 15.0f;     // Balanced echo removal
-    config.suppression.voice_recovery = 3.5f;        // Quick voice recovery
-    config.suppression.voice_protection = 1.5f;      // Protect human speech
-    config.suppression.noise_gate = 0.1f;            // Moderate noise filtering
-    config.suppression.filter_length_blocks = 13;    // Proven optimal for 48kHz
+    // 🔧 FIXED: Conservative WebRTC AEC3 configuration to prevent audio muting - 2025-01-30
+    config.suppression.echo_suppression = 10.0f;     // More conservative to prevent over-suppression
+    config.suppression.voice_recovery = 3.0f;        // Faster recovery for better voice flow
+    config.suppression.voice_protection = 3.0f;      // Higher voice protection
+    config.suppression.noise_gate = 0.04f;           // Lower noise gate for better voice detection
+    config.suppression.filter_length_blocks = 16;    // Reduced filter length for better stability
     
     config.adaptation.enable_auto_delay = true;
     config.adaptation.enable_energy_adaptation = true;
     config.adaptation.enable_erle_monitoring = true;
-    config.adaptation.min_frames_for_adaptation = 50;
-    config.adaptation.target_erle_db = 10.0f;
-    config.adaptation.erle_improvement_threshold = 2.0f;
+    config.adaptation.min_frames_for_adaptation = 100;  // More frames for stable adaptation
+    config.adaptation.target_erle_db = 8.0f;           // Realistic target ERLE
+    config.adaptation.erle_improvement_threshold = 1.5f;
     
-    config.mobile.enable_cpu_optimization = true;
-    config.mobile.enable_memory_optimization = true;
+    config.mobile.enable_cpu_optimization = false;     // Disable for better quality initially
+    config.mobile.enable_memory_optimization = false;  // Disable for better quality initially
     config.mobile.enable_battery_optimization = false;
-    config.mobile.max_processing_time_us = 5000;
+    config.mobile.max_processing_time_us = 8000;       // Allow more processing time
     
     config.environment = Environment::OFFICE;
-    config.current_delay_ms = 80;  // Android typical delay
+    config.current_delay_ms = 0;   // 🔧 ROOT CAUSE FIX: Use 0 for auto-detection like demo.cc - 2025-01-30
     
-    LOGI("Created default AEC3 config: echo_suppression=%.1f, voice_recovery=%.1f", 
-         config.suppression.echo_suppression, config.suppression.voice_recovery);
+    LOGI("Created default AEC3 config: echo_suppression=%.1f, voice_recovery=%.1f, filter_blocks=%d", 
+         config.suppression.echo_suppression, config.suppression.voice_recovery, config.suppression.filter_length_blocks);
     
     return config;
 }
@@ -141,11 +141,13 @@ void AEC3Config::SetEnvironmentPreset(Environment env) {
     
     switch (env) {
         case Environment::OFFICE:
-            suppression.echo_suppression = 15.0f;
-            suppression.voice_recovery = 3.5f;
-            suppression.voice_protection = 1.5f;
-            suppression.noise_gate = 0.1f;
-            LOGI("Applied OFFICE environment preset");
+            // 🔧 FIXED: More conservative office settings to prevent audio muting - 2025-01-30
+            suppression.echo_suppression = 12.0f;    // Reduced from 15.0f to prevent over-suppression
+            suppression.voice_recovery = 2.8f;       // Faster recovery for better voice flow
+            suppression.voice_protection = 2.5f;     // Increased protection to preserve voice
+            suppression.noise_gate = 0.05f;          // Lower noise gate for better voice detection
+            suppression.filter_length_blocks = 16;   // Reduced from default 22 for better stability
+            LOGI("Applied OFFICE environment preset (conservative tuning)");
             break;
             
         case Environment::OUTDOOR:
@@ -457,7 +459,7 @@ void TimingSyncManager::AnalyzeReferenceFrame(const int16_t* reference_audio,
     
     reference_energy_sum_ = (reference_energy_sum_ + energy) / 2.0f;  // Running average
     
-    LOGD("Reference frame analyzed: energy=%.1f, timestamp=%lld", energy, timestamp);
+    LOGD("Reference frame analyzed: energy=%.1f, timestamp=%ld", energy, timestamp);
 }
 
 void TimingSyncManager::AnalyzeCaptureFrame(const int16_t* capture_audio, 
@@ -500,7 +502,7 @@ void TimingSyncManager::AnalyzeCaptureFrame(const int16_t* capture_audio,
     
     frame_count_++;
     
-    LOGD("Capture frame analyzed: energy=%.1f, timestamp=%lld, frame=%d", 
+    LOGD("Capture frame analyzed: energy=%.1f, timestamp=%ld, frame=%d", 
          energy, timestamp, frame_count_);
 }
 

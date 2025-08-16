@@ -23,7 +23,7 @@ struct AEC3Config {
     
     // Adaptive delay estimation parameters (based on WebRTC AEC3 paper)
     static constexpr int MAX_DELAY_MS = 512;  // Maximum detectable delay as per research
-    static constexpr int MIN_DELAY_MS = 5;    // Minimum reasonable delay
+    static constexpr int MIN_DELAY_MS = 0;    // Allow 0 for auto-detection
     static constexpr int DELAY_SEARCH_RANGE = 5;  // Search range around current estimate
     
     // Filter convergence parameters (from NLMS algorithm research)

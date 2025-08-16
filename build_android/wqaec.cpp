@@ -198,7 +198,7 @@ public:
                 return false;
             }
             
-            // Set initial stream delay
+            // Set initial stream delay (0 means auto-detect)
             echo_controller_->SetAudioBufferDelay(config_.current_delay_ms);
             
             // Reset performance counters
@@ -208,10 +208,17 @@ public:
             current_erle_.store(0.0f);
             current_convergence_.store(0.0f);
             
+            // Initialize timing sync state
+            timing_synced_ = false;
+            adaptation_confidence_ = 0.0f;
+            last_detected_delay_ms_ = config_.current_delay_ms;
+            
             initialized_.store(true);
             
-            LOGI("WQAEC initialized successfully: %dHz, %d channels, %dms initial delay",
-                 AEC3Config::SAMPLE_RATE, AEC3Config::CHANNELS, config_.current_delay_ms);
+            LOGI("WQAEC initialized successfully: %dHz, %d channels, auto-delay=%s, filter_blocks=%d",
+                 AEC3Config::SAMPLE_RATE, AEC3Config::CHANNELS, 
+                 config_.adaptation.enable_auto_delay ? "enabled" : "disabled",
+                 config_.suppression.filter_length_blocks);
             
             return true;
             
@@ -229,25 +236,19 @@ public:
         
         auto start_time = std::chrono::steady_clock::now();
         
-        // 🚨 CRITICAL: Use try_lock to prevent blocking TTS playback
-        std::unique_lock<std::mutex> lock(processing_mutex_, std::try_to_lock);
-        if (!lock.owns_lock()) {
-            // Don't block TTS playback - return success but skip heavy processing
-            LOGD("Reference audio processing skipped - busy (non-blocking mode)");
-            return true;
-        }
+        // Use blocking lock for reference audio - it's critical for AEC3 quality
+        std::lock_guard<std::mutex> lock(processing_mutex_);
         
         try {
-            // 🛡️ FAST PATH: Quick timestamp analysis without heavy processing
             int64_t timestamp_us = std::chrono::duration_cast<std::chrono::microseconds>(
                 start_time.time_since_epoch()).count();
             
-            // Lightweight timing analysis only
+            // Timing analysis for adaptive delay detection
             if (timing_sync_) {
                 timing_sync_->AnalyzeReferenceFrame(reference_audio, length, timestamp_us);
             }
             
-            // 🚨 CRITICAL: Reduce WebRTC processing complexity for TTS smoothness
+            // Create WebRTC AudioFrame following demo.cc pattern
             webrtc::AudioFrame render_frame;
             render_frame.UpdateFrame(
                 0, reference_audio, length, AEC3Config::SAMPLE_RATE,
@@ -256,48 +257,40 @@ public:
                 AEC3Config::CHANNELS
             );
             
-            // 🛡️ OPTIMIZED: Minimal WebRTC processing to avoid blocking
+            // Copy to render buffer (following demo.cc pattern)
             render_buffer_->CopyFrom(&render_frame);
             
-            // 🚨 CRITICAL: Skip heavy frequency analysis if processing is taking too long
-            auto mid_time = std::chrono::steady_clock::now();
-            auto elapsed_us = std::chrono::duration_cast<std::chrono::microseconds>(
-                mid_time - start_time).count();
+            // CRITICAL: Full WebRTC AEC3 reference processing (as in demo.cc)
+            // This is essential for proper echo cancellation
+            render_buffer_->SplitIntoFrequencyBands();
+            echo_controller_->AnalyzeRender(render_buffer_.get());
+            render_buffer_->MergeFrequencyBands();
             
-            if (elapsed_us < 2000) {  // Only if under 2ms elapsed
-                render_buffer_->SplitIntoFrequencyBands();
-                echo_controller_->AnalyzeRender(render_buffer_.get());
-                render_buffer_->MergeFrequencyBands();
-            } else {
-                LOGD("Skipped heavy WebRTC processing to maintain TTS smoothness (%lld us)", elapsed_us);
-            }
-            
-            // Update light statistics
             auto end_time = std::chrono::steady_clock::now();
             auto processing_time = std::chrono::duration_cast<std::chrono::microseconds>(
                 end_time - start_time).count();
             
             total_processing_time_us_.fetch_add(processing_time);
             
-            // 🚨 REDUCED LOGGING: Only log every 50 frames to prevent log flood
-            static int log_counter = 0;
-            if ((++log_counter % 50) == 0) {
-                LOGD("Reference audio batch processed: %d frames, avg time: %lld us", 
-                     log_counter, processing_time);
+            // Log every 100 frames for monitoring
+            static int ref_log_counter = 0;
+            if ((++ref_log_counter % 100) == 0) {
+                LOGD("Reference audio processed: frame %d, time: %lld us", 
+                     ref_log_counter, processing_time);
             }
             
             return true;
             
         } catch (const std::exception& e) {
             LOGE("Exception in ProcessReferenceAudio: %s", e.what());
-            return true;  // Return true to not break TTS playback chain
+            return false;
         }
     }
     
-    // 🛡️ CORRECTED: Non-blocking capture audio processing with proper type handling
+    // Follow demo.cc pattern for capture audio processing
     bool ProcessCaptureAudio(const int16_t* capture_audio, int16_t* clean_output, size_t length) override {
         if (!ValidateProcessingState(length)) {
-            // 🚨 CRITICAL: Copy input to output on validation failure to maintain audio flow
+            // Copy input to output on validation failure to maintain audio flow
             if (capture_audio && clean_output && length == AEC3Config::FRAME_SIZE) {
                 std::memcpy(clean_output, capture_audio, length * sizeof(int16_t));
                 return true;
@@ -306,70 +299,88 @@ public:
         }
         
         auto start_time = std::chrono::steady_clock::now();
-        
-        // 🚨 CRITICAL: Use try_lock with timeout to prevent hanging
-        std::unique_lock<std::mutex> lock(processing_mutex_, std::try_to_lock);
-        if (!lock.owns_lock()) {
-            // Fallback: copy input to output to maintain audio flow
-            std::memcpy(clean_output, capture_audio, length * sizeof(int16_t));
-            LOGD("Capture processing fallback - copied input to output");
-            return true;
-        }
+        std::lock_guard<std::mutex> lock(processing_mutex_);
         
         try {
             int64_t timestamp_us = std::chrono::duration_cast<std::chrono::microseconds>(
                 start_time.time_since_epoch()).count();
             
-            // Timing analysis
+            // Timing analysis for adaptive delay detection
             if (timing_sync_) {
                 timing_sync_->AnalyzeCaptureFrame(capture_audio, length, timestamp_us);
             }
             
-            // Create capture frame
+            // Create capture frame following demo.cc pattern
             webrtc::AudioFrame capture_frame;
-            if (!CreateSafeAudioFrame(capture_frame, capture_audio, length, "capture")) {
-                // Fallback: copy input to output
-                std::memcpy(clean_output, capture_audio, length * sizeof(int16_t));
-                return true;
-            }
+            capture_frame.UpdateFrame(
+                0, capture_audio, length, AEC3Config::SAMPLE_RATE,
+                webrtc::AudioFrame::kNormalSpeech,
+                webrtc::AudioFrame::kVadActive, 
+                AEC3Config::CHANNELS
+            );
             
-            // 🛡️ FAST PROCESSING: Optimized WebRTC pipeline
+            // Copy to capture buffer (following demo.cc pattern)
             capture_buffer_->CopyFrom(&capture_frame);
+            
+            // CRITICAL: Full AEC3 processing pipeline (as in demo.cc)
+            echo_controller_->AnalyzeCapture(capture_buffer_.get());
             capture_buffer_->SplitIntoFrequencyBands();
             
-            // 🚨 CRITICAL: Time-bounded echo control processing
-            auto echo_start = std::chrono::steady_clock::now();
-            echo_controller_->ProcessCapture(capture_buffer_.get(), false);
-            auto echo_duration = std::chrono::duration_cast<std::chrono::microseconds>(
-                std::chrono::steady_clock::now() - echo_start).count();
+            // Apply high-pass filter (as in demo.cc)
+            if (high_pass_filter_) {
+                high_pass_filter_->Process(capture_buffer_.get(), true);
+            }
+            
+            // 🔧 ROOT CAUSE FIX: Use automatic delay detection like demo.cc - 2025-01-30
+            echo_controller_->SetAudioBufferDelay(0);  // 0 = automatic delay detection
+            
+            // CORE AEC3 PROCESSING - this removes the echo
+            // Using nullptr for linear output as we want the main processed output
+            echo_controller_->ProcessCapture(capture_buffer_.get(), nullptr, false);
             
             capture_buffer_->MergeFrequencyBands();
             
-            // 🛡️ CORRECTED: Convert float audio buffer to int16_t output
-            const float* processed_float_data = capture_buffer_->channels_const()[0];
+            // Convert processed audio back to output frame
+            webrtc::AudioFrame output_frame;
+            capture_buffer_->CopyTo(&output_frame);
             
-            // Convert float samples to int16_t with proper clamping
-            for (size_t i = 0; i < length; i++) {
-                float sample = processed_float_data[i];
-                // Clamp to [-1.0, 1.0] range to prevent overflow
-                sample = std::max(-1.0f, std::min(1.0f, sample));
-                // Convert to int16_t range [-32768, 32767]
-                clean_output[i] = static_cast<int16_t>(sample * 32767.0f);
+            // Copy int16_t data directly from the processed frame
+            const int16_t* processed_data = output_frame.data();
+            
+            // 🔧 ROOT CAUSE FIX: Remove fallback mixing - fix the actual problem - 2025-01-30
+            std::memcpy(clean_output, processed_data, length * sizeof(int16_t));
+            
+            // Debug: Monitor AEC3 output for analysis
+            long input_energy = 0, output_energy = 0;
+            for (size_t i = 0; i < std::min(length, static_cast<size_t>(50)); i++) {
+                input_energy += std::abs(capture_audio[i]);
+                output_energy += std::abs(processed_data[i]);
+            }
+            
+            // Log zero output for debugging (no workaround)
+            if (output_energy == 0 && input_energy > 1000) {
+                LOGE("【AEC3 DEBUG】❌ AEC3 zero output - frames processed: %d, input_energy: %ld", 
+                     frames_processed_.load(), input_energy);
+            }
+            
+            // Log every 25 frames to reduce main thread load but maintain debugging
+            if ((frames_processed_.load() % 25) == 0) {
+                LOGD("【jimmy timing sync】AEC3 frame %d: input_energy=%ld, output_energy=%ld, ratio=%.3f", 
+                     frames_processed_.load(), input_energy, output_energy, 
+                     output_energy > 0 ? (float)output_energy/input_energy : 0.0f);
             }
             
             // Update frame counter
             frames_processed_.fetch_add(1);
             
-            // 🛡️ ADAPTIVE PROCESSING: Check if we should trigger adaptation
-            if (ShouldPerformAdaptation()) {
-                // 🚨 NON-BLOCKING: Perform adaptation without holding main lock
-                lock.unlock();
-                PerformAutomaticAdaptation();
+            // Update metrics periodically
+            if (frames_processed_.load() % 200 == 0) {
+                UpdatePerformanceMetrics();
             }
             
-            // Update metrics periodically
-            if (frames_processed_.load() % 100 == 0) {
-                UpdatePerformanceMetrics();
+            // Perform adaptation if needed
+            if (ShouldPerformAdaptation()) {
+                PerformAutomaticAdaptation();
             }
             
             auto end_time = std::chrono::steady_clock::now();
@@ -377,16 +388,18 @@ public:
                 end_time - start_time).count();
             total_processing_time_us_.fetch_add(processing_time);
             
-            // 🚨 SEVERE ISSUE WARNING: Log if processing is too slow
-            if (processing_time > 8000) {  // More than 8ms
-                LOGE("SLOW PROCESSING WARNING: Capture frame took %lld us (>8ms) - may cause audio issues", processing_time);
+            // Log every 200 frames for monitoring
+            static int cap_log_counter = 0;
+            if ((++cap_log_counter % 200) == 0) {
+                LOGD("Capture audio processed: frame %d, time: %lld us", 
+                     cap_log_counter, processing_time);
             }
             
             return true;
             
         } catch (const std::exception& e) {
             LOGE("Exception in ProcessCaptureAudio: %s", e.what());
-            // 🚨 CRITICAL: Copy input to output on exception to maintain audio flow
+            // Copy input to output on exception to maintain audio flow
             std::memcpy(clean_output, capture_audio, length * sizeof(int16_t));
             return true;
         }
@@ -690,7 +703,7 @@ public:
         auto avg_time = frames > 0 ? total_processing_time_us_.load() / frames : 0;
         
         if (avg_time > 10000) {  // More than 10ms average
-            LOGE("PROCESSING HEALTH WARNING: Average processing time %lld us > 10ms", avg_time);
+            LOGE("PROCESSING HEALTH WARNING: Average processing time %ld us > 10ms", avg_time);
             return false;
         }
         
@@ -705,30 +718,19 @@ private:
     webrtc::EchoCanceller3Config CreateOptimizedWebRTCConfig() const {
         webrtc::EchoCanceller3Config webrtc_config;
         
-        // Apply WQAEC configuration to WebRTC config
-        webrtc_config.filter.main.length_blocks = config_.suppression.filter_length_blocks;
-        webrtc_config.filter.main.leakage_converged = 0.001f;
-        webrtc_config.filter.main.leakage_diverged = 0.1f;
-        webrtc_config.filter.main.error_floor = 0.001f;
-        webrtc_config.filter.main.noise_gate = config_.suppression.noise_gate;
+        // 🔧 ROOT CAUSE FIX: Use minimal config like demo.cc for stability - 2025-01-30
+        // Only set essential parameters - let WebRTC use defaults for most settings
         
-        // Suppression configuration based on WQAEC parameters
-        webrtc_config.suppressor.normal_tuning.max_dec_factor_lf = config_.suppression.echo_suppression;
-        webrtc_config.suppressor.normal_tuning.max_inc_factor = config_.suppression.voice_recovery;
-        webrtc_config.suppressor.nearend_tuning.max_inc_factor = config_.suppression.voice_recovery;
-        webrtc_config.suppressor.nearend_tuning.max_dec_factor_lf = config_.suppression.voice_protection;
+        // Export linear AEC output for better quality (as in demo.cc)
+        webrtc_config.filter.export_linear_aec_output = true;
         
-        // Delay configuration
-        webrtc_config.delay.down_sampling_factor = 4;
-        webrtc_config.delay.num_filters = 6;
-        webrtc_config.delay.delay_headroom_samples = 32;
-        webrtc_config.delay.hysteresis_limit_blocks = 1;
-        webrtc_config.delay.fixed_capture_delay_samples = 0;
-        webrtc_config.delay.delay_estimate_smoothing = 0.7f;
-        webrtc_config.delay.delay_candidate_detection_threshold = 0.2f;
+        // 🔧 FIX: Use WebRTC default suppression values (don't override unless necessary)
+        // Let WebRTC AEC3 use its proven default values for suppression
         
-        LOGD("Created optimized WebRTC config: filter_length=%d, echo_suppression=%.1f",
-             config_.suppression.filter_length_blocks, config_.suppression.echo_suppression);
+        // 🔧 FIX: Use WebRTC default delay detection (proven to work in demo.cc)
+        // WebRTC's default delay detection is well-tuned and tested
+        
+        LOGD("Created minimal WebRTC config matching demo.cc - using WebRTC defaults");
         
         return webrtc_config;
     }
