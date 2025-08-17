@@ -327,63 +327,53 @@ public:
         try {
             LOGI("Initializing Enhanced WebRTC AEC3 for TTS: %dHz, %d channels (ERLE Optimization 2025-01-30)", kSampleRate, kChannels);
             
-            // 🚀 ENHANCED AEC3 CONFIGURATION FOR MAXIMUM ERLE (Following demo.cc pipeline)
-            // Based on zhihu blogs research and demo.cc processing order
+            // 🚀 PRODUCTION-GRADE AEC3 CONFIGURATION USING OFFICIAL API (2025-01-30)
+            // Based on research and official WebRTC AEC3 defaults for maximum ERLE performance
+            // All parameters now use official defaults and are runtime-adjustable via mobile UI
             webrtc::EchoCanceller3Config config;
             
-            // 🔧 CRITICAL FIX: AEC3 Filter Configuration for Universal Device Compatibility (2025-01-30)
-            // Issue: ERLE stuck at 0.2dB across devices due to poor filter convergence
-            config.filter.export_linear_aec_output = false; // Disable for better performance 
-            config.filter.main.length_blocks = 13;          // Use proven default length for stability
-            config.filter.main.leakage_converged = 0.001f;  // Default convergence rate for stability
-            config.filter.main.leakage_diverged = 0.1f;     // Default divergence detection
-            config.filter.main.error_floor = 0.01f;         // Higher error floor for real-world conditions
-            config.filter.main.noise_gate = 0.1f;           // Default noise gate threshold
+            // 📝 Use official AEC3 defaults - they are designed for production-grade performance
+            // Custom overrides removed to leverage Google WebRTC team's optimized settings
             
-            // 🎙️ VOICE CLARITY ENHANCEMENT: Runtime-Adjustable Suppression (2025-01-30)
-            // Success: Devices now converge to 6.2dB ERLE - now using runtime parameters for voice clarity tuning
-            config.suppressor.normal_tuning.max_dec_factor_lf = echo_suppression_strength_;   // Runtime adjustable (3-10 range)
-            config.suppressor.normal_tuning.max_inc_factor = voice_recovery_speed_;           // Runtime adjustable (1.5-5 range)
-            config.suppressor.nearend_tuning.max_inc_factor = voice_recovery_speed_ * 1.6f;   // 1.6x for clearer nearend voice
-            config.suppressor.nearend_tuning.max_dec_factor_lf = voice_protection_level_;     // Runtime adjustable (1-8 range)
+            // 🎛️ FILTER CONFIGURATION (Runtime Adjustable)
+            // These parameters significantly impact ERLE and are exposed to mobile UI
+            if (config_change_duration_blocks_ > 0) {
+                config.filter.config_change_duration_blocks = config_change_duration_blocks_;
+            }
+            if (initial_state_seconds_ > 0.0f) {
+                config.filter.initial_state_seconds = initial_state_seconds_;
+            }
+            config.filter.conservative_initial_phase = conservative_initial_phase_;
             
-            // 🔧 CRITICAL FIX: Standard Delay Configuration for Universal Compatibility (2025-01-30)
-            // Issue: Complex delay settings prevent proper convergence across devices
-            config.delay.down_sampling_factor = 4;              // Default downsampling for stability
-            config.delay.num_filters = 6;                       // Default filter count
-            config.delay.delay_headroom_samples = 32;           // Default headroom
-            config.delay.hysteresis_limit_blocks = 1;           // Default hysteresis
-            config.delay.fixed_capture_delay_samples = 0;       // Let AEC3 estimate automatically  
-            config.delay.delay_estimate_smoothing = 0.8f;       // Default smoothing
-            config.delay.delay_candidate_detection_threshold = 0.2f;  // Default detection threshold
+            // 🎯 SUPPRESSOR CONFIGURATION (Runtime Adjustable)
+            // Key parameters for voice clarity and echo suppression balance
+            if (max_dec_factor_lf_ > 0.0f) {
+                config.suppressor.normal_tuning.max_dec_factor_lf = max_dec_factor_lf_;
+            }
+            if (max_inc_factor_ > 0.0f) {
+                config.suppressor.normal_tuning.max_inc_factor = max_inc_factor_;
+            }
+            if (nearend_max_dec_factor_lf_ > 0.0f) {
+                config.suppressor.nearend_tuning.max_dec_factor_lf = nearend_max_dec_factor_lf_;
+            }
+            if (nearend_max_inc_factor_ > 0.0f) {
+                config.suppressor.nearend_tuning.max_inc_factor = nearend_max_inc_factor_;
+            }
             
-            // 🔧 CRITICAL FIX: Default Echo Audibility Settings (2025-01-30)
-            // Issue: Aggressive audibility settings interfere with filter convergence
-            config.echo_audibility.low_render_limit = 64;       // Default threshold
-            config.echo_audibility.normal_render_limit = 64;    // Default detection  
-            config.echo_audibility.use_stationarity_properties = true;
-            config.echo_audibility.use_stationarity_properties_at_init = true;
-            
-            // 🔧 CRITICAL FIX: Standard Render Levels (2025-01-30)
-            // Issue: Non-standard render limits prevent proper echo path learning
-            config.render_levels.active_render_limit = 64.0f;   // Default active render limit
-            config.render_levels.poor_excitation_render_limit = 100.0f;  // Default poor excitation limit
-            config.render_levels.poor_excitation_render_limit_ds8 = 20.0f;  // Default downsampled limit
-            
-            // 🎙️ VOICE CLARITY ENHANCEMENT: Runtime-Adjustable Nearend Detection (2025-01-30)
-            // Optimized for clearer voice while maintaining 6.2dB ERLE performance - now runtime adjustable
-            config.suppressor.dominant_nearend_detection.enr_threshold = voice_detection_sensitivity_;  // Runtime adjustable (0.2-0.8)
-            config.suppressor.dominant_nearend_detection.enr_exit_threshold = voice_detection_sensitivity_ * 0.75f;  // 75% of main threshold
-            config.suppressor.dominant_nearend_detection.snr_threshold = 12.0f + (voice_detection_sensitivity_ - 0.4f) * 10.0f;  // Adaptive SNR
-            config.suppressor.dominant_nearend_detection.hold_duration = 8;      // Shorter hold for voice responsiveness
-            config.suppressor.dominant_nearend_detection.trigger_threshold = voice_trigger_speed_;  // Runtime adjustable (1-5)
-            config.suppressor.high_bands_suppression.enr_threshold = voice_detection_sensitivity_ * 0.625f;  // Proportional high-band
-            
-            // ✅ PRESERVED FEATURES: Auto-delay adjustment and timing sync remain fully intact (2025-01-30)
-            // The successful 6.2dB ERLE convergence mechanisms are maintained while improving voice clarity
-            
-            // 🎯 ADDITIONAL ERLE OPTIMIZATION SETTINGS (Removed deprecated fields)
-            // Note: use_adjacent_bands_filter and max_ovr_suppress_in_hb are not available in this WebRTC version
+            // 🔍 NEAREND DETECTION (Runtime Adjustable)
+            // Critical for voice preservation and echo detection
+            if (enr_threshold_ > 0.0f) {
+                config.suppressor.dominant_nearend_detection.enr_threshold = enr_threshold_;
+            }
+            if (snr_threshold_ > 0.0f) {
+                config.suppressor.dominant_nearend_detection.snr_threshold = snr_threshold_;
+            }
+            if (hold_duration_ > 0) {
+                config.suppressor.dominant_nearend_detection.hold_duration = hold_duration_;
+            }
+            if (trigger_threshold_ > 0) {
+                config.suppressor.dominant_nearend_detection.trigger_threshold = trigger_threshold_;
+            }
             
             // Create AEC3 factory and controller
             aec_factory_ = std::make_unique<webrtc::EchoCanceller3Factory>(config);
@@ -655,70 +645,87 @@ public:
         }
     }
     
-    // 🎛️ RUNTIME PARAMETER CONTROL METHODS FOR PRODUCTION TUNING
-    void SetEchoSuppression(float strength) {
+    // 🎛️ OFFICIAL AEC3 PARAMETER CONTROL METHODS (2025-01-30)
+    // These methods directly set the official WebRTC AEC3 configuration parameters
+    
+    // Filter Configuration Methods
+    void SetConfigChangeDuration(int blocks) {
         std::lock_guard<std::mutex> lock(mutex_);
-        echo_suppression_strength_ = std::max(8.0f, std::min(20.0f, strength));
-        LOGI("Echo suppression strength updated to %.1f", echo_suppression_strength_);
+        config_change_duration_blocks_ = std::max(0, std::min(1000, blocks));
+        LOGI("📝 AEC3 config change duration: %d blocks", config_change_duration_blocks_);
         // Note: Requires AEC3 re-initialization to take effect
     }
     
-    void SetVoiceRecovery(float speed) {
+    void SetInitialStateSeconds(float seconds) {
         std::lock_guard<std::mutex> lock(mutex_);
-        voice_recovery_speed_ = std::max(1.0f, std::min(5.0f, speed));
-        LOGI("Voice recovery speed updated to %.1f", voice_recovery_speed_);
+        initial_state_seconds_ = std::max(0.0f, std::min(3.0f, seconds));
+        LOGI("📝 AEC3 initial state duration: %.2f seconds", initial_state_seconds_);
         // Note: Requires AEC3 re-initialization to take effect
     }
     
-    void SetVoiceProtection(float level) {
+    void SetConservativeInitialPhase(bool enable) {
         std::lock_guard<std::mutex> lock(mutex_);
-        voice_protection_level_ = std::max(1.0f, std::min(8.0f, level));
-        LOGI("Voice protection level updated to %.1f", voice_protection_level_);
+        conservative_initial_phase_ = enable;
+        LOGI("📝 AEC3 conservative initial phase: %s", enable ? "enabled" : "disabled");
         // Note: Requires AEC3 re-initialization to take effect
     }
     
-    void SetFilterLength(int blocks) {
+    // Suppressor Normal Tuning Methods
+    void SetMaxDecFactorLF(float factor) {
         std::lock_guard<std::mutex> lock(mutex_);
-        filter_length_blocks_ = std::max(10, std::min(25, blocks));
-        LOGI("Filter length updated to %d blocks", filter_length_blocks_);
+        max_dec_factor_lf_ = std::max(0.0f, std::min(100.0f, factor));
+        LOGI("🎛️ AEC3 max decrease factor LF: %.2f", max_dec_factor_lf_);
         // Note: Requires AEC3 re-initialization to take effect
     }
     
-    void SetNoiseGate(float threshold) {
+    void SetMaxIncFactor(float factor) {
         std::lock_guard<std::mutex> lock(mutex_);
-        noise_gate_threshold_ = std::max(0.05f, std::min(0.5f, threshold));
-        LOGI("Noise gate threshold updated to %.2f", noise_gate_threshold_);
+        max_inc_factor_ = std::max(0.0f, std::min(100.0f, factor));
+        LOGI("🎛️ AEC3 max increase factor: %.2f", max_inc_factor_);
         // Note: Requires AEC3 re-initialization to take effect
     }
     
-    // 🎙️ VOICE CLARITY RUNTIME CONTROLS (2025-01-30)
-    // These parameters directly control the same C++ settings used in initialization
-    
-    void SetEchoSuppressionStrength(float strength) {
+    // Suppressor Nearend Tuning Methods
+    void SetNearendMaxDecFactorLF(float factor) {
         std::lock_guard<std::mutex> lock(mutex_);
-        echo_suppression_strength_ = std::max(3.0f, std::min(10.0f, strength));
-        LOGI("🎙️ Echo suppression strength updated to %.2f", echo_suppression_strength_);
+        nearend_max_dec_factor_lf_ = std::max(0.0f, std::min(100.0f, factor));
+        LOGI("🎙️ AEC3 nearend max decrease factor LF: %.2f", nearend_max_dec_factor_lf_);
         // Note: Requires AEC3 re-initialization to take effect
     }
     
-    void SetVoiceRecoverySpeed(float speed) {
+    void SetNearendMaxIncFactor(float factor) {
         std::lock_guard<std::mutex> lock(mutex_);
-        voice_recovery_speed_ = std::max(1.5f, std::min(5.0f, speed));
-        LOGI("🎙️ Voice recovery speed updated to %.2f", voice_recovery_speed_);
+        nearend_max_inc_factor_ = std::max(0.0f, std::min(100.0f, factor));
+        LOGI("🎙️ AEC3 nearend max increase factor: %.2f", nearend_max_inc_factor_);
         // Note: Requires AEC3 re-initialization to take effect
     }
     
-    void SetVoiceDetectionSensitivity(float sensitivity) {
+    // Dominant Nearend Detection Methods
+    void SetEnrThreshold(float threshold) {
         std::lock_guard<std::mutex> lock(mutex_);
-        voice_detection_sensitivity_ = std::max(0.2f, std::min(0.8f, sensitivity));
-        LOGI("🎙️ Voice detection sensitivity updated to %.2f", voice_detection_sensitivity_);
+        enr_threshold_ = std::max(0.0f, std::min(1000.0f, threshold));
+        LOGI("🔍 AEC3 ENR threshold: %.2f", enr_threshold_);
         // Note: Requires AEC3 re-initialization to take effect
     }
     
-    void SetVoiceTriggerSpeed(int speed) {
+    void SetSnrThreshold(float threshold) {
         std::lock_guard<std::mutex> lock(mutex_);
-        voice_trigger_speed_ = std::max(1, std::min(5, speed));
-        LOGI("🎙️ Voice trigger speed updated to %d", voice_trigger_speed_);
+        snr_threshold_ = std::max(0.0f, std::min(1000.0f, threshold));
+        LOGI("🔍 AEC3 SNR threshold: %.2f", snr_threshold_);
+        // Note: Requires AEC3 re-initialization to take effect
+    }
+    
+    void SetHoldDuration(int duration) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        hold_duration_ = std::max(0, std::min(10000, duration));
+        LOGI("🔍 AEC3 hold duration: %d", hold_duration_);
+        // Note: Requires AEC3 re-initialization to take effect
+    }
+    
+    void SetTriggerThreshold(int threshold) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        trigger_threshold_ = std::max(0, std::min(10000, threshold));
+        LOGI("🔍 AEC3 trigger threshold: %d", trigger_threshold_);
         // Note: Requires AEC3 re-initialization to take effect
     }
     
@@ -959,17 +966,27 @@ private:
     int current_delay_ms_ = kStreamDelay;
     int manual_delay_ms_ = 0;  // Set by SetStreamDelay(), 0 = automatic
     
-    // 🎛️ RUNTIME ADJUSTABLE PARAMETERS FOR PRODUCTION TUNING
-    float echo_suppression_strength_ = 6.0f;     // Normal max_dec_factor_lf (3-10 range) - reduced for voice clarity
-    float voice_recovery_speed_ = 2.5f;          // Nearend max_inc_factor (1.5-5 range) - increased for voice clarity
-    float voice_protection_level_ = 2.0f;        // Nearend max_dec_factor_lf (1-8 range)
-    int filter_length_blocks_ = 20;              // Filter length (10-25 range)
-    float noise_gate_threshold_ = 0.1f;          // Noise gate (0.05-0.5 range)
-    bool enable_voice_protection_ = true;        // Toggle voice-aware processing
+    // 🎛️ OFFICIAL AEC3 CONFIGURATION PARAMETERS (2025-01-30)
+    // Based on echo_canceller3_config.h - these are the actual WebRTC AEC3 parameters
     
-    // 🎙️ VOICE CLARITY RUNTIME PARAMETERS (2025-01-30)
-    float voice_detection_sensitivity_ = 0.4f;   // ENR threshold (0.2-0.8 range) - more sensitive to voice
-    int voice_trigger_speed_ = 2;                // Trigger threshold (1-5 range) - faster voice trigger
+    // Filter Configuration Parameters
+    int config_change_duration_blocks_ = 0;      // 0 = use default (50-1000 range)
+    float initial_state_seconds_ = 0.0f;         // 0 = use default (0.5-3.0 range) 
+    bool conservative_initial_phase_ = true;     // Default: true
+    
+    // Suppressor Normal Tuning Parameters  
+    float max_dec_factor_lf_ = 0.0f;             // 0 = use default (low freq echo suppression)
+    float max_inc_factor_ = 0.0f;                // 0 = use default (recovery speed)
+    
+    // Suppressor Nearend Tuning Parameters
+    float nearend_max_dec_factor_lf_ = 0.0f;     // 0 = use default (nearend voice protection)
+    float nearend_max_inc_factor_ = 0.0f;        // 0 = use default (nearend voice recovery)
+    
+    // Dominant Nearend Detection Parameters
+    float enr_threshold_ = 0.0f;                 // 0 = use default (voice detection sensitivity)
+    float snr_threshold_ = 0.0f;                 // 0 = use default (signal-to-noise threshold)
+    int hold_duration_ = 0;                      // 0 = use default (detection hold time)
+    int trigger_threshold_ = 0;                  // 0 = use default (voice trigger sensitivity)
 };
 
 // Global processor instance
@@ -1050,69 +1067,86 @@ Java_com_tts_aec3_WebRtcAec3_nativeSetStreamDelay(JNIEnv *env, jobject thiz, jin
     }
 }
 
-// 🎛️ RUNTIME PARAMETER CONTROL METHODS FOR PRODUCTION TUNING
-JNIEXPORT void JNICALL
-Java_com_tts_aec3_WebRtcAec3_nativeSetEchoSuppression(JNIEnv *env, jobject thiz, jfloat strength) {
-    if (webrtc_aec3_tts::g_processor) {
-        webrtc_aec3_tts::g_processor->SetEchoSuppression(strength);
-    }
-}
+// 🎛️ OFFICIAL AEC3 PARAMETER CONTROL JNI METHODS (2025-01-30)
 
-JNIEXPORT void JNICALL  
-Java_com_tts_aec3_WebRtcAec3_nativeSetVoiceRecovery(JNIEnv *env, jobject thiz, jfloat speed) {
+// Filter Configuration JNI Methods
+JNIEXPORT void JNICALL
+Java_com_tts_aec3_WebRtcAec3_nativeSetConfigChangeDuration(JNIEnv *env, jobject thiz, jint blocks) {
     if (webrtc_aec3_tts::g_processor) {
-        webrtc_aec3_tts::g_processor->SetVoiceRecovery(speed);
+        webrtc_aec3_tts::g_processor->SetConfigChangeDuration(blocks);
     }
 }
 
 JNIEXPORT void JNICALL
-Java_com_tts_aec3_WebRtcAec3_nativeSetVoiceProtection(JNIEnv *env, jobject thiz, jfloat level) {
+Java_com_tts_aec3_WebRtcAec3_nativeSetInitialStateSeconds(JNIEnv *env, jobject thiz, jfloat seconds) {
     if (webrtc_aec3_tts::g_processor) {
-        webrtc_aec3_tts::g_processor->SetVoiceProtection(level);
+        webrtc_aec3_tts::g_processor->SetInitialStateSeconds(seconds);
     }
 }
 
 JNIEXPORT void JNICALL
-Java_com_tts_aec3_WebRtcAec3_nativeSetFilterLength(JNIEnv *env, jobject thiz, jint blocks) {
+Java_com_tts_aec3_WebRtcAec3_nativeSetConservativeInitialPhase(JNIEnv *env, jobject thiz, jboolean enable) {
     if (webrtc_aec3_tts::g_processor) {
-        webrtc_aec3_tts::g_processor->SetFilterLength(blocks);
+        webrtc_aec3_tts::g_processor->SetConservativeInitialPhase(enable == JNI_TRUE);
+    }
+}
+
+// Suppressor Normal Tuning JNI Methods
+JNIEXPORT void JNICALL
+Java_com_tts_aec3_WebRtcAec3_nativeSetMaxDecFactorLF(JNIEnv *env, jobject thiz, jfloat factor) {
+    if (webrtc_aec3_tts::g_processor) {
+        webrtc_aec3_tts::g_processor->SetMaxDecFactorLF(factor);
     }
 }
 
 JNIEXPORT void JNICALL
-Java_com_tts_aec3_WebRtcAec3_nativeSetNoiseGate(JNIEnv *env, jobject thiz, jfloat threshold) {
+Java_com_tts_aec3_WebRtcAec3_nativeSetMaxIncFactor(JNIEnv *env, jobject thiz, jfloat factor) {
     if (webrtc_aec3_tts::g_processor) {
-        webrtc_aec3_tts::g_processor->SetNoiseGate(threshold);
+        webrtc_aec3_tts::g_processor->SetMaxIncFactor(factor);
     }
 }
 
-// 🎙️ VOICE CLARITY RUNTIME CONTROLS JNI METHODS (2025-01-30)
-
+// Suppressor Nearend Tuning JNI Methods
 JNIEXPORT void JNICALL
-Java_com_tts_aec3_WebRtcAec3_nativeSetEchoSuppressionStrength(JNIEnv *env, jobject thiz, jfloat strength) {
+Java_com_tts_aec3_WebRtcAec3_nativeSetNearendMaxDecFactorLF(JNIEnv *env, jobject thiz, jfloat factor) {
     if (webrtc_aec3_tts::g_processor) {
-        webrtc_aec3_tts::g_processor->SetEchoSuppressionStrength(strength);
-    }
-}
-
-JNIEXPORT void JNICALL
-Java_com_tts_aec3_WebRtcAec3_nativeSetVoiceRecoverySpeed(JNIEnv *env, jobject thiz, jfloat speed) {
-    if (webrtc_aec3_tts::g_processor) {
-        webrtc_aec3_tts::g_processor->SetVoiceRecoverySpeed(speed);
+        webrtc_aec3_tts::g_processor->SetNearendMaxDecFactorLF(factor);
     }
 }
 
 JNIEXPORT void JNICALL
-Java_com_tts_aec3_WebRtcAec3_nativeSetVoiceDetectionSensitivity(JNIEnv *env, jobject thiz, jfloat sensitivity) {
+Java_com_tts_aec3_WebRtcAec3_nativeSetNearendMaxIncFactor(JNIEnv *env, jobject thiz, jfloat factor) {
     if (webrtc_aec3_tts::g_processor) {
-        webrtc_aec3_tts::g_processor->SetVoiceDetectionSensitivity(sensitivity);
+        webrtc_aec3_tts::g_processor->SetNearendMaxIncFactor(factor);
+    }
+}
+
+// Dominant Nearend Detection JNI Methods
+JNIEXPORT void JNICALL
+Java_com_tts_aec3_WebRtcAec3_nativeSetEnrThreshold(JNIEnv *env, jobject thiz, jfloat threshold) {
+    if (webrtc_aec3_tts::g_processor) {
+        webrtc_aec3_tts::g_processor->SetEnrThreshold(threshold);
     }
 }
 
 JNIEXPORT void JNICALL
-Java_com_tts_aec3_WebRtcAec3_nativeSetVoiceTriggerSpeed(JNIEnv *env, jobject thiz, jint speed) {
+Java_com_tts_aec3_WebRtcAec3_nativeSetSnrThreshold(JNIEnv *env, jobject thiz, jfloat threshold) {
     if (webrtc_aec3_tts::g_processor) {
-        webrtc_aec3_tts::g_processor->SetVoiceTriggerSpeed(speed);
+        webrtc_aec3_tts::g_processor->SetSnrThreshold(threshold);
+    }
+}
+
+JNIEXPORT void JNICALL
+Java_com_tts_aec3_WebRtcAec3_nativeSetHoldDuration(JNIEnv *env, jobject thiz, jint duration) {
+    if (webrtc_aec3_tts::g_processor) {
+        webrtc_aec3_tts::g_processor->SetHoldDuration(duration);
+    }
+}
+
+JNIEXPORT void JNICALL
+Java_com_tts_aec3_WebRtcAec3_nativeSetTriggerThreshold(JNIEnv *env, jobject thiz, jint threshold) {
+    if (webrtc_aec3_tts::g_processor) {
+        webrtc_aec3_tts::g_processor->SetTriggerThreshold(threshold);
     }
 }
 
@@ -1234,18 +1268,27 @@ public class WebRtcAec3 {
      */
     public native void nativeSetStreamDelay(int delayMs);
     
-    // 🎛️ RUNTIME PARAMETER CONTROL FOR PRODUCTION TUNING
-    public native void nativeSetEchoSuppression(float strength);    // 8.0-20.0 range
-    public native void nativeSetVoiceRecovery(float speed);         // 1.0-5.0 range
-    public native void nativeSetVoiceProtection(float level);       // 1.0-8.0 range  
-    public native void nativeSetFilterLength(int blocks);          // 10-25 range
-    public native void nativeSetNoiseGate(float threshold);        // 0.05-0.5 range
+    // 🎛️ OFFICIAL AEC3 PARAMETER CONTROL (2025-01-30)
+    // These native methods directly correspond to official WebRTC AEC3 configuration parameters
     
-    // 🎙️ VOICE CLARITY RUNTIME CONTROLS (2025-01-30)
-    public native void nativeSetEchoSuppressionStrength(float strength);  // 3.0-10.0 range
-    public native void nativeSetVoiceRecoverySpeed(float speed);           // 1.5-5.0 range
-    public native void nativeSetVoiceDetectionSensitivity(float sensitivity); // 0.2-0.8 range
-    public native void nativeSetVoiceTriggerSpeed(int speed);              // 1-5 range
+    // Filter Configuration Native Methods
+    public native void nativeSetConfigChangeDuration(int blocks);          // 0-1000 range, 0=default
+    public native void nativeSetInitialStateSeconds(float seconds);        // 0.0-3.0 range, 0=default  
+    public native void nativeSetConservativeInitialPhase(boolean enable);  // true/false
+    
+    // Suppressor Normal Tuning Native Methods
+    public native void nativeSetMaxDecFactorLF(float factor);             // 0.0-100.0 range, 0=default
+    public native void nativeSetMaxIncFactor(float factor);               // 0.0-100.0 range, 0=default
+    
+    // Suppressor Nearend Tuning Native Methods  
+    public native void nativeSetNearendMaxDecFactorLF(float factor);      // 0.0-100.0 range, 0=default
+    public native void nativeSetNearendMaxIncFactor(float factor);        // 0.0-100.0 range, 0=default
+    
+    // Dominant Nearend Detection Native Methods
+    public native void nativeSetEnrThreshold(float threshold);            // 0.0-1000.0 range, 0=default
+    public native void nativeSetSnrThreshold(float threshold);            // 0.0-1000.0 range, 0=default
+    public native void nativeSetHoldDuration(int duration);               // 0-10000 range, 0=default
+    public native void nativeSetTriggerThreshold(int threshold);          // 0-10000 range, 0=default
     
     // 🎯 ENHANCED ERLE OPTIMIZATION METHODS (2025-01-30)
     public native boolean nativeAutoOptimizeDelay();               // Automatic delay optimization
@@ -1329,101 +1372,136 @@ public class WebRtcAec3 {
         }
     }
     
-    // 🎛️ PRODUCTION TUNING METHODS - REAL-TIME PARAMETER ADJUSTMENT
+    // 🎛️ OFFICIAL AEC3 PARAMETER CONTROL METHODS (2025-01-30)
+    // These methods directly control the official WebRTC AEC3 configuration parameters
+    // Use 0 values to apply AEC3 defaults, or set specific values for custom tuning
+    
+    // ======= FILTER CONFIGURATION METHODS =======
     
     /**
-     * Set echo suppression strength (higher = more aggressive echo removal)
-     * @param strength 8.0-20.0 range, default 12.0
+     * Set AEC3 configuration change duration in blocks
+     * Controls how smoothly AEC3 transitions between different configurations
+     * @param blocks 0-1000 range, 0=use AEC3 default, typical values: 50-250 blocks
      */
-    public void setEchoSuppression(float strength) {
+    public void setConfigChangeDuration(int blocks) {
         if (initialized) {
-            nativeSetEchoSuppression(strength);
+            nativeSetConfigChangeDuration(blocks);
         }
     }
     
     /**
-     * Set voice recovery speed (higher = faster voice recovery after echo)
-     * @param speed 1.0-5.0 range, default 3.0
+     * Set AEC3 initial state duration in seconds  
+     * Time AEC3 spends in initial learning phase before full operation
+     * @param seconds 0.0-3.0 range, 0=use AEC3 default, typical values: 0.5-2.5 seconds
      */
-    public void setVoiceRecovery(float speed) {
+    public void setInitialStateSeconds(float seconds) {
         if (initialized) {
-            nativeSetVoiceRecovery(speed);
+            nativeSetInitialStateSeconds(seconds);
         }
     }
     
     /**
-     * Set voice protection level (lower = better voice preservation)
-     * @param level 1.0-8.0 range, default 2.0
+     * Enable/disable conservative initial phase
+     * Conservative mode = slower initial convergence but more stable
+     * @param enable true=conservative (safer), false=aggressive (faster convergence)
      */
-    public void setVoiceProtection(float level) {
+    public void setConservativeInitialPhase(boolean enable) {
         if (initialized) {
-            nativeSetVoiceProtection(level);
+            nativeSetConservativeInitialPhase(enable);
+        }
+    }
+    
+    // ======= SUPPRESSOR NORMAL TUNING METHODS =======
+    
+    /**
+     * Set maximum decrease factor for low frequencies (echo suppression strength)
+     * Higher values = more aggressive echo suppression but may affect voice quality
+     * @param factor 0.0-100.0 range, 0=use AEC3 default, typical values: 2.0-25.0
+     */
+    public void setMaxDecFactorLF(float factor) {
+        if (initialized) {
+            nativeSetMaxDecFactorLF(factor);
         }
     }
     
     /**
-     * Set filter length (longer = better echo modeling, higher CPU usage)
-     * @param blocks 10-25 range, default 20
-     */
-    public void setFilterLength(int blocks) {
-        if (initialized) {
-            nativeSetFilterLength(blocks);
-        }
-    }
-    
-    /**
-     * Set noise gate threshold (lower = more sensitive)
-     * @param threshold 0.05-0.5 range, default 0.1
-     */
-    public void setNoiseGate(float threshold) {
-        if (initialized) {
-            nativeSetNoiseGate(threshold);
-        }
-    }
-    
-    // 🎙️ VOICE CLARITY RUNTIME CONTROLS FOR UI ADJUSTMENT (2025-01-30)
-    
-    /**
-     * Set echo suppression strength for voice clarity tuning
-     * Lower values = less aggressive suppression = clearer voice but potentially more echo
-     * @param strength 3.0-10.0 range, default 6.0, recommended 4.0-8.0 for voice clarity
-     */
-    public void setEchoSuppressionStrength(float strength) {
-        if (initialized) {
-            nativeSetEchoSuppressionStrength(strength);
-        }
-    }
-    
-    /**
-     * Set voice recovery speed for faster voice restoration
+     * Set maximum increase factor (voice recovery speed)
      * Higher values = faster voice recovery after echo suppression
-     * @param speed 1.5-5.0 range, default 2.5, recommended 2.0-4.0 for balance
+     * @param factor 0.0-100.0 range, 0=use AEC3 default, typical values: 1.5-5.0
      */
-    public void setVoiceRecoverySpeed(float speed) {
+    public void setMaxIncFactor(float factor) {
         if (initialized) {
-            nativeSetVoiceRecoverySpeed(speed);
+            nativeSetMaxIncFactor(factor);
+        }
+    }
+    
+    // ======= SUPPRESSOR NEAREND TUNING METHODS =======
+    
+    /**
+     * Set nearend maximum decrease factor for low frequencies (voice protection)
+     * Lower values = better voice preservation when user is speaking
+     * @param factor 0.0-100.0 range, 0=use AEC3 default, typical values: 1.0-8.0
+     */
+    public void setNearendMaxDecFactorLF(float factor) {
+        if (initialized) {
+            nativeSetNearendMaxDecFactorLF(factor);
         }
     }
     
     /**
-     * Set voice detection sensitivity 
-     * Lower values = more sensitive to voice = better voice preservation
-     * @param sensitivity 0.2-0.8 range, default 0.4, recommended 0.3-0.5 for clarity
+     * Set nearend maximum increase factor (nearend voice recovery)
+     * Higher values = clearer voice when user is speaking
+     * @param factor 0.0-100.0 range, 0=use AEC3 default, typical values: 2.0-8.0
      */
-    public void setVoiceDetectionSensitivity(float sensitivity) {
+    public void setNearendMaxIncFactor(float factor) {
         if (initialized) {
-            nativeSetVoiceDetectionSensitivity(sensitivity);
+            nativeSetNearendMaxIncFactor(factor);
+        }
+    }
+    
+    // ======= DOMINANT NEAREND DETECTION METHODS =======
+    
+    /**
+     * Set Energy-to-Noise Ratio threshold for voice detection
+     * Lower values = more sensitive voice detection = better voice preservation
+     * @param threshold 0.0-1000.0 range, 0=use AEC3 default, typical values: 0.1-1.0
+     */
+    public void setEnrThreshold(float threshold) {
+        if (initialized) {
+            nativeSetEnrThreshold(threshold);
         }
     }
     
     /**
-     * Set voice trigger speed for faster voice detection
-     * Lower values = faster voice trigger = quicker voice preservation
-     * @param speed 1-5 range, default 2, recommended 1-3 for responsive voice
+     * Set Signal-to-Noise Ratio threshold for voice detection
+     * Lower values = voice detection at lower signal levels
+     * @param threshold 0.0-1000.0 range, 0=use AEC3 default, typical values: 10.0-30.0
      */
-    public void setVoiceTriggerSpeed(int speed) {
+    public void setSnrThreshold(float threshold) {
         if (initialized) {
-            nativeSetVoiceTriggerSpeed(speed);
+            nativeSetSnrThreshold(threshold);
+        }
+    }
+    
+    /**
+     * Set hold duration for voice detection (in processing blocks)
+     * Longer duration = more stable voice detection but slower response
+     * @param duration 0-10000 range, 0=use AEC3 default, typical values: 5-20 blocks
+     */
+    public void setHoldDuration(int duration) {
+        if (initialized) {
+            nativeSetHoldDuration(duration);
+        }
+    }
+    
+    /**
+     * Set trigger threshold for voice detection activation
+     * Lower values = voice detection triggers more easily
+     * @param threshold 0-10000 range, 0=use AEC3 default, typical values: 1-5
+     */
+    public void setTriggerThreshold(int threshold) {
+        if (initialized) {
+            nativeSetTriggerThreshold(threshold);
         }
     }
     
@@ -1948,3 +2026,4 @@ echo ""
 echo "⚠️  Important: Always call processTtsAudio() BEFORE playing TTS audio!"
 echo "📈 Expected Performance: Enhanced ERLE (>15dB target vs previous 6.2dB) with precise timing synchronization"
 echo "🎯 ERLE Optimization Features: Auto delay optimization, enhanced timing sync, demo.cc pipeline compliance"
+

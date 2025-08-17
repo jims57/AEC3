@@ -66,18 +66,27 @@ public class WebRtcAec3 {
      */
     public native void nativeSetStreamDelay(int delayMs);
     
-    // 🎛️ RUNTIME PARAMETER CONTROL FOR PRODUCTION TUNING
-    public native void nativeSetEchoSuppression(float strength);    // 8.0-20.0 range
-    public native void nativeSetVoiceRecovery(float speed);         // 1.0-5.0 range
-    public native void nativeSetVoiceProtection(float level);       // 1.0-8.0 range  
-    public native void nativeSetFilterLength(int blocks);          // 10-25 range
-    public native void nativeSetNoiseGate(float threshold);        // 0.05-0.5 range
+    // 🎛️ OFFICIAL AEC3 PARAMETER CONTROL (2025-01-30)
+    // These native methods directly correspond to official WebRTC AEC3 configuration parameters
     
-    // 🎙️ VOICE CLARITY RUNTIME CONTROLS (2025-01-30)
-    public native void nativeSetEchoSuppressionStrength(float strength);  // 3.0-10.0 range
-    public native void nativeSetVoiceRecoverySpeed(float speed);           // 1.5-5.0 range
-    public native void nativeSetVoiceDetectionSensitivity(float sensitivity); // 0.2-0.8 range
-    public native void nativeSetVoiceTriggerSpeed(int speed);              // 1-5 range
+    // Filter Configuration Native Methods
+    public native void nativeSetConfigChangeDuration(int blocks);          // 0-1000 range, 0=default
+    public native void nativeSetInitialStateSeconds(float seconds);        // 0.0-3.0 range, 0=default  
+    public native void nativeSetConservativeInitialPhase(boolean enable);  // true/false
+    
+    // Suppressor Normal Tuning Native Methods
+    public native void nativeSetMaxDecFactorLF(float factor);             // 0.0-100.0 range, 0=default
+    public native void nativeSetMaxIncFactor(float factor);               // 0.0-100.0 range, 0=default
+    
+    // Suppressor Nearend Tuning Native Methods  
+    public native void nativeSetNearendMaxDecFactorLF(float factor);      // 0.0-100.0 range, 0=default
+    public native void nativeSetNearendMaxIncFactor(float factor);        // 0.0-100.0 range, 0=default
+    
+    // Dominant Nearend Detection Native Methods
+    public native void nativeSetEnrThreshold(float threshold);            // 0.0-1000.0 range, 0=default
+    public native void nativeSetSnrThreshold(float threshold);            // 0.0-1000.0 range, 0=default
+    public native void nativeSetHoldDuration(int duration);               // 0-10000 range, 0=default
+    public native void nativeSetTriggerThreshold(int threshold);          // 0-10000 range, 0=default
     
     // 🎯 ENHANCED ERLE OPTIMIZATION METHODS (2025-01-30)
     public native boolean nativeAutoOptimizeDelay();               // Automatic delay optimization
@@ -161,101 +170,136 @@ public class WebRtcAec3 {
         }
     }
     
-    // 🎛️ PRODUCTION TUNING METHODS - REAL-TIME PARAMETER ADJUSTMENT
+    // 🎛️ OFFICIAL AEC3 PARAMETER CONTROL METHODS (2025-01-30)
+    // These methods directly control the official WebRTC AEC3 configuration parameters
+    // Use 0 values to apply AEC3 defaults, or set specific values for custom tuning
+    
+    // ======= FILTER CONFIGURATION METHODS =======
     
     /**
-     * Set echo suppression strength (higher = more aggressive echo removal)
-     * @param strength 8.0-20.0 range, default 12.0
+     * Set AEC3 configuration change duration in blocks
+     * Controls how smoothly AEC3 transitions between different configurations
+     * @param blocks 0-1000 range, 0=use AEC3 default, typical values: 50-250 blocks
      */
-    public void setEchoSuppression(float strength) {
+    public void setConfigChangeDuration(int blocks) {
         if (initialized) {
-            nativeSetEchoSuppression(strength);
+            nativeSetConfigChangeDuration(blocks);
         }
     }
     
     /**
-     * Set voice recovery speed (higher = faster voice recovery after echo)
-     * @param speed 1.0-5.0 range, default 3.0
+     * Set AEC3 initial state duration in seconds  
+     * Time AEC3 spends in initial learning phase before full operation
+     * @param seconds 0.0-3.0 range, 0=use AEC3 default, typical values: 0.5-2.5 seconds
      */
-    public void setVoiceRecovery(float speed) {
+    public void setInitialStateSeconds(float seconds) {
         if (initialized) {
-            nativeSetVoiceRecovery(speed);
+            nativeSetInitialStateSeconds(seconds);
         }
     }
     
     /**
-     * Set voice protection level (lower = better voice preservation)
-     * @param level 1.0-8.0 range, default 2.0
+     * Enable/disable conservative initial phase
+     * Conservative mode = slower initial convergence but more stable
+     * @param enable true=conservative (safer), false=aggressive (faster convergence)
      */
-    public void setVoiceProtection(float level) {
+    public void setConservativeInitialPhase(boolean enable) {
         if (initialized) {
-            nativeSetVoiceProtection(level);
+            nativeSetConservativeInitialPhase(enable);
+        }
+    }
+    
+    // ======= SUPPRESSOR NORMAL TUNING METHODS =======
+    
+    /**
+     * Set maximum decrease factor for low frequencies (echo suppression strength)
+     * Higher values = more aggressive echo suppression but may affect voice quality
+     * @param factor 0.0-100.0 range, 0=use AEC3 default, typical values: 2.0-25.0
+     */
+    public void setMaxDecFactorLF(float factor) {
+        if (initialized) {
+            nativeSetMaxDecFactorLF(factor);
         }
     }
     
     /**
-     * Set filter length (longer = better echo modeling, higher CPU usage)
-     * @param blocks 10-25 range, default 20
-     */
-    public void setFilterLength(int blocks) {
-        if (initialized) {
-            nativeSetFilterLength(blocks);
-        }
-    }
-    
-    /**
-     * Set noise gate threshold (lower = more sensitive)
-     * @param threshold 0.05-0.5 range, default 0.1
-     */
-    public void setNoiseGate(float threshold) {
-        if (initialized) {
-            nativeSetNoiseGate(threshold);
-        }
-    }
-    
-    // 🎙️ VOICE CLARITY RUNTIME CONTROLS FOR UI ADJUSTMENT (2025-01-30)
-    
-    /**
-     * Set echo suppression strength for voice clarity tuning
-     * Lower values = less aggressive suppression = clearer voice but potentially more echo
-     * @param strength 3.0-10.0 range, default 6.0, recommended 4.0-8.0 for voice clarity
-     */
-    public void setEchoSuppressionStrength(float strength) {
-        if (initialized) {
-            nativeSetEchoSuppressionStrength(strength);
-        }
-    }
-    
-    /**
-     * Set voice recovery speed for faster voice restoration
+     * Set maximum increase factor (voice recovery speed)
      * Higher values = faster voice recovery after echo suppression
-     * @param speed 1.5-5.0 range, default 2.5, recommended 2.0-4.0 for balance
+     * @param factor 0.0-100.0 range, 0=use AEC3 default, typical values: 1.5-5.0
      */
-    public void setVoiceRecoverySpeed(float speed) {
+    public void setMaxIncFactor(float factor) {
         if (initialized) {
-            nativeSetVoiceRecoverySpeed(speed);
+            nativeSetMaxIncFactor(factor);
+        }
+    }
+    
+    // ======= SUPPRESSOR NEAREND TUNING METHODS =======
+    
+    /**
+     * Set nearend maximum decrease factor for low frequencies (voice protection)
+     * Lower values = better voice preservation when user is speaking
+     * @param factor 0.0-100.0 range, 0=use AEC3 default, typical values: 1.0-8.0
+     */
+    public void setNearendMaxDecFactorLF(float factor) {
+        if (initialized) {
+            nativeSetNearendMaxDecFactorLF(factor);
         }
     }
     
     /**
-     * Set voice detection sensitivity 
-     * Lower values = more sensitive to voice = better voice preservation
-     * @param sensitivity 0.2-0.8 range, default 0.4, recommended 0.3-0.5 for clarity
+     * Set nearend maximum increase factor (nearend voice recovery)
+     * Higher values = clearer voice when user is speaking
+     * @param factor 0.0-100.0 range, 0=use AEC3 default, typical values: 2.0-8.0
      */
-    public void setVoiceDetectionSensitivity(float sensitivity) {
+    public void setNearendMaxIncFactor(float factor) {
         if (initialized) {
-            nativeSetVoiceDetectionSensitivity(sensitivity);
+            nativeSetNearendMaxIncFactor(factor);
+        }
+    }
+    
+    // ======= DOMINANT NEAREND DETECTION METHODS =======
+    
+    /**
+     * Set Energy-to-Noise Ratio threshold for voice detection
+     * Lower values = more sensitive voice detection = better voice preservation
+     * @param threshold 0.0-1000.0 range, 0=use AEC3 default, typical values: 0.1-1.0
+     */
+    public void setEnrThreshold(float threshold) {
+        if (initialized) {
+            nativeSetEnrThreshold(threshold);
         }
     }
     
     /**
-     * Set voice trigger speed for faster voice detection
-     * Lower values = faster voice trigger = quicker voice preservation
-     * @param speed 1-5 range, default 2, recommended 1-3 for responsive voice
+     * Set Signal-to-Noise Ratio threshold for voice detection
+     * Lower values = voice detection at lower signal levels
+     * @param threshold 0.0-1000.0 range, 0=use AEC3 default, typical values: 10.0-30.0
      */
-    public void setVoiceTriggerSpeed(int speed) {
+    public void setSnrThreshold(float threshold) {
         if (initialized) {
-            nativeSetVoiceTriggerSpeed(speed);
+            nativeSetSnrThreshold(threshold);
+        }
+    }
+    
+    /**
+     * Set hold duration for voice detection (in processing blocks)
+     * Longer duration = more stable voice detection but slower response
+     * @param duration 0-10000 range, 0=use AEC3 default, typical values: 5-20 blocks
+     */
+    public void setHoldDuration(int duration) {
+        if (initialized) {
+            nativeSetHoldDuration(duration);
+        }
+    }
+    
+    /**
+     * Set trigger threshold for voice detection activation
+     * Lower values = voice detection triggers more easily
+     * @param threshold 0-10000 range, 0=use AEC3 default, typical values: 1-5
+     */
+    public void setTriggerThreshold(int threshold) {
+        if (initialized) {
+            nativeSetTriggerThreshold(threshold);
         }
     }
     
