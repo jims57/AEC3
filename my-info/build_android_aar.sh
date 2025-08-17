@@ -308,7 +308,19 @@ public:
     TtsAec3Processor() : frame_counter_(0), last_delay_estimation_(0), 
                         current_optimal_delay_ms_(kStreamDelay), 
                         delay_estimation_counter_(0),
-                        total_render_frames_(0), total_capture_frames_(0) {}
+                        total_render_frames_(0), total_capture_frames_(0),
+                        // 🎯 OPTIMIZED DEFAULTS FOR BETTER ERLE & VOICE CLARITY (2025-01-30)
+                        config_change_duration_blocks_(125),      // Faster adaptation: 125 blocks (~1.25s)
+                        initial_state_seconds_(1.8f),             // Faster convergence: 1.8s vs default 2.5s
+                        conservative_initial_phase_(false),       // More aggressive initial phase for better ERLE
+                        max_dec_factor_lf_(4.5f),                 // Less aggressive LF suppression: 4.5 vs default 6.0 (better voice clarity)
+                        max_inc_factor_(3.2f),                    // Faster voice recovery: 3.2 vs default 2.5
+                        nearend_max_dec_factor_lf_(2.0f),         // Gentle nearend suppression: 2.0 vs default 3.0 (preserve voice)
+                        nearend_max_inc_factor_(4.5f),            // Faster nearend recovery: 4.5 vs default 3.0 (clearer voice)
+                        enr_threshold_(0.32f),                    // More sensitive voice detection: 0.32 vs default 0.4
+                        snr_threshold_(11.0f),                    // Better low-SNR performance: 11.0 vs default 15.0
+                        hold_duration_(6),                        // Shorter hold: 6 vs default 10 (faster voice recovery)
+                        trigger_threshold_(2) {}
 
     ~TtsAec3Processor() {
         std::lock_guard<std::mutex> lock(mutex_);
