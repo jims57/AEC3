@@ -428,7 +428,20 @@ public:
                 return false;
             }
 
-            LOGI("WebRTC AEC3 initialized successfully: %dHz, %d channels, %dms delay", 
+            // 🔧 CRITICAL FIX: Reset all statistical counters for fresh session (2025-01-30)
+            // This ensures ERLE performance is consistent across multiple recording sessions
+            frame_counter_ = 0;
+            last_delay_estimation_ = 0;
+            delay_estimation_counter_ = 0;
+            total_render_frames_ = 0;
+            total_capture_frames_ = 0;
+            current_optimal_delay_ms_ = kStreamDelay;
+            timing_sync_enabled_ = false;
+            
+            // Clear any residual buffers
+            render_buffer_.clear();
+            
+            LOGI("WebRTC AEC3 initialized successfully: %dHz, %d channels, %dms delay (session reset complete)", 
                  kSampleRate, kChannels, kStreamDelay);
             return true;
         } catch (const std::exception& e) {
