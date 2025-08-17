@@ -90,7 +90,7 @@ public:
                         config_change_duration_blocks_(125),      // Faster adaptation: 125 blocks (~1.25s)
                         initial_state_seconds_(1.8f),             // Faster convergence: 1.8s vs default 2.5s
                         conservative_initial_phase_(false),       // More aggressive initial phase for better ERLE
-                        max_dec_factor_lf_(4.5f),                 // Less aggressive LF suppression: 4.5 vs default 6.0 (better voice clarity)
+                        max_dec_factor_lf_(3.0f),                 // Voice clarity optimized: 3.0 for clearer voice
                         max_inc_factor_(3.2f),                    // Faster voice recovery: 3.2 vs default 2.5
                         nearend_max_dec_factor_lf_(2.0f),         // Gentle nearend suppression: 2.0 vs default 3.0 (preserve voice)
                         nearend_max_inc_factor_(4.5f),            // Faster nearend recovery: 4.5 vs default 3.0 (clearer voice)
@@ -115,6 +115,15 @@ public:
         
         try {
             LOGI("Initializing Enhanced WebRTC AEC3 for TTS: %dHz, %d channels (ERLE Optimization 2025-01-30)", kSampleRate, kChannels);
+            
+            // 🔧 CRITICAL FIX: Destroy existing AEC3 components for fresh session (2025-01-30)
+            // This ensures complete state reset including WebRTC internal learning state
+            echo_controller_.reset();
+            aec_factory_.reset();
+            audio_render_buffer_.reset();
+            audio_capture_buffer_.reset();
+            high_pass_filter_.reset();
+            render_buffer_.clear();
             
             // 🚀 PRODUCTION-GRADE AEC3 CONFIGURATION USING OFFICIAL API (2025-01-30)
             // Based on research and official WebRTC AEC3 defaults for maximum ERLE performance
@@ -215,10 +224,7 @@ public:
             current_optimal_delay_ms_ = kStreamDelay;
             timing_sync_enabled_ = false;
             
-            // Clear any residual buffers
-            render_buffer_.clear();
-            
-            LOGI("WebRTC AEC3 initialized successfully: %dHz, %d channels, %dms delay (session reset complete)", 
+            LOGI("WebRTC AEC3 initialized successfully: %dHz, %d channels, %dms delay (complete state reset)", 
                  kSampleRate, kChannels, kStreamDelay);
             return true;
         } catch (const std::exception& e) {
