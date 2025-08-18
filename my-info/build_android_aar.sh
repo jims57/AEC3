@@ -353,8 +353,32 @@ public:
             // All parameters now use official defaults and are runtime-adjustable via mobile UI
             webrtc::EchoCanceller3Config config;
             
-            // 📝 Use official AEC3 defaults - they are designed for production-grade performance
-            // Custom overrides removed to leverage Google WebRTC team's optimized settings
+            // 🎯 CRITICAL FIX: Remove ERLE hard limits for production-grade performance (2025-01-30)
+            // Default WebRTC limits: max_l=4.0dB, max_h=1.5dB (TOTAL ~6dB - explains our limitation!)
+            // Production values: max_l=25.0dB, max_h=15.0dB for true >10dB ERLE capability
+            config.erle.max_l = 25.0f;  // Low-freq ERLE limit: 25dB (vs default 4dB)
+            config.erle.max_h = 15.0f;  // High-freq ERLE limit: 15dB (vs default 1.5dB)
+            config.erle.min = 0.1f;     // Minimum ERLE: 0.1dB (vs default 1dB)
+            LOGI("🎯 ERLE limits configured: max_l=%.1fdB, max_h=%.1fdB (production-grade)", 
+                 config.erle.max_l, config.erle.max_h);
+            
+            // 🚀 PRODUCTION-GRADE FILTER CONFIGURATION (2025-01-30)
+            // Aggressive settings for maximum ERLE performance across devices
+            config.filter.main.length_blocks = 20;        // Longer filter: 20 vs default 13 (better echo learning)
+            config.filter.main.leakage_converged = 0.00001f;  // Lower leakage: better convergence
+            config.filter.main.leakage_diverged = 0.01f;      // Controlled divergence recovery
+            
+            // 🎯 AGGRESSIVE SUPPRESSOR TUNING FOR >10dB ERLE
+            config.suppressor.normal_tuning.max_dec_factor_lf = 15.0f;  // Aggressive LF suppression
+            config.suppressor.nearend_tuning.max_dec_factor_lf = 8.0f;  // Strong nearend suppression
+            
+            // 🔧 ENHANCED DELAY ESTIMATION FOR BETTER SYNC
+            config.delay.down_sampling_factor = 2;        // Higher precision: 2 vs default 4
+            config.delay.num_filters = 8;                 // More filters: 8 vs default 5
+            config.delay.delay_estimate_smoothing = 0.9f; // Stronger smoothing for stability
+            
+            LOGI("🚀 Production-grade AEC3 configured: filter_length=%zu, max_dec_lf=%.1f", 
+                 config.filter.main.length_blocks, config.suppressor.normal_tuning.max_dec_factor_lf);
             
             // 🎛️ FILTER CONFIGURATION (Runtime Adjustable)
             // These parameters significantly impact ERLE and are exposed to mobile UI
@@ -689,7 +713,7 @@ public:
     
     void SetInitialStateSeconds(float seconds) {
         std::lock_guard<std::mutex> lock(mutex_);
-        initial_state_seconds_ = std::max(0.0f, std::min(3.0f, seconds));
+        initial_state_seconds_ = std::max(0.0f, std::min(100.0f, seconds)); // OFFICIAL WebRTC range: 0.0-100.0
         LOGI("📝 AEC3 initial state duration: %.2f seconds", initial_state_seconds_);
         // Note: Requires AEC3 re-initialization to take effect
     }
@@ -734,14 +758,14 @@ public:
     // Dominant Nearend Detection Methods
     void SetEnrThreshold(float threshold) {
         std::lock_guard<std::mutex> lock(mutex_);
-        enr_threshold_ = std::max(0.0f, std::min(1000.0f, threshold));
+        enr_threshold_ = std::max(0.0f, std::min(1000000.0f, threshold)); // OFFICIAL WebRTC range: 0.0-1000000.0
         LOGI("🔍 AEC3 ENR threshold: %.2f", enr_threshold_);
         // Note: Requires AEC3 re-initialization to take effect
     }
     
     void SetSnrThreshold(float threshold) {
         std::lock_guard<std::mutex> lock(mutex_);
-        snr_threshold_ = std::max(0.0f, std::min(1000.0f, threshold));
+        snr_threshold_ = std::max(0.0f, std::min(1000000.0f, threshold)); // OFFICIAL WebRTC range: 0.0-1000000.0
         LOGI("🔍 AEC3 SNR threshold: %.2f", snr_threshold_);
         // Note: Requires AEC3 re-initialization to take effect
     }
