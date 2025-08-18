@@ -309,15 +309,16 @@ public:
                         current_optimal_delay_ms_(kStreamDelay), 
                         delay_estimation_counter_(0),
                         total_render_frames_(0), total_capture_frames_(0),
-                        // 🎯 OPTIMIZED DEFAULTS FOR BETTER ERLE & VOICE CLARITY (2025-01-30)
+                        // 🎯 BALANCED DEFAULTS FOR UNIVERSAL CONVERGENCE + GOOD ERLE (2025-01-30)
+                        // Reverted to safer values to ensure all devices converge
                         config_change_duration_blocks_(125),      // Faster adaptation: 125 blocks (~1.25s)
-                        initial_state_seconds_(1.8f),             // Faster convergence: 1.8s vs default 2.5s
+                        initial_state_seconds_(2.5f),             // Standard learning time: 2.5s (WebRTC default for stability)
                         conservative_initial_phase_(false),       // More aggressive initial phase for better ERLE
-                        max_dec_factor_lf_(3.0f),                 // Voice clarity optimized: 3.0 for clearer voice
-                        max_inc_factor_(3.2f),                    // Faster voice recovery: 3.2 vs default 2.5
+                        max_dec_factor_lf_(4.0f),                 // Moderate echo removal: 4.0 for stable convergence
+                        max_inc_factor_(3.5f),                    // Moderate voice recovery: 3.5 for balance
                         nearend_max_dec_factor_lf_(2.0f),         // Gentle nearend suppression: 2.0 vs default 3.0 (preserve voice)
                         nearend_max_inc_factor_(4.5f),            // Faster nearend recovery: 4.5 vs default 3.0 (clearer voice)
-                        enr_threshold_(0.32f),                    // More sensitive voice detection: 0.32 vs default 0.4
+                        enr_threshold_(0.20f),                    // Sensitive voice detection: 0.20 for better voice preservation
                         snr_threshold_(11.0f),                    // Better low-SNR performance: 11.0 vs default 15.0
                         hold_duration_(6),                        // Shorter hold: 6 vs default 10 (faster voice recovery)
                         trigger_threshold_(2) {}
@@ -367,6 +368,17 @@ public:
             config.filter.main.length_blocks = 20;        // Longer filter: 20 vs default 13 (better echo learning)
             config.filter.main.leakage_converged = 0.00001f;  // Lower leakage: better convergence
             config.filter.main.leakage_diverged = 0.01f;      // Controlled divergence recovery
+            
+            // 🔧 CRITICAL FIX: Robust initialization for inconsistent devices (Android C - 2025-01-30)
+            // Problem: Android C converges 1/4 times due to initialization race conditions
+            // Solution: More conservative filter settings for universal stability
+            config.filter.main.error_floor = 0.001f;      // Higher error floor: prevents race conditions
+            config.filter.main.error_ceil = 2.0f;         // Higher error ceiling: more stability margin
+            config.filter.main_initial.leakage_converged = 0.01f;   // Much higher initial leakage: robust convergence
+            config.filter.main_initial.leakage_diverged = 0.2f;     // Higher initial divergence recovery: stability
+            
+            // 🔧 INITIALIZATION STABILITY: Reduce sensitivity during startup
+            config.filter.main.leakage_diverged = 0.05f;  // Increased from 0.01f: less sensitive to startup noise
             
             // 🎯 AGGRESSIVE SUPPRESSOR TUNING FOR >10dB ERLE
             config.suppressor.normal_tuning.max_dec_factor_lf = 15.0f;  // Aggressive LF suppression
@@ -471,6 +483,10 @@ public:
             current_optimal_delay_ms_ = kStreamDelay;
             timing_sync_enabled_ = false;
             
+            // 🔧 INITIALIZATION STABILIZATION: Add warm-up period for Android C (2025-01-30)
+            initialization_frames_ = 0;  // Track initialization progress
+            is_initialization_complete_ = false;  // Flag for stable state
+            
             LOGI("WebRTC AEC3 initialized successfully: %dHz, %d channels, %dms delay (complete state reset)", 
                  kSampleRate, kChannels, kStreamDelay);
             return true;
@@ -568,41 +584,91 @@ public:
         try {
             auto capture_timestamp = std::chrono::high_resolution_clock::now();
             
+            // 🔧 INITIALIZATION STABILIZATION: Warm-up period for Android C (2025-01-30)
+            initialization_frames_++;
+            if (initialization_frames_ >= kInitializationFrames && !is_initialization_complete_) {
+                is_initialization_complete_ = true;
+                LOGI("🔧 Initialization complete after %d frames - AEC3 ready for optimal performance", 
+                     initialization_frames_);
+            }
+            
                     // 🎯 ENHANCED DEVICE-ADAPTIVE TIMING SYNCHRONIZATION FOR CROSS-DEVICE COMPATIBILITY (2025-01-30)
             if (timing_sync_enabled_) {
                 // Get current AEC3 metrics for device-specific adaptation
                 webrtc::EchoControl::Metrics current_metrics = echo_controller_->GetMetrics();
                 int aec3_detected_delay = current_metrics.delay_ms;
                 
-                // 🔧 DEVICE COMPATIBILITY FIX: Handle delay detection failures
-                if (aec3_detected_delay <= 0 || aec3_detected_delay > 500) {
-                    // Some devices (like Samsung) have broken delay detection, use timing sync instead
-                    const TimedFrame* best_reference = FindOptimalReferenceFrame(capture_timestamp);
-                    if (best_reference) {
-                        int timing_based_delay = EstimateOptimalDelay(capture_timestamp, best_reference->timestamp);
-                        // Force AEC3 to use our timing-based delay when detection fails
-                        if (timing_based_delay >= kMinDelayMs && timing_based_delay <= kMaxDelayMs) {
-                            current_optimal_delay_ms_ = timing_based_delay;
-                            // Force set delay multiple times for stubborn devices
-                            echo_controller_->SetAudioBufferDelay(current_optimal_delay_ms_);
-                            LOGI("🔧 Device delay fix: Forced timing-based delay %dms (AEC3 detection failed: %dms)", 
-                                 current_optimal_delay_ms_, aec3_detected_delay);
-                        }
+                // 🔧 CRITICAL FIX: Gentle delay management during initialization (Android C - 2025-01-30)
+                // Problem: Aggressive delay changes during initialization cause race conditions
+                // Solution: Conservative delay management until initialization is complete
+                
+                if (!is_initialization_complete_) {
+                    // During initialization: Use stable delay, avoid aggressive changes
+                    if (initialization_frames_ % 50 == 0) {  // Every 500ms during init
+                        echo_controller_->SetAudioBufferDelay(current_optimal_delay_ms_);
+                        LOGV("🔧 Gentle init delay: %dms (frame %d/%d)", 
+                             current_optimal_delay_ms_, initialization_frames_, kInitializationFrames);
                     }
                 } else {
-                    // Normal delay detection working - use hybrid approach
-                    const TimedFrame* best_reference = FindOptimalReferenceFrame(capture_timestamp);
-                    if (best_reference) {
-                        int timing_based_delay = EstimateOptimalDelay(capture_timestamp, best_reference->timestamp);
+                    // After initialization: Normal delay management
+                    if (aec3_detected_delay <= 0 || aec3_detected_delay > 500) {
+                        // Some devices (like Samsung) have broken delay detection, use timing sync instead
+                        const TimedFrame* best_reference = FindOptimalReferenceFrame(capture_timestamp);
+                        if (best_reference) {
+                            int timing_based_delay = EstimateOptimalDelay(capture_timestamp, best_reference->timestamp);
+                            // Force AEC3 to use our timing-based delay when detection fails
+                            if (timing_based_delay >= kMinDelayMs && timing_based_delay <= kMaxDelayMs) {
+                                current_optimal_delay_ms_ = timing_based_delay;
+                                // Force set delay multiple times for stubborn devices
+                                echo_controller_->SetAudioBufferDelay(current_optimal_delay_ms_);
+                                LOGI("🔧 Device delay fix: Forced timing-based delay %dms (AEC3 detection failed: %dms)", 
+                                     current_optimal_delay_ms_, aec3_detected_delay);
+                            }
+                        }
+                    }
+                }
+                
+                // 🔧 CONSERVATIVE DELAY MANAGEMENT: Focus on proper delay matching (2025-01-30)
+                // Avoid aggressive filter resets that can cause universal divergence
+                
+                // Log delay mismatch for debugging
+                if (std::abs(aec3_detected_delay - current_optimal_delay_ms_) > 20) {
+                    LOGW("⚠️ Delay mismatch: AEC3=%dms vs Set=%dms (diff=%dms)", 
+                         aec3_detected_delay, current_optimal_delay_ms_, 
+                         std::abs(aec3_detected_delay - current_optimal_delay_ms_));
+                }
+                
+                // Only adjust delay if initialization is complete (prevents Android C race conditions)
+                if (is_initialization_complete_) {
+                    // Only adjust delay if AEC3 detection is reasonable and significantly different
+                    if (aec3_detected_delay > 10 && aec3_detected_delay < 200 && 
+                        std::abs(aec3_detected_delay - current_optimal_delay_ms_) > 30) {
                         
-                        // 🎯 CROSS-DEVICE STABILITY: Weighted average between AEC3 detection and timing sync
-                        int weighted_delay = static_cast<int>(aec3_detected_delay * 0.7f + timing_based_delay * 0.3f);
+                        // Gradual delay adjustment instead of sudden changes
+                        int target_delay = aec3_detected_delay;
+                        int adjustment = (target_delay > current_optimal_delay_ms_) ? 5 : -5;
+                        current_optimal_delay_ms_ = current_optimal_delay_ms_ + adjustment;
                         
-                        // Only update if significantly different to avoid jitter
-                        if (std::abs(weighted_delay - current_optimal_delay_ms_) > 5) {
-                            current_optimal_delay_ms_ = weighted_delay;
-                            LOGI("🎯 Cross-device delay: AEC3=%dms, Timing=%dms, Weighted=%dms", 
-                                 aec3_detected_delay, timing_based_delay, current_optimal_delay_ms_);
+                        // Clamp to reasonable range
+                        current_optimal_delay_ms_ = std::max(kMinDelayMs, std::min(kMaxDelayMs, current_optimal_delay_ms_));
+                        
+                        LOGI("🔧 Gradual delay adjustment: %dms -> %dms (target: %dms)", 
+                             current_optimal_delay_ms_ - adjustment, current_optimal_delay_ms_, target_delay);
+                    } else {
+                        // Normal delay detection working - use hybrid approach
+                        const TimedFrame* best_reference = FindOptimalReferenceFrame(capture_timestamp);
+                        if (best_reference) {
+                            int timing_based_delay = EstimateOptimalDelay(capture_timestamp, best_reference->timestamp);
+                            
+                            // 🎯 CROSS-DEVICE STABILITY: Weighted average between AEC3 detection and timing sync
+                            int weighted_delay = static_cast<int>(aec3_detected_delay * 0.7f + timing_based_delay * 0.3f);
+                            
+                            // Only update if significantly different to avoid jitter
+                            if (std::abs(weighted_delay - current_optimal_delay_ms_) > 5) {
+                                current_optimal_delay_ms_ = weighted_delay;
+                                LOGI("🎯 Cross-device delay: AEC3=%dms, Timing=%dms, Weighted=%dms", 
+                                     aec3_detected_delay, timing_based_delay, current_optimal_delay_ms_);
+                            }
                         }
                     }
                 }
@@ -1016,6 +1082,11 @@ private:
     uint64_t total_render_frames_;
     uint64_t total_capture_frames_;
     bool timing_sync_enabled_ = true;  // Enable timing sync by default
+    
+    // 🔧 INITIALIZATION STABILIZATION for Android C (2025-01-30)
+    int initialization_frames_ = 0;           // Track initialization progress
+    bool is_initialization_complete_ = false; // Flag for stable state
+    static constexpr int kInitializationFrames = 100; // 1 second warm-up at 48kHz/10ms
     
     // Adaptive delay management
     int current_delay_ms_ = kStreamDelay;
