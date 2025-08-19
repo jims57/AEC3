@@ -74,7 +74,7 @@ public:
     static constexpr int kFrameSize = 480;  // 10ms at 48kHz
     static constexpr int kChannels = 1;     // Mono
     static constexpr int kStreamDelay = 100; // Android typical delay
-    
+
     // Enhanced ERLE optimization constants (2025-01-30)
     static constexpr int kMaxDelayMs = 500;
     static constexpr int kMinDelayMs = 20;
@@ -126,9 +126,9 @@ public:
             high_pass_filter_.reset();
             render_buffer_.clear();
             
-            // 🚀 PRODUCTION-GRADE AEC3 CONFIGURATION USING OFFICIAL API (2025-01-30)
+            // 🚀 PRODUCTION-GRADE AEC3 CONFIGURATION WITH NEWER ANDROID COMPATIBILITY (2025-01-31)
             // Based on research and official WebRTC AEC3 defaults for maximum ERLE performance
-            // All parameters now use official defaults and are runtime-adjustable via mobile UI
+            // Enhanced for newer Android devices (Android C) vs older Android devices (Android D)
             webrtc::EchoCanceller3Config config;
             
             // 🎯 CRITICAL FIX: Remove ERLE hard limits for production-grade performance (2025-01-30)
@@ -161,10 +161,11 @@ public:
             config.suppressor.normal_tuning.max_dec_factor_lf = 15.0f;  // Aggressive LF suppression
             config.suppressor.nearend_tuning.max_dec_factor_lf = 8.0f;  // Strong nearend suppression
             
-            // 🔧 ENHANCED DELAY ESTIMATION FOR BETTER SYNC
-            config.delay.down_sampling_factor = 2;        // Higher precision: 2 vs default 4
-            config.delay.num_filters = 8;                 // More filters: 8 vs default 5
-            config.delay.delay_estimate_smoothing = 0.9f; // Stronger smoothing for stability
+            // 🔧 ENHANCED DELAY ESTIMATION FOR NEWER ANDROID COMPATIBILITY (2025-01-31)
+            // Newer Android devices need more conservative delay estimation parameters
+            config.delay.down_sampling_factor = 4;        // More conservative: 4 (default) for newer Android stability
+            config.delay.num_filters = 12;                // More filters: 12 vs default 5 for better newer Android detection
+            config.delay.delay_estimate_smoothing = 0.95f; // Stronger smoothing: 0.95 for newer Android jitter reduction
             
             LOGI("🚀 Production-grade AEC3 configured: filter_length=%zu, max_dec_lf=%.1f", 
                  config.filter.main.length_blocks, config.suppressor.normal_tuning.max_dec_factor_lf);
@@ -233,7 +234,7 @@ public:
                 kSampleRate, kChannels,    // input rate and channels  
                 kSampleRate, kChannels,    // buffer rate and channels (SAME as input)
                 kSampleRate, kChannels);   // output rate and channels (SAME as input)
-                
+
             // 🔧 CRITICAL FIX: Disable linear output buffer for stability (2025-01-30)
             // Issue: Linear output buffer causes complexity without benefit for basic ERLE
             // audio_linear_buffer_ is now set to nullptr and not used
@@ -258,7 +259,9 @@ public:
             total_render_frames_ = 0;
             total_capture_frames_ = 0;
             current_optimal_delay_ms_ = kStreamDelay;
-            timing_sync_enabled_ = false;
+            // 🔧 NEWER ANDROID COMPATIBILITY: Enable timing sync by default for newer devices (2025-01-31)
+            // Newer Android devices (Android C) require more precise timing synchronization
+            timing_sync_enabled_ = true;  // Enable by default for all devices, especially newer Android
             
             // 🔧 INITIALIZATION STABILIZATION: Add warm-up period for Android C (2025-01-30)
             initialization_frames_ = 0;  // Track initialization progress
@@ -980,7 +983,7 @@ Java_com_tts_aec3_WebRtcAec3_nativeSetConfigChangeDuration(JNIEnv *env, jobject 
     }
 }
 
-JNIEXPORT void JNICALL
+JNIEXPORT void JNICALL  
 Java_com_tts_aec3_WebRtcAec3_nativeSetInitialStateSeconds(JNIEnv *env, jobject thiz, jfloat seconds) {
     if (webrtc_aec3_tts::g_processor) {
         webrtc_aec3_tts::g_processor->SetInitialStateSeconds(seconds);
