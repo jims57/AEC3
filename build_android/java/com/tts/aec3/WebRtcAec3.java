@@ -92,6 +92,14 @@ public class WebRtcAec3 {
     public native boolean nativeAutoOptimizeDelay();               // Automatic delay optimization
     public native double[] nativeGetEnhancedMetrics();             // [ERL, ERLE, delay, render_frames, capture_frames, optimal_delay]
     public native boolean nativeEnableTimingSync(boolean enable);   // Enable/disable precise timing sync
+    
+    // 🎯 ERLE ADJUSTMENT PARAMETER NATIVE METHODS FOR MOBILE DEVELOPERS (2025-01-31)
+    public native void nativeSetFilterLengthBlocks(int blocks);           // Filter length blocks (1-100)
+    public native void nativeSetFilterLeakageConverged(float leakage);    // Filter leakage converged (0.000001-1.0)
+    public native void nativeSetFilterLeakageDiverged(float leakage);     // Filter leakage diverged (0.001-1.0)
+    public native void nativeSetDelayDownSamplingFactor(int factor);      // Delay down sampling factor (1-8)
+    public native void nativeSetDelayNumFilters(int filters);             // Delay number of filters (1-32)
+    public native void nativeSetDelayEstimateSmoothing(float smoothing);  // Delay estimate smoothing (0.1-0.99)
 
     // High-level Java API
     private boolean initialized = false;
@@ -339,6 +347,75 @@ public class WebRtcAec3 {
     public boolean enableTimingSync(boolean enable) {
         if (!initialized) return false;
         return nativeEnableTimingSync(enable);
+    }
+    
+    // 🎯 ERLE ADJUSTMENT PARAMETER METHODS FOR MOBILE DEVELOPERS (2025-01-31)
+    // Based on adjust-ERLE-result.md - fine-tune ERLE performance and convergence speed
+    
+    /**
+     * Set filter length in blocks for echo learning
+     * Higher values = better echo learning but slower convergence
+     * @param blocks 1-100 range, default=25 (from adjust-ERLE-result.md)
+     */
+    public void setFilterLengthBlocks(int blocks) {
+        if (initialized) {
+            nativeSetFilterLengthBlocks(blocks);
+        }
+    }
+    
+    /**
+     * Set filter leakage when converged for stability
+     * Lower values = faster convergence but less stability
+     * @param leakage 0.000001-1.0 range, default=0.000005 (from adjust-ERLE-result.md)
+     */
+    public void setFilterLeakageConverged(float leakage) {
+        if (initialized) {
+            nativeSetFilterLeakageConverged(leakage);
+        }
+    }
+    
+    /**
+     * Set filter leakage when diverged for recovery
+     * Lower values = tighter divergence recovery
+     * @param leakage 0.001-1.0 range, default=0.005 (from adjust-ERLE-result.md)
+     */
+    public void setFilterLeakageDiverged(float leakage) {
+        if (initialized) {
+            nativeSetFilterLeakageDiverged(leakage);
+        }
+    }
+    
+    /**
+     * Set delay estimation down sampling factor for precision
+     * Lower values = higher precision but more CPU usage
+     * @param factor 1-8 range, default=2 (from adjust-ERLE-result.md)
+     */
+    public void setDelayDownSamplingFactor(int factor) {
+        if (initialized) {
+            nativeSetDelayDownSamplingFactor(factor);
+        }
+    }
+    
+    /**
+     * Set number of delay estimation filters
+     * Higher values = better delay detection across devices
+     * @param filters 1-32 range, default=16 (from adjust-ERLE-result.md)
+     */
+    public void setDelayNumFilters(int filters) {
+        if (initialized) {
+            nativeSetDelayNumFilters(filters);
+        }
+    }
+    
+    /**
+     * Set delay estimate smoothing factor for stability
+     * Higher values = more stable delay estimation
+     * @param smoothing 0.1-0.99 range, default=0.98 (from adjust-ERLE-result.md)
+     */
+    public void setDelayEstimateSmoothing(float smoothing) {
+        if (initialized) {
+            nativeSetDelayEstimateSmoothing(smoothing);
+        }
     }
 
     /**

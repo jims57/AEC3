@@ -321,7 +321,14 @@ public:
                         enr_threshold_(0.20f),                    // Sensitive voice detection: 0.20 for better voice preservation
                         snr_threshold_(11.0f),                    // Better low-SNR performance: 11.0 vs default 15.0
                         hold_duration_(6),                        // Shorter hold: 6 vs default 10 (faster voice recovery)
-                        trigger_threshold_(2) {}
+                        trigger_threshold_(2),                    // Default trigger threshold
+                        // 🎯 ERLE ADJUSTMENT PARAMETERS FOR MOBILE DEVELOPERS (2025-01-31)
+                        filter_length_blocks_(25),               // Default: 25 blocks (from adjust-ERLE-result.md)
+                        filter_leakage_converged_(0.000005f),    // Default: 0.000005f (from adjust-ERLE-result.md)
+                        filter_leakage_diverged_(0.005f),        // Default: 0.005f (from adjust-ERLE-result.md)
+                        delay_down_sampling_factor_(2),          // Default: 2 (from adjust-ERLE-result.md)
+                        delay_num_filters_(16),                  // Default: 16 (from adjust-ERLE-result.md)
+                        delay_estimate_smoothing_(0.98f) {}
 
     ~TtsAec3Processor() {
         std::lock_guard<std::mutex> lock(mutex_);
@@ -365,9 +372,10 @@ public:
             
             // 🚀 ENHANCED FILTER CONFIGURATION FOR FASTER CONVERGENCE (2025-01-31)
             // Based on Android C success: optimized for speed + stability
-            config.filter.main.length_blocks = 25;        // Longer filter: 25 vs 20 (better echo learning, learned: more is better)
-            config.filter.main.leakage_converged = 0.000005f;  // Even lower leakage: faster convergence (learned: precision matters)
-            config.filter.main.leakage_diverged = 0.005f;      // Tighter divergence recovery (learned: stability critical)
+            // 🎯 MOBILE DEVELOPER CONFIGURABLE: Use runtime parameters if set, otherwise use optimized defaults
+            config.filter.main.length_blocks = (filter_length_blocks_ > 0) ? filter_length_blocks_ : 25;
+            config.filter.main.leakage_converged = (filter_leakage_converged_ > 0.0f) ? filter_leakage_converged_ : 0.000005f;
+            config.filter.main.leakage_diverged = (filter_leakage_diverged_ > 0.0f) ? filter_leakage_diverged_ : 0.005f;
             
             // 🔧 CRITICAL FIX: Robust initialization for inconsistent devices (Android C - 2025-01-30)
             // Problem: Android C converges 1/4 times due to initialization race conditions
@@ -386,9 +394,10 @@ public:
             
             // 🚀 ENHANCED DELAY ESTIMATION FOR UNIVERSAL ANDROID COMPATIBILITY (2025-01-31)
             // Optimized based on successful Android C convergence - applying learned strategies
-            config.delay.down_sampling_factor = 2;        // Higher precision: 2 for faster convergence (learned: precision helps)
-            config.delay.num_filters = 16;                // Even more filters: 16 for better detection across all devices
-            config.delay.delay_estimate_smoothing = 0.98f; // Maximum smoothing: 0.98 for stability (learned: smoothing critical)
+            // 🎯 MOBILE DEVELOPER CONFIGURABLE: Use runtime parameters if set, otherwise use optimized defaults
+            config.delay.down_sampling_factor = (delay_down_sampling_factor_ > 0) ? delay_down_sampling_factor_ : 2;
+            config.delay.num_filters = (delay_num_filters_ > 0) ? delay_num_filters_ : 16;
+            config.delay.delay_estimate_smoothing = (delay_estimate_smoothing_ > 0.0f) ? delay_estimate_smoothing_ : 0.98f;
             
             LOGI("🚀 Production-grade AEC3 configured: filter_length=%zu, max_dec_lf=%.1f", 
                  config.filter.main.length_blocks, config.suppressor.normal_tuning.max_dec_factor_lf);
@@ -853,6 +862,51 @@ public:
         // Note: Requires AEC3 re-initialization to take effect
     }
     
+    // 🎯 ERLE ADJUSTMENT PARAMETER METHODS FOR MOBILE DEVELOPERS (2025-01-31)
+    // Based on adjust-ERLE-result.md - methods to fine-tune ERLE performance
+    
+    void SetFilterLengthBlocks(int blocks) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        filter_length_blocks_ = std::max(1, std::min(100, blocks)); // 1-100 range
+        LOGI("🎯 AEC3 filter length blocks: %d", filter_length_blocks_);
+        // Note: Requires AEC3 re-initialization to take effect
+    }
+    
+    void SetFilterLeakageConverged(float leakage) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        filter_leakage_converged_ = std::max(0.000001f, std::min(1.0f, leakage)); // 0.000001-1.0 range
+        LOGI("🎯 AEC3 filter leakage converged: %.6f", filter_leakage_converged_);
+        // Note: Requires AEC3 re-initialization to take effect
+    }
+    
+    void SetFilterLeakageDiverged(float leakage) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        filter_leakage_diverged_ = std::max(0.001f, std::min(1.0f, leakage)); // 0.001-1.0 range
+        LOGI("🎯 AEC3 filter leakage diverged: %.6f", filter_leakage_diverged_);
+        // Note: Requires AEC3 re-initialization to take effect
+    }
+    
+    void SetDelayDownSamplingFactor(int factor) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        delay_down_sampling_factor_ = std::max(1, std::min(8, factor)); // 1-8 range
+        LOGI("🎯 AEC3 delay down sampling factor: %d", delay_down_sampling_factor_);
+        // Note: Requires AEC3 re-initialization to take effect
+    }
+    
+    void SetDelayNumFilters(int filters) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        delay_num_filters_ = std::max(1, std::min(32, filters)); // 1-32 range
+        LOGI("🎯 AEC3 delay num filters: %d", delay_num_filters_);
+        // Note: Requires AEC3 re-initialization to take effect
+    }
+    
+    void SetDelayEstimateSmoothing(float smoothing) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        delay_estimate_smoothing_ = std::max(0.1f, std::min(0.99f, smoothing)); // 0.1-0.99 range
+        LOGI("🎯 AEC3 delay estimate smoothing: %.3f", delay_estimate_smoothing_);
+        // Note: Requires AEC3 re-initialization to take effect
+    }
+    
     // 🎯 ENHANCED ERLE OPTIMIZATION METHODS (2025-01-30)
     
     bool AutoOptimizeDelay() {
@@ -1116,6 +1170,15 @@ private:
     float snr_threshold_ = 0.0f;                 // 0 = use default (signal-to-noise threshold)
     int hold_duration_ = 0;                      // 0 = use default (detection hold time)
     int trigger_threshold_ = 0;                  // 0 = use default (voice trigger sensitivity)
+    
+    // 🎯 ERLE ADJUSTMENT PARAMETERS FOR MOBILE DEVELOPERS (2025-01-31)
+    // Based on adjust-ERLE-result.md - optimized values for enhanced convergence and ERLE
+    int filter_length_blocks_ = 25;              // Filter length: 25 blocks (better echo learning)
+    float filter_leakage_converged_ = 0.000005f; // Converged leakage: 0.000005f (faster convergence)
+    float filter_leakage_diverged_ = 0.005f;     // Diverged leakage: 0.005f (stability critical)
+    int delay_down_sampling_factor_ = 2;         // Down sampling: 2 (higher precision)
+    int delay_num_filters_ = 16;                 // Delay filters: 16 (better detection)
+    float delay_estimate_smoothing_ = 0.98f;     // Smoothing: 0.98f (maximum stability)
 };
 
 // Global processor instance
@@ -1318,6 +1381,50 @@ Java_com_tts_aec3_WebRtcAec3_nativeEnableTimingSync(JNIEnv *env, jobject thiz, j
     return JNI_FALSE;
 }
 
+// 🎯 ERLE ADJUSTMENT PARAMETER JNI METHODS FOR MOBILE DEVELOPERS (2025-01-31)
+
+JNIEXPORT void JNICALL
+Java_com_tts_aec3_WebRtcAec3_nativeSetFilterLengthBlocks(JNIEnv *env, jobject thiz, jint blocks) {
+    if (webrtc_aec3_tts::g_processor) {
+        webrtc_aec3_tts::g_processor->SetFilterLengthBlocks(blocks);
+    }
+}
+
+JNIEXPORT void JNICALL
+Java_com_tts_aec3_WebRtcAec3_nativeSetFilterLeakageConverged(JNIEnv *env, jobject thiz, jfloat leakage) {
+    if (webrtc_aec3_tts::g_processor) {
+        webrtc_aec3_tts::g_processor->SetFilterLeakageConverged(leakage);
+    }
+}
+
+JNIEXPORT void JNICALL
+Java_com_tts_aec3_WebRtcAec3_nativeSetFilterLeakageDiverged(JNIEnv *env, jobject thiz, jfloat leakage) {
+    if (webrtc_aec3_tts::g_processor) {
+        webrtc_aec3_tts::g_processor->SetFilterLeakageDiverged(leakage);
+    }
+}
+
+JNIEXPORT void JNICALL
+Java_com_tts_aec3_WebRtcAec3_nativeSetDelayDownSamplingFactor(JNIEnv *env, jobject thiz, jint factor) {
+    if (webrtc_aec3_tts::g_processor) {
+        webrtc_aec3_tts::g_processor->SetDelayDownSamplingFactor(factor);
+    }
+}
+
+JNIEXPORT void JNICALL
+Java_com_tts_aec3_WebRtcAec3_nativeSetDelayNumFilters(JNIEnv *env, jobject thiz, jint filters) {
+    if (webrtc_aec3_tts::g_processor) {
+        webrtc_aec3_tts::g_processor->SetDelayNumFilters(filters);
+    }
+}
+
+JNIEXPORT void JNICALL
+Java_com_tts_aec3_WebRtcAec3_nativeSetDelayEstimateSmoothing(JNIEnv *env, jobject thiz, jfloat smoothing) {
+    if (webrtc_aec3_tts::g_processor) {
+        webrtc_aec3_tts::g_processor->SetDelayEstimateSmoothing(smoothing);
+    }
+}
+
 } // extern "C"
 EOWRAPPER
 
@@ -1423,6 +1530,14 @@ public class WebRtcAec3 {
     public native boolean nativeAutoOptimizeDelay();               // Automatic delay optimization
     public native double[] nativeGetEnhancedMetrics();             // [ERL, ERLE, delay, render_frames, capture_frames, optimal_delay]
     public native boolean nativeEnableTimingSync(boolean enable);   // Enable/disable precise timing sync
+    
+    // 🎯 ERLE ADJUSTMENT PARAMETER NATIVE METHODS FOR MOBILE DEVELOPERS (2025-01-31)
+    public native void nativeSetFilterLengthBlocks(int blocks);           // Filter length blocks (1-100)
+    public native void nativeSetFilterLeakageConverged(float leakage);    // Filter leakage converged (0.000001-1.0)
+    public native void nativeSetFilterLeakageDiverged(float leakage);     // Filter leakage diverged (0.001-1.0)
+    public native void nativeSetDelayDownSamplingFactor(int factor);      // Delay down sampling factor (1-8)
+    public native void nativeSetDelayNumFilters(int filters);             // Delay number of filters (1-32)
+    public native void nativeSetDelayEstimateSmoothing(float smoothing);  // Delay estimate smoothing (0.1-0.99)
 
     // High-level Java API
     private boolean initialized = false;
@@ -1670,6 +1785,75 @@ public class WebRtcAec3 {
     public boolean enableTimingSync(boolean enable) {
         if (!initialized) return false;
         return nativeEnableTimingSync(enable);
+    }
+    
+    // 🎯 ERLE ADJUSTMENT PARAMETER METHODS FOR MOBILE DEVELOPERS (2025-01-31)
+    // Based on adjust-ERLE-result.md - fine-tune ERLE performance and convergence speed
+    
+    /**
+     * Set filter length in blocks for echo learning
+     * Higher values = better echo learning but slower convergence
+     * @param blocks 1-100 range, default=25 (from adjust-ERLE-result.md)
+     */
+    public void setFilterLengthBlocks(int blocks) {
+        if (initialized) {
+            nativeSetFilterLengthBlocks(blocks);
+        }
+    }
+    
+    /**
+     * Set filter leakage when converged for stability
+     * Lower values = faster convergence but less stability
+     * @param leakage 0.000001-1.0 range, default=0.000005 (from adjust-ERLE-result.md)
+     */
+    public void setFilterLeakageConverged(float leakage) {
+        if (initialized) {
+            nativeSetFilterLeakageConverged(leakage);
+        }
+    }
+    
+    /**
+     * Set filter leakage when diverged for recovery
+     * Lower values = tighter divergence recovery
+     * @param leakage 0.001-1.0 range, default=0.005 (from adjust-ERLE-result.md)
+     */
+    public void setFilterLeakageDiverged(float leakage) {
+        if (initialized) {
+            nativeSetFilterLeakageDiverged(leakage);
+        }
+    }
+    
+    /**
+     * Set delay estimation down sampling factor for precision
+     * Lower values = higher precision but more CPU usage
+     * @param factor 1-8 range, default=2 (from adjust-ERLE-result.md)
+     */
+    public void setDelayDownSamplingFactor(int factor) {
+        if (initialized) {
+            nativeSetDelayDownSamplingFactor(factor);
+        }
+    }
+    
+    /**
+     * Set number of delay estimation filters
+     * Higher values = better delay detection across devices
+     * @param filters 1-32 range, default=16 (from adjust-ERLE-result.md)
+     */
+    public void setDelayNumFilters(int filters) {
+        if (initialized) {
+            nativeSetDelayNumFilters(filters);
+        }
+    }
+    
+    /**
+     * Set delay estimate smoothing factor for stability
+     * Higher values = more stable delay estimation
+     * @param smoothing 0.1-0.99 range, default=0.98 (from adjust-ERLE-result.md)
+     */
+    public void setDelayEstimateSmoothing(float smoothing) {
+        if (initialized) {
+            nativeSetDelayEstimateSmoothing(smoothing);
+        }
     }
 
     /**
