@@ -363,11 +363,11 @@ public:
             LOGI("🎯 ERLE limits configured: max_l=%.1fdB, max_h=%.1fdB (production-grade)", 
                  config.erle.max_l, config.erle.max_h);
             
-            // 🚀 PRODUCTION-GRADE FILTER CONFIGURATION (2025-01-30)
-            // Aggressive settings for maximum ERLE performance across devices
-            config.filter.main.length_blocks = 20;        // Longer filter: 20 vs default 13 (better echo learning)
-            config.filter.main.leakage_converged = 0.00001f;  // Lower leakage: better convergence
-            config.filter.main.leakage_diverged = 0.01f;      // Controlled divergence recovery
+            // 🚀 ENHANCED FILTER CONFIGURATION FOR FASTER CONVERGENCE (2025-01-31)
+            // Based on Android C success: optimized for speed + stability
+            config.filter.main.length_blocks = 25;        // Longer filter: 25 vs 20 (better echo learning, learned: more is better)
+            config.filter.main.leakage_converged = 0.000005f;  // Even lower leakage: faster convergence (learned: precision matters)
+            config.filter.main.leakage_diverged = 0.005f;      // Tighter divergence recovery (learned: stability critical)
             
             // 🔧 CRITICAL FIX: Robust initialization for inconsistent devices (Android C - 2025-01-30)
             // Problem: Android C converges 1/4 times due to initialization race conditions
@@ -384,11 +384,11 @@ public:
             config.suppressor.normal_tuning.max_dec_factor_lf = 15.0f;  // Aggressive LF suppression
             config.suppressor.nearend_tuning.max_dec_factor_lf = 8.0f;  // Strong nearend suppression
             
-            // 🔧 ENHANCED DELAY ESTIMATION FOR NEWER ANDROID COMPATIBILITY (2025-01-31)
-            // Newer Android devices need more conservative delay estimation parameters
-            config.delay.down_sampling_factor = 4;        // More conservative: 4 (default) for newer Android stability
-            config.delay.num_filters = 12;                // More filters: 12 vs default 5 for better newer Android detection
-            config.delay.delay_estimate_smoothing = 0.95f; // Stronger smoothing: 0.95 for newer Android jitter reduction
+            // 🚀 ENHANCED DELAY ESTIMATION FOR UNIVERSAL ANDROID COMPATIBILITY (2025-01-31)
+            // Optimized based on successful Android C convergence - applying learned strategies
+            config.delay.down_sampling_factor = 2;        // Higher precision: 2 for faster convergence (learned: precision helps)
+            config.delay.num_filters = 16;                // Even more filters: 16 for better detection across all devices
+            config.delay.delay_estimate_smoothing = 0.98f; // Maximum smoothing: 0.98 for stability (learned: smoothing critical)
             
             LOGI("🚀 Production-grade AEC3 configured: filter_length=%zu, max_dec_lf=%.1f", 
                  config.filter.main.length_blocks, config.suppressor.normal_tuning.max_dec_factor_lf);
