@@ -26,8 +26,8 @@ public class WebRtcAec3 {
     public static final int BITS_PER_SAMPLE = 16;
 
     /**
-     * Initialize the AEC3 processor
-     * @return true if initialization successful
+     * Initialize the AEC processor
+     * @return true if successful
      */
     public native boolean nativeInitialize();
 
@@ -66,7 +66,7 @@ public class WebRtcAec3 {
      */
     public native void nativeSetStreamDelay(int delayMs);
     
-    // 🎛️ OFFICIAL AEC3 PARAMETER CONTROL (2025-01-30)
+    // 🎛️ OFFICIAL AEC3 PARAMETER CONTROL (2025-01-31)
     // These native methods directly correspond to official WebRTC AEC3 configuration parameters
     
     // Filter Configuration Native Methods
@@ -88,7 +88,7 @@ public class WebRtcAec3 {
     public native void nativeSetHoldDuration(int duration);               // 0-10000 range, 0=default
     public native void nativeSetTriggerThreshold(int threshold);          // 0-10000 range, 0=default
     
-    // 🎯 ENHANCED ERLE OPTIMIZATION METHODS (2025-01-30)
+    // 🎯 ENHANCED ERLE OPTIMIZATION METHODS (2025-01-31)
     public native boolean nativeAutoOptimizeDelay();               // Automatic delay optimization
     public native double[] nativeGetEnhancedMetrics();             // [ERL, ERLE, delay, render_frames, capture_frames, optimal_delay]
     public native boolean nativeEnableTimingSync(boolean enable);   // Enable/disable precise timing sync
@@ -178,7 +178,7 @@ public class WebRtcAec3 {
         }
     }
     
-    // 🎛️ OFFICIAL AEC3 PARAMETER CONTROL METHODS (2025-01-30)
+    // 🎛️ OFFICIAL AEC3 PARAMETER CONTROL METHODS (2025-01-31)
     // These methods directly control the official WebRTC AEC3 configuration parameters
     // Use 0 values to apply AEC3 defaults, or set specific values for custom tuning
     
@@ -311,7 +311,7 @@ public class WebRtcAec3 {
         }
     }
     
-    // 🎯 ENHANCED ERLE OPTIMIZATION METHODS FOR MOBILE DEVELOPERS (2025-01-30)
+    // 🎯 ENHANCED ERLE OPTIMIZATION METHODS FOR MOBILE DEVELOPERS (2025-01-31)
     
     /**
      * Automatically optimize delay for maximum ERLE performance
@@ -440,7 +440,7 @@ public class WebRtcAec3 {
     }
     
     /**
-     * Enhanced AEC performance metrics with detailed information (2025-01-30)
+     * Enhanced AEC performance metrics with detailed information (2025-01-31)
      */
     public static class EnhancedAecMetrics {
         public final double echoReturnLoss;
