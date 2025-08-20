@@ -395,11 +395,42 @@ bool WqAec3Processor::ProcessMicrophoneAudio(const int16_t* mic_data, int16_t* o
         LOGV("🎯 Enhanced AEC3 processing: frame=%llu, delay=%dms, suppression=%.3f, in_energy=%.2f, out_energy=%.2f", 
              (unsigned long long)total_capture_frames_, current_optimal_delay_ms_, suppression_ratio, capture_energy, output_energy);
         
+        // 🎯 Real-time clean audio buffering (2025-01-31)
+        // Store processed clean audio frame for immediate availability
+        {
+            std::lock_guard<std::mutex> buffer_lock(clean_audio_buffer_mutex_);
+            std::vector<float> cleanFrame(kFrameSize);
+            for (size_t i = 0; i < kFrameSize; ++i) {
+                cleanFrame[i] = output_data[i] / 32768.0f; // Convert int16 to float [-1.0, 1.0]
+            }
+            clean_audio_buffer_.push_back(std::move(cleanFrame));
+            
+            LOGV("🎯 Clean audio frame buffered: %zu total frames", clean_audio_buffer_.size());
+        }
+        
         return true;
     } catch (const std::exception& e) {
         LOGE("Exception in ProcessMicrophoneAudio: %s", e.what());
         return false;
     }
+}
+
+size_t WqAec3Processor::GetAndClearCleanAudioBuffer(std::vector<std::vector<float>>& outputFrames) {
+    std::lock_guard<std::mutex> buffer_lock(clean_audio_buffer_mutex_);
+    
+    outputFrames = std::move(clean_audio_buffer_);
+    clean_audio_buffer_.clear();
+    
+    size_t frameCount = outputFrames.size();
+    LOGI("🎯 Retrieved %zu clean audio frames from buffer", frameCount);
+    
+    return frameCount;
+}
+
+void WqAec3Processor::ClearCleanAudioBuffer() {
+    std::lock_guard<std::mutex> buffer_lock(clean_audio_buffer_mutex_);
+    clean_audio_buffer_.clear();
+    LOGI("🎯 Clean audio buffer cleared");
 }
 
 bool WqAec3Processor::GetMetrics(double* echo_return_loss, double* echo_return_loss_enhancement, int* delay_ms) {

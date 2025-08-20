@@ -100,6 +100,11 @@ public class WebRtcAec3 {
     public native void nativeSetDelayDownSamplingFactor(int factor);      // Delay down sampling factor (1-8)
     public native void nativeSetDelayNumFilters(int filters);             // Delay number of filters (1-32)
     public native void nativeSetDelayEstimateSmoothing(float smoothing);  // Delay estimate smoothing (0.1-0.99)
+    
+    // 🎯 CLEAN AUDIO CONVERSION NATIVE METHODS (2025-01-31)
+    public native byte[] nativeGetCleanAudioAsWAV(int outputSampleRate);  // Get buffered clean audio as WAV
+    public native byte[] nativeGetCleanAudioAsPCM(int outputSampleRate);  // Get buffered clean audio as PCM
+    public native void nativeClearCleanAudioBuffer();                     // Clear clean audio buffer
 
     // High-level Java API
     private boolean initialized = false;
@@ -415,6 +420,56 @@ public class WebRtcAec3 {
     public void setDelayEstimateSmoothing(float smoothing) {
         if (initialized) {
             nativeSetDelayEstimateSmoothing(smoothing);
+        }
+    }
+    
+    // 🎯 CLEAN AUDIO CONVERSION METHODS (2025-01-31)
+    
+    /**
+     * Get accumulated clean audio as WAV format and clear buffer
+     * This method retrieves all processed clean audio frames since recording started
+     * @param outputSampleRate Desired output sample rate (default: 44100)
+     * @return WAV file data as byte array, or null if no audio available
+     */
+    public byte[] getCleanAudioAsWAV(int outputSampleRate) {
+        if (!initialized) return null;
+        return nativeGetCleanAudioAsWAV(outputSampleRate);
+    }
+    
+    /**
+     * Get accumulated clean audio as WAV format with default sample rate
+     * @return WAV file data as byte array, or null if no audio available
+     */
+    public byte[] getCleanAudioAsWAV() {
+        return getCleanAudioAsWAV(44100);
+    }
+    
+    /**
+     * Get accumulated clean audio as PCM format and clear buffer
+     * This method retrieves all processed clean audio frames since recording started
+     * @param outputSampleRate Desired output sample rate (default: 44100)
+     * @return PCM audio data as byte array (16-bit little-endian), or null if no audio available
+     */
+    public byte[] getCleanAudioAsPCM(int outputSampleRate) {
+        if (!initialized) return null;
+        return nativeGetCleanAudioAsPCM(outputSampleRate);
+    }
+    
+    /**
+     * Get accumulated clean audio as PCM format with default sample rate
+     * @return PCM audio data as byte array (16-bit little-endian), or null if no audio available
+     */
+    public byte[] getCleanAudioAsPCM() {
+        return getCleanAudioAsPCM(44100);
+    }
+    
+    /**
+     * Clear the accumulated clean audio buffer without retrieving data
+     * Use this to discard accumulated audio when starting a new recording session
+     */
+    public void clearCleanAudioBuffer() {
+        if (initialized) {
+            nativeClearCleanAudioBuffer();
         }
     }
 

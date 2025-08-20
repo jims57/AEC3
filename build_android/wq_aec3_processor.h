@@ -251,6 +251,23 @@ private:
     int delay_down_sampling_factor_;
     int delay_num_filters_;
     float delay_estimate_smoothing_;
+    
+    // Real-time clean audio buffering system (2025-01-31)
+    std::vector<std::vector<float>> clean_audio_buffer_;
+    std::mutex clean_audio_buffer_mutex_;
+    
+public:
+    /**
+     * Get accumulated clean audio frames and clear buffer
+     * @param outputFrames Output vector to receive clean audio frames
+     * @return Number of frames retrieved
+     */
+    size_t GetAndClearCleanAudioBuffer(std::vector<std::vector<float>>& outputFrames);
+    
+    /**
+     * Clear the clean audio buffer
+     */
+    void ClearCleanAudioBuffer();
 };
 
 } // namespace webrtc_aec3_tts

@@ -7,5 +7,8 @@
 // Include WebRTC compatibility layer
 #include "webrtc_compat.cpp"
 
+// Include audio converter implementation
+#include "wq_aec3_convertor.cpp"
+
 // Include JNI implementation  
 #include "wq_aec3_jni.cpp"

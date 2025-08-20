@@ -195,5 +195,7 @@ CMakeFiles/webrtc_aec3_tts.dir/tts_aec3_wrapper.cc.o: \
   /Users/mac/Documents/GitHub/AEC3/build_android/webrtc_compat.h \
   /Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include/android/log.h \
   /Users/mac/Documents/GitHub/AEC3/build_android/webrtc_compat.cpp \
+  /Users/mac/Documents/GitHub/AEC3/build_android/wq_aec3_convertor.cpp \
+  /Users/mac/Documents/GitHub/AEC3/build_android/wq_aec3_convertor.h \
   /Users/mac/Documents/GitHub/AEC3/build_android/wq_aec3_jni.cpp \
   /Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include/jni.h

@@ -1,6 +1,7 @@
 #include <jni.h>
 #include <memory>
 #include "wq_aec3_processor.h"
+#include "wq_aec3_convertor.h"
 
 // JNI Implementation for WebRTC AEC3 TTS Echo Cancellation (2025-01-31)
 // This file provides the JNI bridge between Java and C++ for the TTS AEC3 processor
@@ -308,6 +309,102 @@ JNIEXPORT void JNICALL
 Java_com_tts_aec3_WebRtcAec3_nativeSetDelayEstimateSmoothing(JNIEnv *env, jobject thiz, jfloat smoothing) {
     if (g_processor) {
         g_processor->SetDelayEstimateSmoothing(smoothing);
+    }
+}
+
+// ========== CLEAN AUDIO CONVERSION JNI METHODS ==========
+
+/**
+ * Get clean audio buffer and convert to WAV format
+ * @param outputSampleRate Output sample rate (default: 44100)
+ * @return byte array containing WAV data, or null on error
+ */
+JNIEXPORT jbyteArray JNICALL
+Java_com_tts_aec3_WebRtcAec3_nativeGetCleanAudioAsWAV(JNIEnv *env, jobject thiz, jint outputSampleRate) {
+    if (!g_processor) return nullptr;
+    
+    // Get clean audio frames from processor buffer
+    std::vector<std::vector<float>> audioFrames;
+    size_t frameCount = g_processor->GetAndClearCleanAudioBuffer(audioFrames);
+    
+    if (frameCount == 0) {
+        return nullptr; // No audio frames available
+    }
+    
+    // Convert to WAV format
+    uint8_t* wavData = nullptr;
+    size_t wavSize = 0;
+    int result = webrtc_aec3_tts::WqAec3Convertor::convertCleanAudioToWAV(
+        audioFrames, 48000, &wavData, &wavSize, outputSampleRate);
+    
+    if (result != 0 || !wavData || wavSize == 0) {
+        if (wavData) free(wavData);
+        return nullptr;
+    }
+    
+    // Create Java byte array
+    jbyteArray wavArray = env->NewByteArray(static_cast<jsize>(wavSize));
+    if (!wavArray) {
+        free(wavData);
+        return nullptr;
+    }
+    
+    env->SetByteArrayRegion(wavArray, 0, static_cast<jsize>(wavSize), 
+                           reinterpret_cast<const jbyte*>(wavData));
+    
+    free(wavData);
+    return wavArray;
+}
+
+/**
+ * Get clean audio buffer and convert to PCM format
+ * @param outputSampleRate Output sample rate (default: 44100)
+ * @return byte array containing PCM data, or null on error
+ */
+JNIEXPORT jbyteArray JNICALL
+Java_com_tts_aec3_WebRtcAec3_nativeGetCleanAudioAsPCM(JNIEnv *env, jobject thiz, jint outputSampleRate) {
+    if (!g_processor) return nullptr;
+    
+    // Get clean audio frames from processor buffer
+    std::vector<std::vector<float>> audioFrames;
+    size_t frameCount = g_processor->GetAndClearCleanAudioBuffer(audioFrames);
+    
+    if (frameCount == 0) {
+        return nullptr; // No audio frames available
+    }
+    
+    // Convert to PCM format
+    uint8_t* pcmData = nullptr;
+    size_t pcmSize = 0;
+    int result = webrtc_aec3_tts::WqAec3Convertor::convertCleanAudioToPCM(
+        audioFrames, 48000, &pcmData, &pcmSize, outputSampleRate);
+    
+    if (result != 0 || !pcmData || pcmSize == 0) {
+        if (pcmData) free(pcmData);
+        return nullptr;
+    }
+    
+    // Create Java byte array
+    jbyteArray pcmArray = env->NewByteArray(static_cast<jsize>(pcmSize));
+    if (!pcmArray) {
+        free(pcmData);
+        return nullptr;
+    }
+    
+    env->SetByteArrayRegion(pcmArray, 0, static_cast<jsize>(pcmSize), 
+                           reinterpret_cast<const jbyte*>(pcmData));
+    
+    free(pcmData);
+    return pcmArray;
+}
+
+/**
+ * Clear the clean audio buffer without retrieving data
+ */
+JNIEXPORT void JNICALL
+Java_com_tts_aec3_WebRtcAec3_nativeClearCleanAudioBuffer(JNIEnv *env, jobject thiz) {
+    if (g_processor) {
+        g_processor->ClearCleanAudioBuffer();
     }
 }
 
