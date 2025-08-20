@@ -182,13 +182,16 @@ int WqAec3Convertor::convertCleanAudioToPCM(const std::vector<std::vector<float>
             return -3;
         }
 
-        int16_t* pcmBuffer = reinterpret_cast<int16_t*>(*outputPcmData);
+        uint8_t* pcmBuffer = *outputPcmData;
         
-        // Step 5: Convert and write PCM data
+        // Step 5: Convert and write PCM data (little-endian format, same as WAV)
         for (size_t i = 0; i < resampledAudio.size(); ++i) {
             // Clamp to [-1.0, 1.0] and convert to 16-bit
             float clamped = std::max(-1.0f, std::min(1.0f, resampledAudio[i]));
-            pcmBuffer[i] = static_cast<int16_t>(clamped * 32767.0f);
+            int16_t pcmSample = static_cast<int16_t>(clamped * 32767.0f);
+            
+            // Write in little-endian format (same as WAV method)
+            writeInt16LE(pcmBuffer + (i * 2), static_cast<uint16_t>(pcmSample));
         }
 
         *outputSize = pcmDataSize;

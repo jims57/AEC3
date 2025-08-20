@@ -323,9 +323,9 @@ JNIEXPORT jbyteArray JNICALL
 Java_com_tts_aec3_WebRtcAec3_nativeGetCleanAudioAsWAV(JNIEnv *env, jobject thiz, jint outputSampleRate) {
     if (!g_processor) return nullptr;
     
-    // Get clean audio frames from processor buffer
+    // Get clean audio frames from processor buffer (no clear - PCM method will clear)
     std::vector<std::vector<float>> audioFrames;
-    size_t frameCount = g_processor->GetAndClearCleanAudioBuffer(audioFrames);
+    size_t frameCount = g_processor->GetCleanAudioBuffer(audioFrames);
     
     if (frameCount == 0) {
         return nullptr; // No audio frames available
@@ -363,14 +363,28 @@ Java_com_tts_aec3_WebRtcAec3_nativeGetCleanAudioAsWAV(JNIEnv *env, jobject thiz,
  */
 JNIEXPORT jbyteArray JNICALL
 Java_com_tts_aec3_WebRtcAec3_nativeGetCleanAudioAsPCM(JNIEnv *env, jobject thiz, jint outputSampleRate) {
-    if (!g_processor) return nullptr;
+    if (!g_processor) {
+        __android_log_print(ANDROID_LOG_ERROR, "WebRTC_AEC3_TTS", "PCM: g_processor is null");
+        return nullptr;
+    }
     
     // Get clean audio frames from processor buffer
     std::vector<std::vector<float>> audioFrames;
-    size_t frameCount = g_processor->GetAndClearCleanAudioBuffer(audioFrames);
+    size_t frameCount = g_processor->GetCleanAudioBuffer(audioFrames);
+    
+    __android_log_print(ANDROID_LOG_INFO, "WebRTC_AEC3_TTS", "PCM: Retrieved %zu frames from buffer", frameCount);
     
     if (frameCount == 0) {
+        __android_log_print(ANDROID_LOG_WARN, "WebRTC_AEC3_TTS", "PCM: No audio frames available");
         return nullptr; // No audio frames available
+    }
+    
+    // Debug: Check first frame content
+    if (!audioFrames.empty() && !audioFrames[0].empty()) {
+        float firstSample = audioFrames[0][0];
+        float lastSample = audioFrames[0][audioFrames[0].size()-1];
+        __android_log_print(ANDROID_LOG_INFO, "WebRTC_AEC3_TTS", "PCM: First frame samples: first=%.6f, last=%.6f, size=%zu", 
+                           firstSample, lastSample, audioFrames[0].size());
     }
     
     // Convert to PCM format
@@ -379,20 +393,33 @@ Java_com_tts_aec3_WebRtcAec3_nativeGetCleanAudioAsPCM(JNIEnv *env, jobject thiz,
     int result = webrtc_aec3_tts::WqAec3Convertor::convertCleanAudioToPCM(
         audioFrames, 48000, &pcmData, &pcmSize, outputSampleRate);
     
+    __android_log_print(ANDROID_LOG_INFO, "WebRTC_AEC3_TTS", "PCM: Conversion result=%d, pcmData=%p, pcmSize=%zu", 
+                       result, pcmData, pcmSize);
+    
     if (result != 0 || !pcmData || pcmSize == 0) {
+        __android_log_print(ANDROID_LOG_ERROR, "WebRTC_AEC3_TTS", "PCM: Conversion failed - result=%d, data=%p, size=%zu", 
+                           result, pcmData, pcmSize);
         if (pcmData) free(pcmData);
         return nullptr;
     }
     
+    // Debug: Check first few PCM bytes
+    int16_t* pcmSamples = reinterpret_cast<int16_t*>(pcmData);
+    __android_log_print(ANDROID_LOG_INFO, "WebRTC_AEC3_TTS", "PCM: First samples: [%d, %d, %d, %d]", 
+                       pcmSamples[0], pcmSamples[1], pcmSamples[2], pcmSamples[3]);
+    
     // Create Java byte array
     jbyteArray pcmArray = env->NewByteArray(static_cast<jsize>(pcmSize));
     if (!pcmArray) {
+        __android_log_print(ANDROID_LOG_ERROR, "WebRTC_AEC3_TTS", "PCM: Failed to create Java byte array");
         free(pcmData);
         return nullptr;
     }
     
     env->SetByteArrayRegion(pcmArray, 0, static_cast<jsize>(pcmSize), 
                            reinterpret_cast<const jbyte*>(pcmData));
+    
+    __android_log_print(ANDROID_LOG_INFO, "WebRTC_AEC3_TTS", "PCM: Successfully created byte array of size %zu", pcmSize);
     
     free(pcmData);
     return pcmArray;
@@ -406,6 +433,31 @@ Java_com_tts_aec3_WebRtcAec3_nativeClearCleanAudioBuffer(JNIEnv *env, jobject th
     if (g_processor) {
         g_processor->ClearCleanAudioBuffer();
     }
+}
+
+// ========== ENR ADAPTIVE PROCESSING JNI METHODS ==========
+
+/**
+ * Set TTS playback state for ENR-based adaptive processing
+ * @param isPlaying true when TTS is playing, false when only human voice
+ */
+JNIEXPORT void JNICALL
+Java_com_tts_aec3_WebRtcAec3_nativeSetTtsPlaybackState(JNIEnv *env, jobject thiz, jboolean isPlaying) {
+    if (g_processor) {
+        g_processor->SetTtsPlaybackState(isPlaying == JNI_TRUE);
+    }
+}
+
+/**
+ * Get current ENR (Echo-to-Nearend Ratio) value
+ * @return Current ENR value (higher = more echo relative to voice)
+ */
+JNIEXPORT jdouble JNICALL
+Java_com_tts_aec3_WebRtcAec3_nativeGetCurrentENR(JNIEnv *env, jobject thiz) {
+    if (g_processor) {
+        return static_cast<jdouble>(g_processor->GetCurrentENR());
+    }
+    return 0.0;
 }
 
 } // extern "C"

@@ -48,7 +48,13 @@ WqAec3Processor::WqAec3Processor() :
     filter_leakage_diverged_(0.005f),
     delay_down_sampling_factor_(2),
     delay_num_filters_(16),
-    delay_estimate_smoothing_(0.98f) {
+    delay_estimate_smoothing_(0.98f),
+    // 🎯 ENR ADAPTIVE PROCESSING INITIALIZATION (2025-01-31)
+    tts_is_playing_(false),
+    current_enr_(0.0),
+    tts_energy_threshold_(1000.0),
+    voice_enhancement_factor_(1.2f),
+    frames_without_tts_(0) {
 }
 
 WqAec3Processor::~WqAec3Processor() {
@@ -255,8 +261,22 @@ bool WqAec3Processor::ProcessTtsAudio(const int16_t* tts_data, size_t length) {
         
         double render_energy = CalculateFrameEnergy(tts_data, length);
         
-        LOGV("Processed TTS reference signal: frame=%llu, energy=%.2f, buffer_size=%zu", 
-             (unsigned long long)frame_counter_ - 1, render_energy, render_buffer_.size());
+        // 🎯 ENR ADAPTIVE PROCESSING: Detect TTS playback state (2025-01-31)
+        if (render_energy > tts_energy_threshold_) {
+            tts_is_playing_ = true;
+            frames_without_tts_ = 0;
+            LOGV("🎵 TTS audio detected: energy=%.2f (threshold=%.2f)", render_energy, tts_energy_threshold_);
+        } else {
+            frames_without_tts_++;
+            if (frames_without_tts_ > 20) { // 200ms of silence = TTS stopped
+                tts_is_playing_ = false;
+                LOGV("🔇 TTS silence detected: %d frames without TTS", frames_without_tts_);
+            }
+        }
+        
+        LOGV("Processed TTS reference signal: frame=%llu, energy=%.2f, buffer_size=%zu, TTS_playing=%s", 
+             (unsigned long long)frame_counter_ - 1, render_energy, render_buffer_.size(), 
+             tts_is_playing_ ? "true" : "false");
         
         return true;
     } catch (const std::exception& e) {
@@ -386,6 +406,31 @@ bool WqAec3Processor::ProcessMicrophoneAudio(const int16_t* mic_data, int16_t* o
         double output_energy = CalculateFrameEnergy(output_data, length);
         double suppression_ratio = capture_energy > 0 ? output_energy / capture_energy : 1.0;
         
+        // 🎯 ENR ADAPTIVE PROCESSING: Enhance voice quality based on TTS state (2025-01-31)
+        if (!tts_is_playing_ && capture_energy > 500.0) {
+            // No TTS playing + human voice detected = enhance voice clarity
+            current_enr_ = 0.0; // No echo present
+            
+            // Apply voice enhancement for clearer human voice
+            for (size_t i = 0; i < length; ++i) {
+                float enhanced = output_data[i] * voice_enhancement_factor_;
+                output_data[i] = static_cast<int16_t>(
+                    std::max(-32768.0f, std::min(32767.0f, enhanced)));
+            }
+            
+            LOGV("🎤 Voice-only mode: Enhanced human voice clarity (ENR=%.2f, factor=%.2f)", 
+                 current_enr_, voice_enhancement_factor_);
+        } else if (tts_is_playing_) {
+            // TTS playing = calculate actual ENR for echo cancellation
+            double echo_energy = capture_energy - output_energy;
+            current_enr_ = (output_energy > 0) ? echo_energy / output_energy : 0.0;
+            
+            LOGV("🔊 Echo mode: TTS playing, ENR=%.2f (echo/voice ratio)", current_enr_);
+        } else {
+            // Silence or very low voice
+            current_enr_ = 0.0;
+        }
+        
         // Periodic delay estimation and ERLE optimization
         if (++delay_estimation_counter_ >= kDelayEstimationFrames) {
             PerformDelayEstimationOptimization();
@@ -403,8 +448,21 @@ bool WqAec3Processor::ProcessMicrophoneAudio(const int16_t* mic_data, int16_t* o
             for (size_t i = 0; i < kFrameSize; ++i) {
                 cleanFrame[i] = output_data[i] / 32768.0f; // Convert int16 to float [-1.0, 1.0]
             }
-            clean_audio_buffer_.push_back(std::move(cleanFrame));
             
+            // Debug: Log first few samples to verify data BEFORE moving
+            if (clean_audio_buffer_.size() % 50 == 0) { // Log every 50th frame
+                LOGI("🎯 Clean audio frame buffered: frame %zu, input_samples [%d, %d, %d, %d], float_samples [%.6f, %.6f, %.6f, %.6f]", 
+                     clean_audio_buffer_.size() + 1, output_data[0], output_data[1], output_data[2], output_data[3],
+                     cleanFrame[0], cleanFrame[1], cleanFrame[2], cleanFrame[3]);
+            }
+            
+            // CRITICAL DEBUG: Always log first frame to see if AEC3 produces any output
+            if (clean_audio_buffer_.size() == 0) {
+                LOGI("🔍 FIRST FRAME DEBUG: output_data [%d, %d, %d, %d], capture_energy=%.2f, output_energy=%.2f", 
+                     output_data[0], output_data[1], output_data[2], output_data[3], capture_energy, output_energy);
+            }
+            
+            clean_audio_buffer_.push_back(std::move(cleanFrame));
             LOGV("🎯 Clean audio frame buffered: %zu total frames", clean_audio_buffer_.size());
         }
         
@@ -422,7 +480,18 @@ size_t WqAec3Processor::GetAndClearCleanAudioBuffer(std::vector<std::vector<floa
     clean_audio_buffer_.clear();
     
     size_t frameCount = outputFrames.size();
-    LOGI("🎯 Retrieved %zu clean audio frames from buffer", frameCount);
+    LOGI("🎯 Retrieved %zu clean audio frames from buffer and cleared", frameCount);
+    
+    return frameCount;
+}
+
+size_t WqAec3Processor::GetCleanAudioBuffer(std::vector<std::vector<float>>& outputFrames) {
+    std::lock_guard<std::mutex> buffer_lock(clean_audio_buffer_mutex_);
+    
+    outputFrames = clean_audio_buffer_; // Copy without moving
+    
+    size_t frameCount = outputFrames.size();
+    LOGI("🎯 Retrieved %zu clean audio frames from buffer (no clear)", frameCount);
     
     return frameCount;
 }
@@ -431,6 +500,22 @@ void WqAec3Processor::ClearCleanAudioBuffer() {
     std::lock_guard<std::mutex> buffer_lock(clean_audio_buffer_mutex_);
     clean_audio_buffer_.clear();
     LOGI("🎯 Clean audio buffer cleared");
+}
+
+// ========== ENR ADAPTIVE PROCESSING METHODS IMPLEMENTATION ==========
+
+void WqAec3Processor::SetTtsPlaybackState(bool isPlaying) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    tts_is_playing_ = isPlaying;
+    if (!isPlaying) {
+        frames_without_tts_ = 0;
+    }
+    LOGI("🎯 TTS playback state: %s (ENR adaptive mode)", isPlaying ? "playing" : "stopped");
+}
+
+double WqAec3Processor::GetCurrentENR() {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return current_enr_;
 }
 
 bool WqAec3Processor::GetMetrics(double* echo_return_loss, double* echo_return_loss_enhancement, int* delay_ms) {
