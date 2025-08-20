@@ -322,7 +322,7 @@ bool WqAec3Processor::ProcessMicrophoneAudio(const int16_t* mic_data, int16_t* o
                          current_optimal_delay_ms_, initialization_frames_, kInitializationFrames);
                 }
             } else {
-                // After initialization: normal delay management
+                // After initialization: normal delay management with cross-device auto-adjustment
                 if (aec3_detected_delay <= 0 || aec3_detected_delay > 500) {
                     const TimedFrame* best_reference = FindOptimalReferenceFrame(capture_timestamp);
                     if (best_reference) {
@@ -344,7 +344,7 @@ bool WqAec3Processor::ProcessMicrophoneAudio(const int16_t* mic_data, int16_t* o
                      std::abs(aec3_detected_delay - current_optimal_delay_ms_));
             }
             
-            // Gradual delay adjustment if initialization is complete
+            // Gradual delay adjustment for cross-device compatibility
             if (is_initialization_complete_) {
                 if (aec3_detected_delay > 10 && aec3_detected_delay < 200 && 
                     std::abs(aec3_detected_delay - current_optimal_delay_ms_) > 30) {
@@ -357,16 +357,17 @@ bool WqAec3Processor::ProcessMicrophoneAudio(const int16_t* mic_data, int16_t* o
                     LOGI("🔧 Gradual delay adjustment: %dms -> %dms (target: %dms)", 
                          current_optimal_delay_ms_ - adjustment, current_optimal_delay_ms_, target_delay);
                 } else {
-                    // Normal delay detection working - use hybrid approach
+                    // Normal delay detection working - use hybrid approach for best cross-device performance
                     const TimedFrame* best_reference = FindOptimalReferenceFrame(capture_timestamp);
                     if (best_reference) {
                         int timing_based_delay = EstimateOptimalDelay(capture_timestamp, best_reference->timestamp);
                         int weighted_delay = static_cast<int>(aec3_detected_delay * 0.7f + timing_based_delay * 0.3f);
                         
                         if (std::abs(weighted_delay - current_optimal_delay_ms_) > 5) {
+                            int old_delay = current_optimal_delay_ms_;
                             current_optimal_delay_ms_ = weighted_delay;
-                            LOGI("🎯 Cross-device delay: AEC3=%dms, Timing=%dms, Weighted=%dms", 
-                                 aec3_detected_delay, timing_based_delay, current_optimal_delay_ms_);
+                            LOGI("🎯 Cross-device delay optimization: %dms -> %dms (AEC3=%dms, Timing=%dms)", 
+                                 old_delay, current_optimal_delay_ms_, aec3_detected_delay, timing_based_delay);
                         }
                     }
                 }
@@ -406,29 +407,17 @@ bool WqAec3Processor::ProcessMicrophoneAudio(const int16_t* mic_data, int16_t* o
         double output_energy = CalculateFrameEnergy(output_data, length);
         double suppression_ratio = capture_energy > 0 ? output_energy / capture_energy : 1.0;
         
-        // 🎯 ENR ADAPTIVE PROCESSING: Enhance voice quality based on TTS state (2025-01-31)
-        if (!tts_is_playing_ && capture_energy > 500.0) {
-            // No TTS playing + human voice detected = enhance voice clarity
-            current_enr_ = 0.0; // No echo present
-            
-            // Apply voice enhancement for clearer human voice
-            for (size_t i = 0; i < length; ++i) {
-                float enhanced = output_data[i] * voice_enhancement_factor_;
-                output_data[i] = static_cast<int16_t>(
-                    std::max(-32768.0f, std::min(32767.0f, enhanced)));
-            }
-            
-            LOGV("🎤 Voice-only mode: Enhanced human voice clarity (ENR=%.2f, factor=%.2f)", 
-                 current_enr_, voice_enhancement_factor_);
-        } else if (tts_is_playing_) {
-            // TTS playing = calculate actual ENR for echo cancellation
-            double echo_energy = capture_energy - output_energy;
-            current_enr_ = (output_energy > 0) ? echo_energy / output_energy : 0.0;
-            
-            LOGV("🔊 Echo mode: TTS playing, ENR=%.2f (echo/voice ratio)", current_enr_);
+        // 🎯 TTS STATE BASED AEC CONTROL (2025-01-31)
+        // Use tts_is_playing_ to control AEC operation instead of ENR
+        if (tts_is_playing_) {
+            // TTS playing = normal AEC3 echo cancellation (use processed output)
+            LOGV("🔊 TTS playing: Using AEC3 processed output for echo cancellation");
+            // output_data already contains AEC3 processed result - keep as is
         } else {
-            // Silence or very low voice
-            current_enr_ = 0.0;
+            // No TTS playing = bypass AEC, use original microphone input for clearer voice
+            LOGV("🎤 No TTS: Bypassing AEC3, using original microphone input for clearer voice");
+            // Copy original microphone input instead of AEC3 processed output
+            memcpy(output_data, mic_data, length * sizeof(int16_t));
         }
         
         // Periodic delay estimation and ERLE optimization
@@ -563,8 +552,15 @@ void WqAec3Processor::SetStreamDelay(int delay_ms) {
     std::lock_guard<std::mutex> lock(mutex_);
     if (echo_controller_) {
         manual_delay_ms_ = delay_ms;
-        echo_controller_->SetAudioBufferDelay(delay_ms);
-        LOGI("Stream delay updated to %dms", delay_ms);
+        // 🎯 INITIAL SETTING: Only set if auto-adjustment hasn't started yet
+        if (current_optimal_delay_ms_ == kStreamDelay) {
+            current_optimal_delay_ms_ = delay_ms;
+            LOGI("🎯 Initial stream delay set: %dms (will be auto-optimized for device)", delay_ms);
+        } else {
+            LOGI("🎯 Stream delay received: %dms (auto-adjustment active, using optimized: %dms)", 
+                 delay_ms, current_optimal_delay_ms_);
+        }
+        echo_controller_->SetAudioBufferDelay(current_optimal_delay_ms_);
     }
 }
 
