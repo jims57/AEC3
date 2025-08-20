@@ -95,11 +95,6 @@ bool WqAec3Processor::Initialize() {
         config.filter.main.error_ceil = 2.0f;
         config.filter.main_initial.leakage_converged = 0.01f;
         config.filter.main_initial.leakage_diverged = 0.2f;
-        config.filter.main.leakage_diverged = 0.05f;
-        
-        // 🎯 AGGRESSIVE SUPPRESSOR TUNING FOR >10dB ERLE
-        config.suppressor.normal_tuning.max_dec_factor_lf = 15.0f;
-        config.suppressor.nearend_tuning.max_dec_factor_lf = 8.0f;
         
         // 🚀 ENHANCED DELAY ESTIMATION FOR UNIVERSAL ANDROID COMPATIBILITY (2025-01-31)
         config.delay.down_sampling_factor = (delay_down_sampling_factor_ > 0) ? delay_down_sampling_factor_ : 2;
@@ -265,7 +260,203 @@ bool WqAec3Processor::ProcessTtsAudio(const int16_t* tts_data, size_t length) {
     }
 }
 
+int WqAec3Processor::GetCleanMicrophoneAudio(const int16_t* inputSamples,
+                                           uint32_t numInputSamples,
+                                           uint32_t inputSampleRate,
+                                           int16_t** outputSamples,
+                                           uint32_t* numOutputSamples,
+                                           uint32_t outputSampleRate,
+                                           double* erle,
+                                           int* delayMs) {
+    if (!inputSamples || !outputSamples || !numOutputSamples || !erle || !delayMs) {
+        LOGE("GetCleanMicrophoneAudio: Invalid parameters");
+        return -1;
+    }
+    
+    if (numInputSamples == 0) {
+        LOGE("GetCleanMicrophoneAudio: No input samples");
+        return -2;
+    }
+    
+    std::lock_guard<std::mutex> lock(mutex_);
+    
+    if (!echo_controller_) {
+        LOGE("GetCleanMicrophoneAudio: AEC3 not initialized");
+        return -3;
+    }
+    
+    try {
+        // Step 1: Resample input to 48kHz if needed
+        std::vector<int16_t> resampledInput;
+        uint32_t processingSamples = numInputSamples;
+        const int16_t* processingData = inputSamples;
+        
+        if (inputSampleRate != kSampleRate) {
+            // Simple linear interpolation resampling
+            double resampleRatio = static_cast<double>(kSampleRate) / inputSampleRate;
+            processingSamples = static_cast<uint32_t>(numInputSamples * resampleRatio);
+            resampledInput.resize(processingSamples);
+            
+            for (uint32_t i = 0; i < processingSamples; ++i) {
+                double srcIndex = i / resampleRatio;
+                uint32_t index = static_cast<uint32_t>(srcIndex);
+                double fraction = srcIndex - index;
+                
+                if (index < numInputSamples - 1) {
+                    resampledInput[i] = static_cast<int16_t>(
+                        inputSamples[index] * (1.0 - fraction) + inputSamples[index + 1] * fraction);
+                } else if (index < numInputSamples) {
+                    resampledInput[i] = inputSamples[index];
+                } else {
+                    resampledInput[i] = 0;
+                }
+            }
+            processingData = resampledInput.data();
+            LOGV("Resampled audio: %dHz->%dHz, %d->%d samples", 
+                 inputSampleRate, kSampleRate, numInputSamples, processingSamples);
+        }
+        
+        // 🎯 Step 2: LOSSLESS buffering system for perfect 480-sample alignment (2025-01-31)
+        // Add new samples to the input buffer
+        {
+            std::lock_guard<std::mutex> buffer_lock(input_buffer_mutex_);
+            input_buffer_.insert(input_buffer_.end(), processingData, processingData + processingSamples);
+        }
+        
+        // Step 3: Process all complete 480-sample frames from buffer
+        std::vector<int16_t> cleanOutput;
+        uint32_t totalSamplesInBuffer;
+        uint32_t completeFrames = 0;
+        
+        {
+            std::lock_guard<std::mutex> buffer_lock(input_buffer_mutex_);
+            totalSamplesInBuffer = input_buffer_.size();
+            completeFrames = totalSamplesInBuffer / kFrameSize;
+            
+            LOGI("🎯 Buffer分析: 总样本=%d, 完整帧数=%d, 帧大小=%d", 
+                 totalSamplesInBuffer, completeFrames, kFrameSize);
+        }
+        
+        cleanOutput.reserve(completeFrames * kFrameSize);
+        
+        // Process each complete frame
+        for (uint32_t frame = 0; frame < completeFrames; ++frame) {
+            int16_t frameInput[kFrameSize];
+            int16_t frameOutput[kFrameSize];
+            
+            // Copy frame from buffer
+            {
+                std::lock_guard<std::mutex> buffer_lock(input_buffer_mutex_);
+                memcpy(frameInput, input_buffer_.data() + (frame * kFrameSize), kFrameSize * sizeof(int16_t));
+            }
+            
+            // Process frame through AEC3
+            LOGI("🎯 Processing frame %d through AEC3...", frame);
+            bool success = ProcessMicrophoneAudio(frameInput, frameOutput, kFrameSize);
+            
+            if (success) {
+                cleanOutput.insert(cleanOutput.end(), frameOutput, frameOutput + kFrameSize);
+                LOGI("✅ Frame %d processed successfully, output samples added", frame);
+            } else {
+                LOGE("❌ Frame processing failed for frame %d", frame);
+                // Use input as fallback (better than silence)
+                cleanOutput.insert(cleanOutput.end(), frameInput, frameInput + kFrameSize);
+                LOGW("⚠️ Using input as fallback for frame %d", frame);
+            }
+        }
+        
+        // Remove processed samples from buffer, keep remainder for next call
+        {
+            std::lock_guard<std::mutex> buffer_lock(input_buffer_mutex_);
+            uint32_t processedSamples = completeFrames * kFrameSize;
+            if (processedSamples > 0 && processedSamples <= input_buffer_.size()) {
+                input_buffer_.erase(input_buffer_.begin(), input_buffer_.begin() + processedSamples);
+                LOGV("🎯 Buffer: processed %d samples, %zu remain for next call", 
+                     processedSamples, input_buffer_.size());
+            }
+        }
+        
+        // Step 4: Resample output to target sample rate if needed
+        std::vector<int16_t> finalOutput;
+        if (outputSampleRate != kSampleRate) {
+            double resampleRatio = static_cast<double>(outputSampleRate) / kSampleRate;
+            uint32_t finalSamples = static_cast<uint32_t>(cleanOutput.size() * resampleRatio);
+            finalOutput.resize(finalSamples);
+            
+            for (uint32_t i = 0; i < finalSamples; ++i) {
+                double srcIndex = i / resampleRatio;
+                uint32_t index = static_cast<uint32_t>(srcIndex);
+                double fraction = srcIndex - index;
+                
+                if (index < cleanOutput.size() - 1) {
+                    finalOutput[i] = static_cast<int16_t>(
+                        cleanOutput[index] * (1.0 - fraction) + cleanOutput[index + 1] * fraction);
+                } else if (index < cleanOutput.size()) {
+                    finalOutput[i] = cleanOutput[index];
+                } else {
+                    finalOutput[i] = 0;
+                }
+            }
+            LOGV("Output resampled: %dHz->%dHz, %zu->%d samples", 
+                 kSampleRate, outputSampleRate, cleanOutput.size(), finalSamples);
+        } else {
+            finalOutput = std::move(cleanOutput);
+        }
+        
+        // Step 5: Allocate output buffer and copy data
+        *numOutputSamples = finalOutput.size();
+        if (*numOutputSamples > 0) {
+            *outputSamples = static_cast<int16_t*>(malloc(*numOutputSamples * sizeof(int16_t)));
+            if (!*outputSamples) {
+                LOGE("Failed to allocate output buffer");
+                return -4;
+            }
+            memcpy(*outputSamples, finalOutput.data(), *numOutputSamples * sizeof(int16_t));
+        } else {
+            // No complete frames to output yet (waiting for more input)
+            *outputSamples = nullptr;
+            *numOutputSamples = 0;
+            LOGV("🎯 No complete frames ready - buffering for next call");
+        }
+        
+        // Step 6: Get current metrics
+        double erl, currentErle;
+        int currentDelay;
+        if (GetMetrics(&erl, &currentErle, &currentDelay)) {
+            *erle = currentErle;
+            *delayMs = currentDelay;
+        } else {
+            *erle = 0.0;
+            *delayMs = 0;
+        }
+        
+        LOGI("🎯 GetCleanMicrophoneAudio: Input %d->%d samples, %dHz->%dHz, Output %d samples, ERLE=%.2fdB, Delay=%dms",
+             numInputSamples, processingSamples, inputSampleRate, kSampleRate, *numOutputSamples, *erle, *delayMs);
+             
+        // 🎯 Debug logging for buffer state
+        {
+            std::lock_guard<std::mutex> buffer_lock(input_buffer_mutex_);
+            LOGI("🎯 Buffer状态: 输入后大小=%zu, 完整帧数=%d, 输出样本=%d", 
+                 input_buffer_.size(), completeFrames, *numOutputSamples);
+        }
+        
+        return 0; // Success
+        
+    } catch (const std::exception& e) {
+        LOGE("Exception in GetCleanMicrophoneAudio: %s", e.what());
+        return -5;
+    }
+}
+
+void WqAec3Processor::ClearInputBuffer() {
+    std::lock_guard<std::mutex> buffer_lock(input_buffer_mutex_);
+    input_buffer_.clear();
+    LOGI("🎯 Input buffer cleared - ready for new audio stream");
+}
+
 bool WqAec3Processor::ProcessMicrophoneAudio(const int16_t* mic_data, int16_t* output_data, size_t length) {
+    LOGI("🎯 ProcessMicrophoneAudio called: length=%zu", length);
+    
     if (length != kFrameSize) {
         LOGE("Invalid mic data: length=%zu, expected=%d", length, kFrameSize);
         return false;
@@ -274,9 +465,12 @@ bool WqAec3Processor::ProcessMicrophoneAudio(const int16_t* mic_data, int16_t* o
     std::lock_guard<std::mutex> lock(mutex_);
     
     if (!echo_controller_ || !audio_capture_buffer_ || !high_pass_filter_) {
-        LOGE("AEC3 not initialized");
+        LOGE("AEC3 not initialized: echo_controller_=%p, audio_capture_buffer_=%p, high_pass_filter_=%p", 
+             echo_controller_.get(), audio_capture_buffer_.get(), high_pass_filter_.get());
         return false;
     }
+    
+    LOGI("🎯 AEC3 components verified, starting processing...");
 
     try {
         auto capture_timestamp = std::chrono::high_resolution_clock::now();
@@ -395,6 +589,7 @@ bool WqAec3Processor::ProcessMicrophoneAudio(const int16_t* mic_data, int16_t* o
         LOGV("🎯 Enhanced AEC3 processing: frame=%llu, delay=%dms, suppression=%.3f, in_energy=%.2f, out_energy=%.2f", 
              (unsigned long long)total_capture_frames_, current_optimal_delay_ms_, suppression_ratio, capture_energy, output_energy);
         
+        LOGI("✅ ProcessMicrophoneAudio completed successfully");
         return true;
     } catch (const std::exception& e) {
         LOGE("Exception in ProcessMicrophoneAudio: %s", e.what());

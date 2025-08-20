@@ -277,6 +277,27 @@ public class WebRtcAec3 {
     static {
         System.loadLibrary("webrtc_aec3_tts");
     }
+    
+    /**
+     * Class to hold clean audio result with metrics (2025-01-31)
+     */
+    public static class CleanAudioResult {
+        public final short[] audioSamples;
+        public final double erle;
+        public final int delayMs;
+        
+        public CleanAudioResult(short[] samples, double erleValue, int delay) {
+            this.audioSamples = samples;
+            this.erle = erleValue;
+            this.delayMs = delay;
+        }
+        
+        @Override
+        public String toString() {
+            return String.format("CleanAudioResult: %d samples, ERLE=%.2fdB, Delay=%dms", 
+                               audioSamples != null ? audioSamples.length : 0, erle, delayMs);
+        }
+    }
 
     // Audio configuration constants
     public static final int SAMPLE_RATE = 48000;
@@ -305,13 +326,22 @@ public class WebRtcAec3 {
     public native boolean nativeProcessTtsAudio(short[] ttsData);
 
     /**
-     * Process microphone audio and remove echo
+     * Get clean microphone audio with echo cancellation and sample rate conversion
+     * This is the main method for mobile developers - handles input/output conversion automatically
      * 
-     * @param micData Microphone audio data (480 samples, 16-bit PCM)
-     * @param outputData Output buffer for processed audio (480 samples)
-     * @return true if processing successful
+     * @param inputSamples Input audio samples (int16_t array)
+     * @param inputSampleRate Input sample rate (16000, 24000, 44100, 48000, etc.)
+     * @param outputSampleRate Output sample rate (16000, 24000, 44100, 48000)
+     * @return int array: [error_code, num_output_samples, output_samples..., erle_int, delay_ms]
+     *         error_code: 0=success, negative=error
+     *         erle_int: ERLE * 1000 (divide by 1000.0 to get actual ERLE)
      */
-    public native boolean nativeProcessMicrophoneAudio(short[] micData, short[] outputData);
+    public native int[] nativeGetCleanMicrophoneAudio(short[] inputSamples, int inputSampleRate, int outputSampleRate);
+    
+    /**
+     * Clear internal input buffer - call when stopping recording or switching streams (2025-01-31)
+     */
+    public native void nativeClearInputBuffer();
 
     /**
      * Get current AEC metrics for monitoring performance
@@ -397,20 +427,54 @@ public class WebRtcAec3 {
     }
 
     /**
-     * Process microphone audio and get echo-cancelled output
-     * @param micData Microphone input (must be exactly 480 samples)
-     * @return Echo-cancelled audio, or null if error
+     * Get clean microphone audio with echo cancellation and sample rate conversion
+     * This is the main method for mobile developers - handles input/output conversion automatically
+     * @param inputSamples Input audio samples
+     * @param inputSampleRate Input sample rate (16000, 24000, 44100, 48000, etc.)
+     * @param outputSampleRate Output sample rate (16000, 24000, 44100, 48000)
+     * @return CleanAudioResult with processed audio and metrics, or null if error
      */
-    public short[] processMicrophoneAudio(short[] micData) {
-        if (!initialized || micData.length != FRAME_SIZE) {
+    public CleanAudioResult getCleanMicrophoneAudio(short[] inputSamples, int inputSampleRate, int outputSampleRate) {
+        if (!initialized || inputSamples == null || inputSamples.length == 0) {
             return null;
         }
         
-        short[] output = new short[FRAME_SIZE];
-        if (nativeProcessMicrophoneAudio(micData, output)) {
-            return output;
-        }
+        int[] result = nativeGetCleanMicrophoneAudio(inputSamples, inputSampleRate, outputSampleRate);
+        if (result == null || result.length < 3) {
         return null;
+        }
+        
+        int errorCode = result[0];
+        if (errorCode != 0) {
+            return null; // Error occurred
+        }
+        
+        int numOutputSamples = result[1];
+        if (result.length < 3 + numOutputSamples) {
+            return null; // Invalid result format
+        }
+        
+        // Extract audio samples
+        short[] outputSamples = new short[numOutputSamples];
+        for (int i = 0; i < numOutputSamples; i++) {
+            outputSamples[i] = (short) result[2 + i];
+        }
+        
+        // Extract ERLE and delay
+        double erle = result[2 + numOutputSamples] / 1000.0; // Convert back from integer
+        int delayMs = result[2 + numOutputSamples + 1];
+        
+        return new CleanAudioResult(outputSamples, erle, delayMs);
+    }
+    
+    /**
+     * Clear internal input buffer - call when stopping recording or switching audio streams
+     * This ensures no leftover data affects the next recording session
+     */
+    public void clearInputBuffer() {
+        if (initialized) {
+            nativeClearInputBuffer();
+        }
     }
 
     /**
@@ -676,6 +740,8 @@ public class WebRtcAec3 {
             nativeSetDelayEstimateSmoothing(smoothing);
         }
     }
+
+
 
     /**
      * Class to hold AEC performance metrics

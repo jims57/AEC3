@@ -85,13 +85,31 @@ public:
     bool ProcessTtsAudio(const int16_t* tts_data, size_t length);
 
     /**
-     * Process microphone audio and remove echo
-     * @param mic_data Microphone input samples (must be kFrameSize length)
-     * @param output_data Output buffer for processed audio (must be kFrameSize length)
-     * @param length Number of samples (must equal kFrameSize)
-     * @return true if processing successful
+     * Get clean microphone audio with echo cancellation and sample rate conversion
+     * This is the main method for mobile developers - handles input/output conversion automatically
+     * @param inputSamples Input audio samples (int16_t array)
+     * @param numInputSamples Number of input samples
+     * @param inputSampleRate Input sample rate (16000, 24000, 44100, 48000, etc.)
+     * @param outputSamples Output audio samples (will be allocated, caller must free)
+     * @param numOutputSamples Output sample count (will be set)
+     * @param outputSampleRate Output sample rate (16000, 24000, 44100, 48000)
+     * @param erle Output ERLE value (will be set)
+     * @param delayMs Output delay in milliseconds (will be set)
+     * @return 0=success, negative=error code
      */
-    bool ProcessMicrophoneAudio(const int16_t* mic_data, int16_t* output_data, size_t length);
+    int GetCleanMicrophoneAudio(const int16_t* inputSamples,
+                               uint32_t numInputSamples,
+                               uint32_t inputSampleRate,
+                               int16_t** outputSamples,
+                               uint32_t* numOutputSamples,
+                               uint32_t outputSampleRate,
+                               double* erle,
+                               int* delayMs);
+                               
+    /**
+     * Clear internal input buffer - call when stopping recording or switching streams
+     */
+    void ClearInputBuffer();
 
     /**
      * Get current AEC performance metrics
@@ -204,11 +222,25 @@ private:
                            const std::chrono::high_resolution_clock::time_point& render_time);
     void PerformDelayEstimationOptimization();
     int GetTimingBasedDelayEstimate();
+    
+    /**
+     * Internal AEC3 processing method (hidden from public API)
+     * @param mic_data Microphone input samples (must be kFrameSize length)
+     * @param output_data Output buffer for processed audio (must be kFrameSize length)
+     * @param length Number of samples (must equal kFrameSize)
+     * @return true if processing successful
+     */
+    bool ProcessMicrophoneAudio(const int16_t* mic_data, int16_t* output_data, size_t length);
 
     // Core WebRTC components
     std::mutex mutex_;
     std::unique_ptr<webrtc::EchoCanceller3Factory> aec_factory_;
     std::unique_ptr<webrtc::EchoControl> echo_controller_;
+    
+    // 🎯 Input buffering for GetCleanMicrophoneAudio (2025-01-31)
+    // Buffer to accumulate partial frames until we have exactly 480 samples for AEC3
+    std::vector<int16_t> input_buffer_;
+    mutable std::mutex input_buffer_mutex_;
     std::unique_ptr<webrtc::AudioBuffer> audio_render_buffer_;
     std::unique_ptr<webrtc::AudioBuffer> audio_capture_buffer_;
     std::unique_ptr<webrtc::HighPassFilter> high_pass_filter_;

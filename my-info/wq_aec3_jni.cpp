@@ -51,30 +51,94 @@ Java_com_tts_aec3_WebRtcAec3_nativeProcessTtsAudio(JNIEnv *env, jobject thiz, js
 }
 
 /**
- * Process microphone audio and remove echo
- * @param mic_data Microphone input samples (must be 480 samples)
- * @param output_data Output buffer for processed audio (must be 480 samples)
- * @return true if processing successful
+ * Get clean microphone audio with echo cancellation and sample rate conversion
+ * @param inputSamples Input audio samples (int16_t array)
+ * @param inputSampleRate Input sample rate
+ * @param outputSampleRate Output sample rate  
+ * @return jintArray: [error_code, num_output_samples, output_samples..., erle_int, delay_ms]
+ *         error_code: 0=success, negative=error
+ *         If success: [0, num_samples, sample1, sample2, ..., erle_int, delay_ms]
+ *         erle_int: ERLE * 1000 (to pass as integer)
  */
-JNIEXPORT jboolean JNICALL
-Java_com_tts_aec3_WebRtcAec3_nativeProcessMicrophoneAudio(JNIEnv *env, jobject thiz, 
-                                                          jshortArray mic_data, jshortArray output_data) {
-    if (!g_processor) return JNI_FALSE;
+JNIEXPORT jintArray JNICALL
+Java_com_tts_aec3_WebRtcAec3_nativeGetCleanMicrophoneAudio(JNIEnv *env, jobject thiz, 
+                                                          jshortArray inputSamples, 
+                                                          jint inputSampleRate, 
+                                                          jint outputSampleRate) {
+    if (!g_processor) {
+        jintArray result = env->NewIntArray(1);
+        jint error = -3;
+        env->SetIntArrayRegion(result, 0, 1, &error);
+        return result;
+    }
     
-    jsize length = env->GetArrayLength(mic_data);
-    if (length != webrtc_aec3_tts::WqAec3Processor::kFrameSize) return JNI_FALSE;
+    jsize inputLength = env->GetArrayLength(inputSamples);
+    if (inputLength <= 0) {
+        jintArray result = env->NewIntArray(1);
+        jint error = -2;
+        env->SetIntArrayRegion(result, 0, 1, &error);
+        return result;
+    }
     
-    jshort* input = env->GetShortArrayElements(mic_data, nullptr);
-    jshort* output = env->GetShortArrayElements(output_data, nullptr);
+    jshort* inputData = env->GetShortArrayElements(inputSamples, nullptr);
     
-    bool result = g_processor->ProcessMicrophoneAudio(
-        reinterpret_cast<const int16_t*>(input), 
-        reinterpret_cast<int16_t*>(output), length);
+    int16_t* outputSamples = nullptr;
+    uint32_t numOutputSamples = 0;
+    double erle = 0.0;
+    int delayMs = 0;
     
-    env->ReleaseShortArrayElements(mic_data, input, JNI_ABORT);
-    env->ReleaseShortArrayElements(output_data, output, 0);
+    int result = g_processor->GetCleanMicrophoneAudio(
+        reinterpret_cast<const int16_t*>(inputData),
+        static_cast<uint32_t>(inputLength),
+        static_cast<uint32_t>(inputSampleRate),
+        &outputSamples,
+        &numOutputSamples,
+        static_cast<uint32_t>(outputSampleRate),
+        &erle,
+        &delayMs);
     
-    return result ? JNI_TRUE : JNI_FALSE;
+    env->ReleaseShortArrayElements(inputSamples, inputData, JNI_ABORT);
+    
+    if (result != 0) {
+        // Error occurred
+        jintArray errorResult = env->NewIntArray(1);
+        env->SetIntArrayRegion(errorResult, 0, 1, &result);
+        return errorResult;
+    }
+    
+    // Success - pack result: [0, num_samples, samples..., erle_int, delay_ms]
+    jintArray successResult = env->NewIntArray(3 + numOutputSamples);
+    if (!successResult) {
+        if (outputSamples) free(outputSamples);
+        jintArray errorResult = env->NewIntArray(1);
+        jint error = -4;
+        env->SetIntArrayRegion(errorResult, 0, 1, &error);
+        return errorResult;
+    }
+    
+    // Pack the result
+    std::vector<jint> resultData;
+    resultData.push_back(0); // Success code
+    resultData.push_back(static_cast<jint>(numOutputSamples));
+    
+    // Add audio samples
+    for (uint32_t i = 0; i < numOutputSamples; ++i) {
+        resultData.push_back(static_cast<jint>(outputSamples[i]));
+    }
+    
+    // Add ERLE (multiply by 1000 to preserve decimal places)
+    resultData.push_back(static_cast<jint>(erle * 1000.0));
+    // Add delay
+    resultData.push_back(static_cast<jint>(delayMs));
+    
+    env->SetIntArrayRegion(successResult, 0, resultData.size(), resultData.data());
+    
+    // Free allocated memory
+    if (outputSamples) {
+        free(outputSamples);
+    }
+    
+    return successResult;
 }
 
 /**
@@ -203,6 +267,16 @@ Java_com_tts_aec3_WebRtcAec3_nativeAutoOptimizeDelay(JNIEnv *env, jobject thiz) 
         return g_processor->AutoOptimizeDelay() ? JNI_TRUE : JNI_FALSE;
     }
     return JNI_FALSE;
+}
+
+/**
+ * Clear internal input buffer - call when stopping recording or switching streams (2025-01-31)
+ */
+JNIEXPORT void JNICALL
+Java_com_tts_aec3_WebRtcAec3_nativeClearInputBuffer(JNIEnv *env, jobject thiz) {
+    if (g_processor) {
+        g_processor->ClearInputBuffer();
+    }
 }
 
 /**
