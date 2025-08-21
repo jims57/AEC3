@@ -197,6 +197,11 @@ bool WqAec3Processor::Initialize() {
         initialization_frames_ = 0;
         is_initialization_complete_ = false;
         
+        // 🎯 CRITICAL FIX: Reset TTS state for clean session (2025-01-31)
+        tts_is_playing_ = false;
+        frames_without_tts_ = 0;
+        current_enr_ = 0.0;
+        
         LOGI("WebRTC AEC3 initialized successfully: %dHz, %d channels, %dms delay (complete state reset)", 
              kSampleRate, kChannels, kStreamDelay);
         return true;
@@ -418,6 +423,13 @@ bool WqAec3Processor::ProcessMicrophoneAudio(const int16_t* mic_data, int16_t* o
             LOGV("🎤 No TTS: Bypassing AEC3, using original microphone input for clearer voice");
             // Copy original microphone input instead of AEC3 processed output
             memcpy(output_data, mic_data, length * sizeof(int16_t));
+        }
+        
+        // 🎯 DEBUG: Log TTS state every 100 frames to track state changes
+        if (total_capture_frames_ % 100 == 0) {
+            LOGI("🎯 TTS State Debug: tts_is_playing_=%s, frames_without_tts_=%d, frame=%llu", 
+                 tts_is_playing_ ? "true" : "false", frames_without_tts_, 
+                 (unsigned long long)total_capture_frames_);
         }
         
         // Periodic delay estimation and ERLE optimization
