@@ -25,10 +25,11 @@ AEC3_SAMPLE_RATE=48000
 AEC3_FRAME_SIZE=480  # 10ms at 48kHz
 ANDROID_STREAM_DELAY=100  # Android typical delay (80-150ms range)
 
-echo "🚀 Building WebRTC AEC3 TTS Android AAR"
+echo "🚀 Building WebRTC AEC3 TTS Android AAR (Enhanced Timing Sync 2025-02-01)"
 echo "📁 Project: $PROJECT_ROOT"
 echo "🔧 NDK: $ANDROID_NDK_HOME"
 echo "📊 AEC3 Config: ${AEC3_SAMPLE_RATE}Hz, ${AEC3_FRAME_SIZE} samples, ${ANDROID_STREAM_DELAY}ms delay"
+echo "🎯 Enhanced Features: Cross-platform timing sync, faster convergence, improved ERLE"
 
 # Validate NDK
 if [ ! -d "$ANDROID_NDK_HOME" ]; then

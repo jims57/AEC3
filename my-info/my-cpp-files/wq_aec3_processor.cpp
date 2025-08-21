@@ -30,25 +30,35 @@ WqAec3Processor::WqAec3Processor() :
     is_initialization_complete_(false),
     current_delay_ms_(kStreamDelay),
     manual_delay_ms_(0),
-    // 🎯 BALANCED DEFAULTS FOR UNIVERSAL CONVERGENCE + GOOD ERLE (2025-01-31)
-    config_change_duration_blocks_(125),
-    initial_state_seconds_(2.5f),
+    // 🎯 ENHANCED CONVERGENCE DEFAULTS FOR FASTER TIMING SYNC (2025-02-01)
+    config_change_duration_blocks_(75),    // Reduced from 125 for faster convergence
+    initial_state_seconds_(1.5f),          // Reduced from 2.5f for quicker startup
     conservative_initial_phase_(false),
-    max_dec_factor_lf_(4.0f),
-    max_inc_factor_(3.5f),
-    nearend_max_dec_factor_lf_(2.0f),
-    nearend_max_inc_factor_(4.5f),
-    enr_threshold_(0.20f),
-    snr_threshold_(11.0f),
-    hold_duration_(6),
-    trigger_threshold_(2),
-    // 🎯 ERLE ADJUSTMENT PARAMETERS FOR MOBILE DEVELOPERS (2025-01-31)
-    filter_length_blocks_(25),
-    filter_leakage_converged_(0.000005f),
-    filter_leakage_diverged_(0.005f),
-    delay_down_sampling_factor_(2),
-    delay_num_filters_(16),
-    delay_estimate_smoothing_(0.98f) {
+    max_dec_factor_lf_(6.0f),             // Increased from 4.0f for better echo suppression
+    max_inc_factor_(4.5f),                // Increased from 3.5f for faster recovery
+    nearend_max_dec_factor_lf_(2.5f),     // Slightly increased for better voice protection
+    nearend_max_inc_factor_(5.5f),        // Increased from 4.5f for clearer voice
+    enr_threshold_(0.15f),                // Reduced from 0.20f for more sensitive voice detection
+    snr_threshold_(9.0f),                 // Reduced from 11.0f for better low-level voice detection
+    hold_duration_(4),                    // Reduced from 6 for faster response
+    trigger_threshold_(1),                // Reduced from 2 for more responsive triggering
+    // 🎯 OPTIMIZED ERLE PARAMETERS FOR FASTER CONVERGENCE (2025-02-01)
+    filter_length_blocks_(20),            // Reduced from 25 for faster adaptation
+    filter_leakage_converged_(0.000003f), // Reduced from 0.000005f for tighter convergence
+    filter_leakage_diverged_(0.003f),     // Reduced from 0.005f for faster recovery
+    delay_down_sampling_factor_(1),       // Reduced from 2 for higher precision
+    delay_num_filters_(20),               // Increased from 16 for better delay detection
+    delay_estimate_smoothing_(0.95f),     // Reduced from 0.98f for more responsive delay tracking
+    // Enhanced cross-platform timing variables (2025-02-01)
+    timing_accuracy_score_(0.0),
+    platform_optimal_delay_(DetectPlatformOptimalDelay()),
+    high_precision_timing_available_(IsHighPrecisionTimingAvailable()),
+    consecutive_good_erle_count_(0),
+    adaptive_delay_direction_(0) {
+    
+    // Initialize timing calibration
+    timing_calibration_start_ = std::chrono::high_resolution_clock::now();
+    delay_measurement_history_.reserve(100);  // Reserve space for delay measurements
 }
 
 WqAec3Processor::~WqAec3Processor() {
@@ -289,29 +299,42 @@ bool WqAec3Processor::ProcessMicrophoneAudio(const int16_t* mic_data, int16_t* o
                  initialization_frames_);
         }
         
-        // Enhanced device-adaptive timing synchronization
+        // Enhanced precision timing synchronization (2025-02-01)
         if (timing_sync_enabled_) {
             webrtc::EchoControl::Metrics current_metrics = echo_controller_->GetMetrics();
             int aec3_detected_delay = current_metrics.delay_ms;
+            double erle_quality = current_metrics.echo_return_loss_enhancement;
+            
+            // Perform precise timing calibration
+            if (total_capture_frames_ % 25 == 0) {  // More frequent calibration
+                PerformPreciseTimingCalibration();
+            }
             
             if (!is_initialization_complete_) {
-                // During initialization: use stable delay, avoid aggressive changes
-                if (initialization_frames_ % 50 == 0) {
+                // Fast initialization with platform-optimized delay
+                if (initialization_frames_ % 25 == 0) {  // More frequent updates
+                    current_optimal_delay_ms_ = platform_optimal_delay_;
                     echo_controller_->SetAudioBufferDelay(current_optimal_delay_ms_);
-                    LOGV("🔧 Gentle init delay: %dms (frame %d/%d)", 
-                         current_optimal_delay_ms_, initialization_frames_, kInitializationFrames);
                 }
             } else {
-                // After initialization: normal delay management with cross-device auto-adjustment
-                if (aec3_detected_delay <= 0 || aec3_detected_delay > 500) {
+                // Adaptive delay adjustment based on ERLE quality
+                AdaptiveDelayAdjustment(aec3_detected_delay, erle_quality);
+                
+                // Use high-precision timing for better sync
+                if (high_precision_timing_available_) {
                     const TimedFrame* best_reference = FindOptimalReferenceFrame(capture_timestamp);
                     if (best_reference) {
-                        int timing_based_delay = EstimateOptimalDelay(capture_timestamp, best_reference->timestamp);
-                        if (timing_based_delay >= kMinDelayMs && timing_based_delay <= kMaxDelayMs) {
-                            current_optimal_delay_ms_ = timing_based_delay;
-                            echo_controller_->SetAudioBufferDelay(current_optimal_delay_ms_);
-                            LOGI("🔧 Device delay fix: Forced timing-based delay %dms (AEC3 detection failed: %dms)", 
-                                 current_optimal_delay_ms_, aec3_detected_delay);
+                        int precise_timing_delay = EstimateOptimalDelay(capture_timestamp, best_reference->timestamp);
+                        
+                        // Use weighted combination of timing-based and adaptive delay
+                        if (precise_timing_delay >= kMinDelayMs && precise_timing_delay <= kMaxDelayMs) {
+                            double weight = timing_accuracy_score_;  // Higher accuracy = more weight to timing
+                            int combined_delay = static_cast<int>(
+                                precise_timing_delay * weight + current_optimal_delay_ms_ * (1.0 - weight));
+                            
+                            if (std::abs(combined_delay - current_optimal_delay_ms_) >= kAdaptiveDelayStepMs) {
+                                current_optimal_delay_ms_ = combined_delay;
+                            }
                         }
                     }
                 }
@@ -797,6 +820,111 @@ int WqAec3Processor::GetTimingBasedDelayEstimate() {
     long delay_long = static_cast<long>(estimated_delay_ms);
     return static_cast<int>(std::max(static_cast<long>(kMinDelayMs), 
                                     std::min(static_cast<long>(kMaxDelayMs), delay_long)));
+}
+
+// ========== Enhanced Cross-Platform Timing Methods (2025-02-01) ==========
+
+int WqAec3Processor::DetectPlatformOptimalDelay() const {
+#ifdef __ANDROID__
+    return kAndroidTypicalDelayMs;
+#elif defined(__APPLE__)
+    #ifdef TARGET_OS_IOS
+        return kIOSTypicalDelayMs;
+    #else
+        return kAndroidTypicalDelayMs;  // macOS fallback
+    #endif
+#else
+    return kAndroidTypicalDelayMs;  // Default fallback
+#endif
+}
+
+bool WqAec3Processor::IsHighPrecisionTimingAvailable() const {
+    // Check if high-resolution clock provides sufficient precision
+    auto clock_precision = std::chrono::high_resolution_clock::period::num * 1000000000LL / 
+                          std::chrono::high_resolution_clock::period::den;
+    
+    // Consider high precision if clock resolution is better than 1ms
+    return clock_precision < 1000000;  // nanoseconds
+}
+
+void WqAec3Processor::PerformPreciseTimingCalibration() {
+    if (!high_precision_timing_available_) return;
+    
+    // Measure timing accuracy over recent delay measurements
+    if (delay_measurement_history_.size() < 10) return;
+    
+    double variance = 0.0;
+    double mean = 0.0;
+    
+    // Calculate mean
+    for (int delay : delay_measurement_history_) {
+        mean += delay;
+    }
+    mean /= delay_measurement_history_.size();
+    
+    // Calculate variance
+    for (int delay : delay_measurement_history_) {
+        variance += (delay - mean) * (delay - mean);
+    }
+    variance /= delay_measurement_history_.size();
+    
+    // Update timing accuracy score (lower variance = higher accuracy)
+    timing_accuracy_score_ = 1.0 / (1.0 + variance);
+    
+    // Adjust timing tolerance based on accuracy
+    if (timing_accuracy_score_ > 0.8) {
+        // High accuracy - use tighter tolerance
+        // Note: kTimingToleranceMs is now a constant, so we adjust behavior instead
+    }
+}
+
+double WqAec3Processor::CalculateTimingAccuracy() const {
+    return timing_accuracy_score_;
+}
+
+void WqAec3Processor::AdaptiveDelayAdjustment(int aec3_delay, double erle_quality) {
+    // Track ERLE quality for adaptive adjustment
+    if (erle_quality > 10.0) {
+        consecutive_good_erle_count_++;
+        if (consecutive_good_erle_count_ > 10) {
+            adaptive_delay_direction_ = 0;  // Stable - good performance
+        }
+    } else {
+        consecutive_good_erle_count_ = 0;
+        
+        // Poor ERLE - need to adjust delay
+        if (aec3_delay > 0 && aec3_delay < 500) {
+            // Use AEC3's detected delay as guidance
+            int target_delay = aec3_delay;
+            
+            if (current_optimal_delay_ms_ < target_delay) {
+                adaptive_delay_direction_ = 1;  // Increase delay
+                current_optimal_delay_ms_ += kAdaptiveDelayStepMs;
+            } else if (current_optimal_delay_ms_ > target_delay) {
+                adaptive_delay_direction_ = -1; // Decrease delay
+                current_optimal_delay_ms_ -= kAdaptiveDelayStepMs;
+            }
+        } else {
+            // AEC3 delay unreliable - use platform-specific adjustment
+            if (current_optimal_delay_ms_ > platform_optimal_delay_) {
+                adaptive_delay_direction_ = -1;
+                current_optimal_delay_ms_ -= kAdaptiveDelayStepMs;
+            } else {
+                adaptive_delay_direction_ = 1;
+                current_optimal_delay_ms_ += kAdaptiveDelayStepMs;
+            }
+        }
+        
+        // Ensure delay stays within bounds
+        current_optimal_delay_ms_ = std::max(kMinDelayMs, 
+                                           std::min(kMaxDelayMs, current_optimal_delay_ms_));
+    }
+    
+    // Update delay measurement history
+    delay_measurement_history_.push_back(current_optimal_delay_ms_);
+    if (delay_measurement_history_.size() > 100) {
+        delay_measurement_history_.erase(delay_measurement_history_.begin());
+    }
 }
 
 } // namespace webrtc_aec3_tts

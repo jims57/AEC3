@@ -48,13 +48,18 @@ public:
     static constexpr int kChannels = 1;     // Mono
     static constexpr int kStreamDelay = 100; // Android typical delay
 
-    // Enhanced ERLE optimization constants
+    // Enhanced ERLE optimization constants (2025-02-01)
     static constexpr int kMaxDelayMs = 500;
-    static constexpr int kMinDelayMs = 20;
+    static constexpr int kMinDelayMs = 5;  // Reduced from 20ms for better timing accuracy
     static constexpr int kDelayBufferSize = kMaxDelayMs * kSampleRate / 1000 / kFrameSize;
-    static constexpr double kTimingToleranceMs = 2.0;
-    static constexpr int kDelayEstimationFrames = 50;
-    static constexpr int kInitializationFrames = 100;
+    static constexpr double kTimingToleranceMs = 0.5;  // Reduced from 2.0ms for precise sync
+    static constexpr int kDelayEstimationFrames = 25;  // Reduced from 50 for faster convergence
+    static constexpr int kInitializationFrames = 50;   // Reduced from 100 for faster startup
+    
+    // Cross-platform timing constants
+    static constexpr int kAndroidTypicalDelayMs = 80;
+    static constexpr int kIOSTypicalDelayMs = 30;
+    static constexpr int kAdaptiveDelayStepMs = 2;  // Smaller steps for precise adjustment
 
     /**
      * Constructor with optimized default parameters
@@ -204,6 +209,13 @@ private:
                            const std::chrono::high_resolution_clock::time_point& render_time);
     void PerformDelayEstimationOptimization();
     int GetTimingBasedDelayEstimate();
+    
+    // Enhanced cross-platform timing methods (2025-02-01)
+    int DetectPlatformOptimalDelay() const;
+    bool IsHighPrecisionTimingAvailable() const;
+    void PerformPreciseTimingCalibration();
+    double CalculateTimingAccuracy() const;
+    void AdaptiveDelayAdjustment(int aec3_delay, double erle_quality);
 
     // Core WebRTC components
     std::mutex mutex_;
@@ -255,6 +267,15 @@ private:
     // Real-time clean audio buffering system (2025-01-31)
     std::vector<std::vector<float>> clean_audio_buffer_;
     std::mutex clean_audio_buffer_mutex_;
+    
+    // Enhanced cross-platform timing variables (2025-02-01)
+    std::chrono::high_resolution_clock::time_point timing_calibration_start_;
+    std::vector<int> delay_measurement_history_;
+    double timing_accuracy_score_;
+    int platform_optimal_delay_;
+    bool high_precision_timing_available_;
+    int consecutive_good_erle_count_;
+    int adaptive_delay_direction_;  // 1 for up, -1 for down, 0 for stable
     
 
     
