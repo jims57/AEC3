@@ -139,11 +139,11 @@ set(ALL_SOURCES
 )
 
 # Create shared library
-add_library(webrtc_aec3_tts SHARED ${ALL_SOURCES})
+add_library(wq_aec3_tts SHARED ${ALL_SOURCES})
 
 # Link Android libraries
 if(ANDROID)
-    target_link_libraries(webrtc_aec3_tts
+    target_link_libraries(wq_aec3_tts
         android
         log
         OpenSLES
@@ -151,7 +151,7 @@ if(ANDROID)
 endif()
 
 # Set library properties
-set_target_properties(webrtc_aec3_tts PROPERTIES
+set_target_properties(wq_aec3_tts PROPERTIES
     VERSION 1.0
     SOVERSION 1
 )

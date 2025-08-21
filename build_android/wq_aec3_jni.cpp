@@ -18,7 +18,7 @@ extern "C" {
  * @return true if initialization successful
  */
 JNIEXPORT jboolean JNICALL
-Java_cn_watchfun_aec3_WebRtcAec3_nativeInitialize(JNIEnv *env, jobject thiz) {
+Java_cn_watchfun_aec3_WqAecProcessor_nativeInitialize(JNIEnv *env, jobject thiz) {
     g_processor = std::make_unique<webrtc_aec3_tts::WqAec3Processor>();
     return g_processor->Initialize() ? JNI_TRUE : JNI_FALSE;
 }
@@ -27,7 +27,7 @@ Java_cn_watchfun_aec3_WebRtcAec3_nativeInitialize(JNIEnv *env, jobject thiz) {
  * Clean up and destroy the AEC3 processor
  */
 JNIEXPORT void JNICALL
-Java_cn_watchfun_aec3_WebRtcAec3_nativeDestroy(JNIEnv *env, jobject thiz) {
+Java_cn_watchfun_aec3_WqAecProcessor_nativeDestroy(JNIEnv *env, jobject thiz) {
     g_processor.reset();
 }
 
@@ -37,7 +37,7 @@ Java_cn_watchfun_aec3_WebRtcAec3_nativeDestroy(JNIEnv *env, jobject thiz) {
  * @return true if processing successful
  */
 JNIEXPORT jboolean JNICALL
-Java_cn_watchfun_aec3_WebRtcAec3_nativeProcessTtsAudio(JNIEnv *env, jobject thiz, jshortArray tts_data) {
+Java_cn_watchfun_aec3_WqAecProcessor_nativeProcessTtsAudio(JNIEnv *env, jobject thiz, jshortArray tts_data) {
     if (!g_processor) return JNI_FALSE;
     
     jsize length = env->GetArrayLength(tts_data);
@@ -58,7 +58,7 @@ Java_cn_watchfun_aec3_WebRtcAec3_nativeProcessTtsAudio(JNIEnv *env, jobject thiz
  * @return true if processing successful
  */
 JNIEXPORT jboolean JNICALL
-Java_cn_watchfun_aec3_WebRtcAec3_nativeProcessMicrophoneAudio(JNIEnv *env, jobject thiz, 
+Java_cn_watchfun_aec3_WqAecProcessor_nativeProcessMicrophoneAudio(JNIEnv *env, jobject thiz, 
                                                           jshortArray mic_data, jshortArray output_data) {
     if (!g_processor) return JNI_FALSE;
     
@@ -83,7 +83,7 @@ Java_cn_watchfun_aec3_WebRtcAec3_nativeProcessMicrophoneAudio(JNIEnv *env, jobje
  * @return double array: [echo_return_loss, echo_return_loss_enhancement, delay_ms]
  */
 JNIEXPORT jdoubleArray JNICALL
-Java_cn_watchfun_aec3_WebRtcAec3_nativeGetMetrics(JNIEnv *env, jobject thiz) {
+Java_cn_watchfun_aec3_WqAecProcessor_nativeGetMetrics(JNIEnv *env, jobject thiz) {
     if (!g_processor) return nullptr;
     
     double erl, erle;
@@ -103,7 +103,7 @@ Java_cn_watchfun_aec3_WebRtcAec3_nativeGetMetrics(JNIEnv *env, jobject thiz) {
  * @param delay_ms Delay in milliseconds
  */
 JNIEXPORT void JNICALL
-Java_cn_watchfun_aec3_WebRtcAec3_nativeSetStreamDelay(JNIEnv *env, jobject thiz, jint delay_ms) {
+Java_cn_watchfun_aec3_WqAecProcessor_nativeSetStreamDelay(JNIEnv *env, jobject thiz, jint delay_ms) {
     if (g_processor) {
         g_processor->SetStreamDelay(delay_ms);
     }
@@ -113,21 +113,21 @@ Java_cn_watchfun_aec3_WebRtcAec3_nativeSetStreamDelay(JNIEnv *env, jobject thiz,
 
 // Filter Configuration JNI Methods
 JNIEXPORT void JNICALL
-Java_cn_watchfun_aec3_WebRtcAec3_nativeSetConfigChangeDuration(JNIEnv *env, jobject thiz, jint blocks) {
+Java_cn_watchfun_aec3_WqAecProcessor_nativeSetConfigChangeDuration(JNIEnv *env, jobject thiz, jint blocks) {
     if (g_processor) {
         g_processor->SetConfigChangeDuration(blocks);
     }
 }
 
 JNIEXPORT void JNICALL  
-Java_cn_watchfun_aec3_WebRtcAec3_nativeSetInitialStateSeconds(JNIEnv *env, jobject thiz, jfloat seconds) {
+Java_cn_watchfun_aec3_WqAecProcessor_nativeSetInitialStateSeconds(JNIEnv *env, jobject thiz, jfloat seconds) {
     if (g_processor) {
         g_processor->SetInitialStateSeconds(seconds);
     }
 }
 
 JNIEXPORT void JNICALL
-Java_cn_watchfun_aec3_WebRtcAec3_nativeSetConservativeInitialPhase(JNIEnv *env, jobject thiz, jboolean enable) {
+Java_cn_watchfun_aec3_WqAecProcessor_nativeSetConservativeInitialPhase(JNIEnv *env, jobject thiz, jboolean enable) {
     if (g_processor) {
         g_processor->SetConservativeInitialPhase(enable == JNI_TRUE);
     }
@@ -135,14 +135,14 @@ Java_cn_watchfun_aec3_WebRtcAec3_nativeSetConservativeInitialPhase(JNIEnv *env, 
 
 // Suppressor Normal Tuning JNI Methods
 JNIEXPORT void JNICALL
-Java_cn_watchfun_aec3_WebRtcAec3_nativeSetMaxDecFactorLF(JNIEnv *env, jobject thiz, jfloat factor) {
+Java_cn_watchfun_aec3_WqAecProcessor_nativeSetMaxDecFactorLF(JNIEnv *env, jobject thiz, jfloat factor) {
     if (g_processor) {
         g_processor->SetMaxDecFactorLF(factor);
     }
 }
 
 JNIEXPORT void JNICALL
-Java_cn_watchfun_aec3_WebRtcAec3_nativeSetMaxIncFactor(JNIEnv *env, jobject thiz, jfloat factor) {
+Java_cn_watchfun_aec3_WqAecProcessor_nativeSetMaxIncFactor(JNIEnv *env, jobject thiz, jfloat factor) {
     if (g_processor) {
         g_processor->SetMaxIncFactor(factor);
     }
@@ -150,14 +150,14 @@ Java_cn_watchfun_aec3_WebRtcAec3_nativeSetMaxIncFactor(JNIEnv *env, jobject thiz
 
 // Suppressor Nearend Tuning JNI Methods
 JNIEXPORT void JNICALL
-Java_cn_watchfun_aec3_WebRtcAec3_nativeSetNearendMaxDecFactorLF(JNIEnv *env, jobject thiz, jfloat factor) {
+Java_cn_watchfun_aec3_WqAecProcessor_nativeSetNearendMaxDecFactorLF(JNIEnv *env, jobject thiz, jfloat factor) {
     if (g_processor) {
         g_processor->SetNearendMaxDecFactorLF(factor);
     }
 }
 
 JNIEXPORT void JNICALL
-Java_cn_watchfun_aec3_WebRtcAec3_nativeSetNearendMaxIncFactor(JNIEnv *env, jobject thiz, jfloat factor) {
+Java_cn_watchfun_aec3_WqAecProcessor_nativeSetNearendMaxIncFactor(JNIEnv *env, jobject thiz, jfloat factor) {
     if (g_processor) {
         g_processor->SetNearendMaxIncFactor(factor);
     }
@@ -165,28 +165,28 @@ Java_cn_watchfun_aec3_WebRtcAec3_nativeSetNearendMaxIncFactor(JNIEnv *env, jobje
 
 // Dominant Nearend Detection JNI Methods
 JNIEXPORT void JNICALL
-Java_cn_watchfun_aec3_WebRtcAec3_nativeSetEnrThreshold(JNIEnv *env, jobject thiz, jfloat threshold) {
+Java_cn_watchfun_aec3_WqAecProcessor_nativeSetEnrThreshold(JNIEnv *env, jobject thiz, jfloat threshold) {
     if (g_processor) {
         g_processor->SetEnrThreshold(threshold);
     }
 }
 
 JNIEXPORT void JNICALL
-Java_cn_watchfun_aec3_WebRtcAec3_nativeSetSnrThreshold(JNIEnv *env, jobject thiz, jfloat threshold) {
+Java_cn_watchfun_aec3_WqAecProcessor_nativeSetSnrThreshold(JNIEnv *env, jobject thiz, jfloat threshold) {
     if (g_processor) {
         g_processor->SetSnrThreshold(threshold);
     }
 }
 
 JNIEXPORT void JNICALL
-Java_cn_watchfun_aec3_WebRtcAec3_nativeSetHoldDuration(JNIEnv *env, jobject thiz, jint duration) {
+Java_cn_watchfun_aec3_WqAecProcessor_nativeSetHoldDuration(JNIEnv *env, jobject thiz, jint duration) {
     if (g_processor) {
         g_processor->SetHoldDuration(duration);
     }
 }
 
 JNIEXPORT void JNICALL
-Java_cn_watchfun_aec3_WebRtcAec3_nativeSetTriggerThreshold(JNIEnv *env, jobject thiz, jint threshold) {
+Java_cn_watchfun_aec3_WqAecProcessor_nativeSetTriggerThreshold(JNIEnv *env, jobject thiz, jint threshold) {
     if (g_processor) {
         g_processor->SetTriggerThreshold(threshold);
     }
@@ -199,7 +199,7 @@ Java_cn_watchfun_aec3_WebRtcAec3_nativeSetTriggerThreshold(JNIEnv *env, jobject 
  * @return true if optimization completed successfully
  */
 JNIEXPORT jboolean JNICALL
-Java_cn_watchfun_aec3_WebRtcAec3_nativeAutoOptimizeDelay(JNIEnv *env, jobject thiz) {
+Java_cn_watchfun_aec3_WqAecProcessor_nativeAutoOptimizeDelay(JNIEnv *env, jobject thiz) {
     if (g_processor) {
         return g_processor->AutoOptimizeDelay() ? JNI_TRUE : JNI_FALSE;
     }
@@ -211,7 +211,7 @@ Java_cn_watchfun_aec3_WebRtcAec3_nativeAutoOptimizeDelay(JNIEnv *env, jobject th
  * @return double array: [ERL, ERLE, delay, render_frames, capture_frames, optimal_delay]
  */
 JNIEXPORT jdoubleArray JNICALL
-Java_cn_watchfun_aec3_WebRtcAec3_nativeGetEnhancedMetrics(JNIEnv *env, jobject thiz) {
+Java_cn_watchfun_aec3_WqAecProcessor_nativeGetEnhancedMetrics(JNIEnv *env, jobject thiz) {
     if (!g_processor) return nullptr;
     
     double erl, erle;
@@ -237,7 +237,7 @@ Java_cn_watchfun_aec3_WebRtcAec3_nativeGetEnhancedMetrics(JNIEnv *env, jobject t
  * @return true if setting applied successfully
  */
 JNIEXPORT jboolean JNICALL
-Java_cn_watchfun_aec3_WebRtcAec3_nativeEnableTimingSync(JNIEnv *env, jobject thiz, jboolean enable) {
+Java_cn_watchfun_aec3_WqAecProcessor_nativeEnableTimingSync(JNIEnv *env, jobject thiz, jboolean enable) {
     if (g_processor) {
         return g_processor->EnableTimingSync(enable == JNI_TRUE) ? JNI_TRUE : JNI_FALSE;
     }
@@ -251,7 +251,7 @@ Java_cn_watchfun_aec3_WebRtcAec3_nativeEnableTimingSync(JNIEnv *env, jobject thi
  * @param blocks 1-100 range, default=25 (from adjust-ERLE-result.md)
  */
 JNIEXPORT void JNICALL
-Java_cn_watchfun_aec3_WebRtcAec3_nativeSetFilterLengthBlocks(JNIEnv *env, jobject thiz, jint blocks) {
+Java_cn_watchfun_aec3_WqAecProcessor_nativeSetFilterLengthBlocks(JNIEnv *env, jobject thiz, jint blocks) {
     if (g_processor) {
         g_processor->SetFilterLengthBlocks(blocks);
     }
@@ -262,7 +262,7 @@ Java_cn_watchfun_aec3_WebRtcAec3_nativeSetFilterLengthBlocks(JNIEnv *env, jobjec
  * @param leakage 0.000001-1.0 range, default=0.000005 (from adjust-ERLE-result.md)
  */
 JNIEXPORT void JNICALL
-Java_cn_watchfun_aec3_WebRtcAec3_nativeSetFilterLeakageConverged(JNIEnv *env, jobject thiz, jfloat leakage) {
+Java_cn_watchfun_aec3_WqAecProcessor_nativeSetFilterLeakageConverged(JNIEnv *env, jobject thiz, jfloat leakage) {
     if (g_processor) {
         g_processor->SetFilterLeakageConverged(leakage);
     }
@@ -273,7 +273,7 @@ Java_cn_watchfun_aec3_WebRtcAec3_nativeSetFilterLeakageConverged(JNIEnv *env, jo
  * @param leakage 0.001-1.0 range, default=0.005 (from adjust-ERLE-result.md)
  */
 JNIEXPORT void JNICALL
-Java_cn_watchfun_aec3_WebRtcAec3_nativeSetFilterLeakageDiverged(JNIEnv *env, jobject thiz, jfloat leakage) {
+Java_cn_watchfun_aec3_WqAecProcessor_nativeSetFilterLeakageDiverged(JNIEnv *env, jobject thiz, jfloat leakage) {
     if (g_processor) {
         g_processor->SetFilterLeakageDiverged(leakage);
     }
@@ -284,7 +284,7 @@ Java_cn_watchfun_aec3_WebRtcAec3_nativeSetFilterLeakageDiverged(JNIEnv *env, job
  * @param factor 1-8 range, default=2 (from adjust-ERLE-result.md)
  */
 JNIEXPORT void JNICALL
-Java_cn_watchfun_aec3_WebRtcAec3_nativeSetDelayDownSamplingFactor(JNIEnv *env, jobject thiz, jint factor) {
+Java_cn_watchfun_aec3_WqAecProcessor_nativeSetDelayDownSamplingFactor(JNIEnv *env, jobject thiz, jint factor) {
     if (g_processor) {
         g_processor->SetDelayDownSamplingFactor(factor);
     }
@@ -295,7 +295,7 @@ Java_cn_watchfun_aec3_WebRtcAec3_nativeSetDelayDownSamplingFactor(JNIEnv *env, j
  * @param filters 1-32 range, default=16 (from adjust-ERLE-result.md)
  */
 JNIEXPORT void JNICALL
-Java_cn_watchfun_aec3_WebRtcAec3_nativeSetDelayNumFilters(JNIEnv *env, jobject thiz, jint filters) {
+Java_cn_watchfun_aec3_WqAecProcessor_nativeSetDelayNumFilters(JNIEnv *env, jobject thiz, jint filters) {
     if (g_processor) {
         g_processor->SetDelayNumFilters(filters);
     }
@@ -306,7 +306,7 @@ Java_cn_watchfun_aec3_WebRtcAec3_nativeSetDelayNumFilters(JNIEnv *env, jobject t
  * @param smoothing 0.1-0.99 range, default=0.98 (from adjust-ERLE-result.md)
  */
 JNIEXPORT void JNICALL
-Java_cn_watchfun_aec3_WebRtcAec3_nativeSetDelayEstimateSmoothing(JNIEnv *env, jobject thiz, jfloat smoothing) {
+Java_cn_watchfun_aec3_WqAecProcessor_nativeSetDelayEstimateSmoothing(JNIEnv *env, jobject thiz, jfloat smoothing) {
     if (g_processor) {
         g_processor->SetDelayEstimateSmoothing(smoothing);
     }
@@ -320,7 +320,7 @@ Java_cn_watchfun_aec3_WebRtcAec3_nativeSetDelayEstimateSmoothing(JNIEnv *env, jo
  * @return byte array containing WAV data, or null on error
  */
 JNIEXPORT jbyteArray JNICALL
-Java_cn_watchfun_aec3_WebRtcAec3_nativeGetCleanAudioAsWAV(JNIEnv *env, jobject thiz, jint outputSampleRate) {
+Java_cn_watchfun_aec3_WqAecProcessor_nativeGetCleanAudioAsWAV(JNIEnv *env, jobject thiz, jint outputSampleRate) {
     if (!g_processor) return nullptr;
     
     // Get clean audio frames from processor buffer (no clear - PCM method will clear)
@@ -362,7 +362,7 @@ Java_cn_watchfun_aec3_WebRtcAec3_nativeGetCleanAudioAsWAV(JNIEnv *env, jobject t
  * @return byte array containing PCM data, or null on error
  */
 JNIEXPORT jbyteArray JNICALL
-Java_cn_watchfun_aec3_WebRtcAec3_nativeGetCleanAudioAsPCM(JNIEnv *env, jobject thiz, jint outputSampleRate) {
+Java_cn_watchfun_aec3_WqAecProcessor_nativeGetCleanAudioAsPCM(JNIEnv *env, jobject thiz, jint outputSampleRate) {
     if (!g_processor) {
         __android_log_print(ANDROID_LOG_ERROR, "WebRTC_AEC3_TTS", "PCM: g_processor is null");
         return nullptr;
@@ -429,7 +429,7 @@ Java_cn_watchfun_aec3_WebRtcAec3_nativeGetCleanAudioAsPCM(JNIEnv *env, jobject t
  * Clear the clean audio buffer without retrieving data
  */
 JNIEXPORT void JNICALL
-Java_cn_watchfun_aec3_WebRtcAec3_nativeClearCleanAudioBuffer(JNIEnv *env, jobject thiz) {
+Java_cn_watchfun_aec3_WqAecProcessor_nativeClearCleanAudioBuffer(JNIEnv *env, jobject thiz) {
     if (g_processor) {
         g_processor->ClearCleanAudioBuffer();
     }

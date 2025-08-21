@@ -197,11 +197,11 @@ set(ALL_SOURCES
 )
 
 # Create shared library
-add_library(webrtc_aec3_tts SHARED ${ALL_SOURCES})
+add_library(wq_aec3_tts SHARED ${ALL_SOURCES})
 
 # Link Android libraries
 if(ANDROID)
-    target_link_libraries(webrtc_aec3_tts
+    target_link_libraries(wq_aec3_tts
         android
         log
         OpenSLES
@@ -209,7 +209,7 @@ if(ANDROID)
 endif()
 
 # Set library properties
-set_target_properties(webrtc_aec3_tts PROPERTIES
+set_target_properties(wq_aec3_tts PROPERTIES
     VERSION 1.0
     SOVERSION 1
 )
@@ -261,7 +261,7 @@ echo "📝 Generating Java wrapper classes..."
 
 mkdir -p "$BUILD_DIR/java/cn/watchfun/aec3"
 
-cat > "$BUILD_DIR/java/cn/watchfun/aec3/WebRtcAec3.java" << 'EOJAVA'
+cat > "$BUILD_DIR/java/cn/watchfun/aec3/WqAecProcessor.java" << 'EOJAVA'
 package cn.watchfun.aec3;
 
 /**
@@ -278,9 +278,9 @@ package cn.watchfun.aec3;
  * 
  * Important: All audio must be 48kHz, 16-bit PCM, mono, 480 samples (10ms chunks)
  */
-public class WebRtcAec3 {
+public class WqAecProcessor {
     static {
-        System.loadLibrary("webrtc_aec3_tts");
+        System.loadLibrary("wq_aec3_tts");
     }
 
     // Audio configuration constants
@@ -819,7 +819,7 @@ cat > "$BUILD_DIR/Android.mk" << 'EOANDROIDMK'
 LOCAL_PATH := $(call my-dir)
 
 include $(CLEAR_VARS)
-LOCAL_MODULE := webrtc_aec3_tts
+LOCAL_MODULE := wq_aec3_tts
 LOCAL_SRC_FILES := $(call all-cpp-files-under, .)
 LOCAL_SRC_FILES += $(call all-c-files-under, .)
 
@@ -888,7 +888,7 @@ for arch in "${ARCHITECTURES[@]}"; do
 
     # Copy built library
     mkdir -p "$OUTPUT_DIR/jni/$arch"
-    cp libwebrtc_aec3_tts.so "$OUTPUT_DIR/jni/$arch/"
+    cp libwq_aec3_tts.so "$OUTPUT_DIR/jni/$arch/"
     
     echo "✅ Built successfully for $arch"
 done
@@ -909,7 +909,7 @@ cp -r "$OUTPUT_DIR/jni" "$AAR_DIR/"
 
 # Compile Java classes
 javac -d "$AAR_DIR/classes" -cp "$ANDROID_SDK_ROOT/platforms/android-$ANDROID_API_LEVEL/android.jar" \
-    "$BUILD_DIR/java/cn/watchfun/aec3/WebRtcAec3.java"
+    "$BUILD_DIR/java/cn/watchfun/aec3/WqAecProcessor.java"
 
 # Create classes.jar
 cd "$AAR_DIR/classes"

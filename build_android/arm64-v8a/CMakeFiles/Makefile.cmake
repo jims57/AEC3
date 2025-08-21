@@ -156,5 +156,5 @@ set(CMAKE_MAKEFILE_PRODUCTS
 
 # Dependency information for all targets:
 set(CMAKE_DEPEND_INFO_FILES
-  "CMakeFiles/webrtc_aec3_tts.dir/DependInfo.cmake"
+  "CMakeFiles/wq_aec3_tts.dir/DependInfo.cmake"
   )

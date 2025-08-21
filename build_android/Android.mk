@@ -1,7 +1,7 @@
 LOCAL_PATH := $(call my-dir)
 
 include $(CLEAR_VARS)
-LOCAL_MODULE := webrtc_aec3_tts
+LOCAL_MODULE := wq_aec3_tts
 LOCAL_SRC_FILES := $(call all-cpp-files-under, .)
 LOCAL_SRC_FILES += $(call all-c-files-under, .)
 
