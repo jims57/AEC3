@@ -12,8 +12,8 @@ set -e  # Exit on any error
 PROJECT_ROOT="/Users/mac/Documents/GitHub/AEC3"
 BUILD_DIR="$PROJECT_ROOT/build_android"
 OUTPUT_DIR="$PROJECT_ROOT/android_output"
-AAR_NAME="webrtc-aec3-tts"
-JAVA_PACKAGE="com.tts.aec3"
+AAR_NAME="wq-aec3"
+JAVA_PACKAGE="cn.watchfun.aec3"
 
 # Android NDK Configuration
 ANDROID_NDK_HOME=${ANDROID_NDK_HOME:-"/Users/mac/Library/Android/sdk/ndk/25.2.9519653"}
@@ -259,10 +259,10 @@ EOWRAPPER
 # ============================================================================
 echo "📝 Generating Java wrapper classes..."
 
-mkdir -p "$BUILD_DIR/java/com/tts/aec3"
+mkdir -p "$BUILD_DIR/java/cn/watchfun/aec3"
 
-cat > "$BUILD_DIR/java/com/tts/aec3/WebRtcAec3.java" << 'EOJAVA'
-package com.tts.aec3;
+cat > "$BUILD_DIR/java/cn/watchfun/aec3/WebRtcAec3.java" << 'EOJAVA'
+package cn.watchfun.aec3;
 
 /**
  * WebRTC AEC3 wrapper for TTS echo cancellation
@@ -909,7 +909,7 @@ cp -r "$OUTPUT_DIR/jni" "$AAR_DIR/"
 
 # Compile Java classes
 javac -d "$AAR_DIR/classes" -cp "$ANDROID_SDK_ROOT/platforms/android-$ANDROID_API_LEVEL/android.jar" \
-    "$BUILD_DIR/java/com/tts/aec3/WebRtcAec3.java"
+    "$BUILD_DIR/java/cn/watchfun/aec3/WebRtcAec3.java"
 
 # Create classes.jar
 cd "$AAR_DIR/classes"
@@ -920,7 +920,7 @@ cd "$PROJECT_ROOT"
 cat > "$AAR_DIR/AndroidManifest.xml" << EOMANIFEST
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.tts.aec3"
+    package="cn.watchfun.aec3"
     android:versionCode="1"
     android:versionName="1.0">
     

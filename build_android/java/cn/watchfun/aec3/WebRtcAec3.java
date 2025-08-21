@@ -1,4 +1,4 @@
-package com.tts.aec3;
+package cn.watchfun.aec3;
 
 /**
  * WebRTC AEC3 wrapper for TTS echo cancellation
