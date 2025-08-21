@@ -435,29 +435,6 @@ Java_com_tts_aec3_WebRtcAec3_nativeClearCleanAudioBuffer(JNIEnv *env, jobject th
     }
 }
 
-// ========== ENR ADAPTIVE PROCESSING JNI METHODS ==========
 
-/**
- * Set TTS playback state for ENR-based adaptive processing
- * @param isPlaying true when TTS is playing, false when only human voice
- */
-JNIEXPORT void JNICALL
-Java_com_tts_aec3_WebRtcAec3_nativeSetTtsPlaybackState(JNIEnv *env, jobject thiz, jboolean isPlaying) {
-    if (g_processor) {
-        g_processor->SetTtsPlaybackState(isPlaying == JNI_TRUE);
-    }
-}
-
-/**
- * Get current ENR (Echo-to-Nearend Ratio) value
- * @return Current ENR value (higher = more echo relative to voice)
- */
-JNIEXPORT jdouble JNICALL
-Java_com_tts_aec3_WebRtcAec3_nativeGetCurrentENR(JNIEnv *env, jobject thiz) {
-    if (g_processor) {
-        return static_cast<jdouble>(g_processor->GetCurrentENR());
-    }
-    return 0.0;
-}
 
 } // extern "C"

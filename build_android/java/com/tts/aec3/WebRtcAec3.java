@@ -105,10 +105,6 @@ public class WebRtcAec3 {
     public native byte[] nativeGetCleanAudioAsWAV(int outputSampleRate);  // Get buffered clean audio as WAV
     public native byte[] nativeGetCleanAudioAsPCM(int outputSampleRate);  // Get buffered clean audio as PCM
     public native void nativeClearCleanAudioBuffer();                     // Clear clean audio buffer
-    
-    // 🎯 ENR ADAPTIVE PROCESSING NATIVE METHODS (2025-01-31)
-    public native void nativeSetTtsPlaybackState(boolean isPlaying);      // Set TTS playback state for ENR
-    public native double nativeGetCurrentENR();                           // Get current ENR value
 
     // High-level Java API
     private boolean initialized = false;
@@ -477,27 +473,7 @@ public class WebRtcAec3 {
         }
     }
     
-    // 🎯 ENR ADAPTIVE PROCESSING METHODS (2025-01-31)
-    
-    /**
-     * Set TTS playback state for ENR-based adaptive voice processing
-     * Call this to enable voice enhancement when TTS is not playing
-     * @param isPlaying true when TTS is playing (echo cancellation mode), false when only human voice (voice enhancement mode)
-     */
-    public void setTtsPlaybackState(boolean isPlaying) {
-        if (initialized) {
-            nativeSetTtsPlaybackState(isPlaying);
-        }
-    }
-    
-    /**
-     * Get current ENR (Echo-to-Nearend Ratio) value
-     * @return ENR value: 0.0 = voice-only mode, >0.0 = echo present relative to voice
-     */
-    public double getCurrentENR() {
-        if (!initialized) return 0.0;
-        return nativeGetCurrentENR();
-    }
+
 
     /**
      * Class to hold AEC performance metrics

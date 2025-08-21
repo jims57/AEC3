@@ -256,12 +256,7 @@ private:
     std::vector<std::vector<float>> clean_audio_buffer_;
     std::mutex clean_audio_buffer_mutex_;
     
-    // ENR (Echo-to-Nearend Ratio) adaptive processing (2025-01-31)
-    bool tts_is_playing_;
-    double current_enr_;
-    double tts_energy_threshold_;
-    double voice_enhancement_factor_;
-    int frames_without_tts_;
+
     
 public:
     /**
@@ -283,19 +278,7 @@ public:
      */
     void ClearCleanAudioBuffer();
     
-    // ========== ENR ADAPTIVE PROCESSING METHODS ==========
-    
-    /**
-     * Set TTS playback state for ENR-based adaptive processing
-     * @param isPlaying true when TTS is playing, false when only human voice
-     */
-    void SetTtsPlaybackState(bool isPlaying);
-    
-    /**
-     * Get current ENR (Echo-to-Nearend Ratio) value
-     * @return Current ENR value (higher = more echo relative to voice)
-     */
-    double GetCurrentENR();
+
 };
 
 } // namespace webrtc_aec3_tts
