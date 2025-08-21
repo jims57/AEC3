@@ -188,8 +188,8 @@ file(REMOVE_RECURSE
   "CMakeFiles/wq_aec3_tts.dir/Users/mac/Documents/GitHub/AEC3/base/system_wrappers/source/cpu_features.cc.o.d"
   "CMakeFiles/wq_aec3_tts.dir/Users/mac/Documents/GitHub/AEC3/base/system_wrappers/source/field_trial.cc.o"
   "CMakeFiles/wq_aec3_tts.dir/Users/mac/Documents/GitHub/AEC3/base/system_wrappers/source/field_trial.cc.o.d"
-  "CMakeFiles/wq_aec3_tts.dir/tts_aec3_wrapper.cc.o"
-  "CMakeFiles/wq_aec3_tts.dir/tts_aec3_wrapper.cc.o.d"
+  "CMakeFiles/wq_aec3_tts.dir/production_tts_aec3_wrapper.cc.o"
+  "CMakeFiles/wq_aec3_tts.dir/production_tts_aec3_wrapper.cc.o.d"
   "libwq_aec3_tts.pdb"
   "libwq_aec3_tts.so"
 )

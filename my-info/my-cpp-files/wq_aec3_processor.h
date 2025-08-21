@@ -27,16 +27,36 @@ struct TimedFrame {
     TimedFrame(const int16_t* samples, size_t size, uint64_t id);
 };
 
+// 🎯 Production-Grade ERLE Performance Metrics (2025-01-31)
+struct ProductionErleMetrics {
+    double erl_estimate;                    // Echo Return Loss estimate from WebRTC ErlEstimator
+    double erle_fullband_log2;             // Fullband ERLE in log2 scale from ErleEstimator
+    double erle_subband_average;           // Average subband ERLE performance
+    double linear_filter_quality;         // Linear filter quality estimate [0-1]
+    int matched_filter_delay_samples;     // Delay from matched filter estimator
+    bool delay_estimate_reliable;         // Whether delay estimate is reliable
+    double clockdrift_level;              // Clock drift detection level
+    bool filter_converged;                // Whether adaptive filter has converged
+    double timing_sync_accuracy_ms;       // Timing synchronization accuracy
+};
+
 /**
  * 用于TTS回声消除的WebRTC AEC3处理器 (2025-01-31)
  * 
  * 该类为TTS（文本转语音）应用提供生产级声学回声消除功能，
- * 使用WebRTC AEC3算法进行了特别优化。
+ * 使用WebRTC AEC3算法进行了特别优化，集成了内置的ERL/ERLE估计器。
+ * 
+ * 🎯 Production-Grade Features (2025-01-31):
+ * - 集成WebRTC内置ErlEstimator和ErleEstimator实现生产级ERLE性能
+ * - 使用EchoPathDelayEstimator进行精确时序同步和延迟估计
+ * - 自适应滤波器收敛监控和优化
+ * - 实时时钟漂移检测和补偿
+ * - 生产环境稳定性和跨设备兼容性
  * 
  * 主要特性：
- * - 增强的ERLE性能（目标>12dB vs 标准6.2dB）
- * - 通用Android设备兼容性
- * - 精确时序同步
+ * - 增强的ERLE性能（目标>15dB vs 标准6.2dB）
+ * - WebRTC内置估计器集成优化
+ * - 精确时序同步和延迟估计
  * - 移动开发者参数控制
  * - 生产就绪的稳定性
  */
@@ -52,13 +72,16 @@ public:
     static constexpr int kMaxDelayMs = 500;
     static constexpr int kMinDelayMs = 20;
     static constexpr int kDelayBufferSize = kMaxDelayMs * kSampleRate / 1000 / kFrameSize;
-    static constexpr double kTimingToleranceMs = 2.0;
-    static constexpr int kDelayEstimationFrames = 50;
-    static constexpr int kInitializationFrames = 100;
+    static constexpr double kTimingToleranceMs = 1.0;    // Tighter timing tolerance
+    static constexpr int kDelayEstimationFrames = 25;    // More frequent delay estimation
+    static constexpr int kInitializationFrames = 150;    // Extended initialization for stability
+    static constexpr double kTargetErleDb = 15.0;        // Production-grade ERLE target
+    static constexpr double kMinAcceptableErleDb = 8.0;  // Minimum acceptable ERLE
+    static constexpr int kErleMonitoringFrames = 100;    // ERLE monitoring frequency
 
     /**
-     * 使用优化默认参数的构造函数
-     * 基于增强性能的调整结果
+     * 使用生产级优化参数的构造函数
+     * 基于WebRTC内置估计器的增强性能调整
      */
     WqAec3Processor();
     
@@ -70,7 +93,8 @@ public:
     // ========== 核心AEC3方法 ==========
     
     /**
-     * 使用增强配置初始化AEC3处理器
+     * 使用生产级配置初始化AEC3处理器
+     * 集成WebRTC内置ERL/ERLE估计器和延迟估计器
      * @return 初始化成功则返回true
      */
     bool Initialize();
@@ -115,6 +139,36 @@ public:
     bool GetEnhancedMetrics(double* echo_return_loss, double* echo_return_loss_enhancement, 
                            int* delay_ms, uint64_t* render_frames, uint64_t* capture_frames, 
                            int* optimal_delay);
+    
+    /**
+     * 获取生产级ERLE性能指标
+     * 集成WebRTC内置ErlEstimator和ErleEstimator的详细性能数据
+     * @return 生产级ERLE性能指标结构体
+     */
+    ProductionErleMetrics GetProductionErleMetrics();
+    
+    /**
+     * 执行生产级ERLE性能优化
+     * 基于WebRTC内置估计器进行自适应优化
+     * @return 优化成功则返回true
+     */
+    bool OptimizeProductionErlePerformance();
+    
+    /**
+     * 启用/禁用生产级精确时序同步
+     * 使用WebRTC EchoPathDelayEstimator进行精确延迟估计
+     * @param enable_precise_sync 是否启用精确时序同步
+     * @param enable_clockdrift_detection 是否启用时钟漂移检测
+     * @return 设置成功则返回true
+     */
+    bool EnableProductionTimingSync(bool enable_precise_sync, bool enable_clockdrift_detection);
+    
+    /**
+     * 强制重新校准延迟估计
+     * 使用WebRTC内置延迟估计器重新校准
+     * @return 重新校准成功则返回true
+     */
+    bool RecalibrateDelayEstimation();
 
     // ========== 配置方法 ==========
     
@@ -204,6 +258,14 @@ private:
                            const std::chrono::high_resolution_clock::time_point& render_time);
     void PerformDelayEstimationOptimization();
     int GetTimingBasedDelayEstimate();
+    
+    // 🎯 WebRTC Built-in Estimator Integration Methods
+    void UpdateProductionErleEstimates();
+    void MonitorAdaptiveFilterConvergence();
+    void OptimizeBasedOnErleEstimates();
+    void HandleClockdriftDetection();
+    bool ValidateTimingSynchronization();
+    void AdaptDelayBasedOnPathEstimator();
 
     // 核心WebRTC组件
     std::mutex mutex_;
@@ -252,11 +314,20 @@ private:
     int delay_num_filters_;
     float delay_estimate_smoothing_;
     
+    // 🎯 Production-Grade ERLE Monitoring Variables
+    ProductionErleMetrics current_production_metrics_;
+    std::mutex production_metrics_mutex_;
+    int erle_monitoring_counter_;
+    bool production_timing_sync_enabled_;
+    bool clockdrift_detection_enabled_;
+    double last_erle_fullband_log2_;
+    std::vector<double> erle_history_;
+    int adaptive_filter_convergence_counter_;
+    bool is_adaptive_filter_converged_;
+    
     // 实时清洁音频缓冲系统 (2025-01-31)
     std::vector<std::vector<float>> clean_audio_buffer_;
     std::mutex clean_audio_buffer_mutex_;
-    
-
     
 public:
     /**
@@ -277,8 +348,6 @@ public:
      * 清除清洁音频缓冲区
      */
     void ClearCleanAudioBuffer();
-    
-
 };
 
 } // namespace webrtc_aec3_tts

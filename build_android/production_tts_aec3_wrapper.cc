@@ -1,5 +1,6 @@
-// TTS AEC3 Wrapper - Main entry point (2025-01-31)
+// Production-Grade TTS AEC3 Wrapper - Main entry point 
 // This file combines all C++ components for the WebRTC AEC3 TTS library
+// with enhanced ERLE performance and precise timing synchronization
 
 // Include the main processor implementation
 #include "wq_aec3_processor.cpp"

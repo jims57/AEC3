@@ -1,5 +1,5 @@
-CMakeFiles/wq_aec3_tts.dir/tts_aec3_wrapper.cc.o: \
-  /Users/mac/Documents/GitHub/AEC3/build_android/tts_aec3_wrapper.cc \
+CMakeFiles/wq_aec3_tts.dir/production_tts_aec3_wrapper.cc.o: \
+  /Users/mac/Documents/GitHub/AEC3/build_android/production_tts_aec3_wrapper.cc \
   /Users/mac/Documents/GitHub/AEC3/build_android/wq_aec3_processor.cpp \
   /Users/mac/Documents/GitHub/AEC3/build_android/wq_aec3_processor.h \
   /Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include/c++/v1/memory \
@@ -36,17 +36,17 @@ CMakeFiles/wq_aec3_tts.dir/tts_aec3_wrapper.cc.o: \
   /Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include/stdint.h \
   /Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include/bits/wchar_limits.h \
   /Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include/linux/types.h \
-  /Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include/x86_64-linux-android/asm/types.h \
+  /Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include/i686-linux-android/asm/types.h \
   /Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include/asm-generic/types.h \
   /Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include/asm-generic/int-ll64.h \
-  /Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include/x86_64-linux-android/asm/bitsperlong.h \
+  /Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include/i686-linux-android/asm/bitsperlong.h \
   /Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include/asm-generic/bitsperlong.h \
   /Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include/linux/posix_types.h \
   /Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include/linux/stddef.h \
   /Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include/linux/compiler_types.h \
   /Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include/linux/compiler.h \
-  /Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include/x86_64-linux-android/asm/posix_types.h \
-  /Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include/x86_64-linux-android/asm/posix_types_64.h \
+  /Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include/i686-linux-android/asm/posix_types.h \
+  /Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include/i686-linux-android/asm/posix_types_32.h \
   /Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include/asm-generic/posix_types.h \
   /Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include/bits/pthread_types.h \
   /Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/lib64/clang/14.0.7/include/stdarg.h \
@@ -89,12 +89,12 @@ CMakeFiles/wq_aec3_tts.dir/tts_aec3_wrapper.cc.o: \
   /Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include/linux/time_types.h \
   /Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include/sys/select.h \
   /Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include/signal.h \
-  /Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include/x86_64-linux-android/asm/sigcontext.h \
+  /Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include/i686-linux-android/asm/sigcontext.h \
   /Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include/bits/signal_types.h \
   /Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include/linux/signal.h \
-  /Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include/x86_64-linux-android/asm/signal.h \
+  /Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include/i686-linux-android/asm/signal.h \
   /Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include/asm-generic/signal-defs.h \
-  /Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include/x86_64-linux-android/asm/siginfo.h \
+  /Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include/i686-linux-android/asm/siginfo.h \
   /Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include/asm-generic/siginfo.h \
   /Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include/bits/timespec.h \
   /Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include/sys/ucontext.h \
@@ -115,7 +115,7 @@ CMakeFiles/wq_aec3_tts.dir/tts_aec3_wrapper.cc.o: \
   /Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include/c++/v1/errno.h \
   /Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include/errno.h \
   /Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include/linux/errno.h \
-  /Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include/x86_64-linux-android/asm/errno.h \
+  /Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include/i686-linux-android/asm/errno.h \
   /Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include/asm-generic/errno.h \
   /Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include/asm-generic/errno-base.h \
   /Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include/android/legacy_errno_inlines.h \

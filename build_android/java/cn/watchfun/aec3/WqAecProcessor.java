@@ -1,16 +1,24 @@
 package cn.watchfun.aec3;
 
 /**
- * WebRTC AEC3 wrapper for TTS echo cancellation
+ * Production-Grade WebRTC AEC3 wrapper for TTS echo cancellation 
  * 
- * This class provides a simple interface to WebRTC's Acoustic Echo Cancellation (AEC3)
- * specifically optimized for TTS (Text-to-Speech) applications.
+ * This class provides a production-ready interface to WebRTC's Acoustic Echo Cancellation (AEC3)
+ * specifically optimized for TTS (Text-to-Speech) applications with enhanced ERLE performance
+ * and precise timing synchronization using WebRTC's built-in estimators.
+ * 
+ * Production-Grade Features:
+ * - Integrated WebRTC ErlEstimator and ErleEstimator for optimal ERLE performance (Target: >15dB)
+ * - EchoPathDelayEstimator for precise timing synchronization and delay estimation
+ * - Adaptive filter convergence monitoring and real-time optimization
+ * - Clock drift detection and compensation for cross-device compatibility
+ * - Production-ready stability and error handling
  * 
  * Usage:
  * 1. Initialize the AEC processor
  * 2. For each TTS audio chunk: call processTtsAudio() BEFORE playing it
  * 3. For each microphone chunk: call processMicrophoneAudio() to get clean audio
- * 4. Monitor performance with getMetrics()
+ * 4. Monitor performance with getProductionErleMetrics()
  * 
  * Important: All audio must be 48kHz, 16-bit PCM, mono, 480 samples (10ms chunks)
  */
@@ -25,8 +33,12 @@ public class WqAecProcessor {
     public static final int CHANNELS = 1;      // Mono
     public static final int BITS_PER_SAMPLE = 16;
 
+    // Production-Grade ERLE Performance Constants 
+    public static final double TARGET_ERLE_DB = 15.0;      // Production-grade ERLE target
+    public static final double MIN_ACCEPTABLE_ERLE_DB = 8.0; // Minimum acceptable ERLE
+
     /**
-     * Initialize the AEC processor
+     * Initialize the production-grade AEC processor
      * @return true if successful
      */
     public native boolean nativeInitialize();
@@ -61,12 +73,43 @@ public class WqAecProcessor {
     public native double[] nativeGetMetrics();
 
     /**
+     * Get production-grade ERLE performance metrics 
+     * Includes data from WebRTC's built-in ErlEstimator and ErleEstimator
+     * @return double array: [erl_estimate, erle_fullband_log2, erle_subband_avg, linear_filter_quality, 
+     *                       matched_filter_delay_samples, delay_reliable(0/1), clockdrift_level, 
+     *                       filter_converged(0/1), timing_sync_accuracy_ms]
+     */
+    public native double[] nativeGetProductionErleMetrics();
+
+    /**
+     * Optimize production-grade ERLE performance 
+     * Uses WebRTC's built-in estimators for adaptive optimization
+     * @return true if optimization successful
+     */
+    public native boolean nativeOptimizeProductionErlePerformance();
+
+    /**
+     * Enable production-grade precise timing synchronization 
+     * @param enablePreciseSync Enable precise timing sync using WebRTC EchoPathDelayEstimator
+     * @param enableClockdriftDetection Enable clock drift detection and compensation
+     * @return true if settings applied successfully
+     */
+    public native boolean nativeEnableProductionTimingSync(boolean enablePreciseSync, boolean enableClockdriftDetection);
+
+    /**
+     * Force recalibration of delay estimation 
+     * Uses WebRTC's built-in delay estimator for recalibration
+     * @return true if recalibration successful
+     */
+    public native boolean nativeRecalibrateDelayEstimation();
+
+    /**
      * Update stream delay compensation
      * @param delayMs Delay in milliseconds (typically 80-150ms for Android)
      */
     public native void nativeSetStreamDelay(int delayMs);
     
-    // 🎛️ OFFICIAL AEC3 PARAMETER CONTROL (2025-01-31)
+    // OFFICIAL AEC3 PARAMETER CONTROL 
     // These native methods directly correspond to official WebRTC AEC3 configuration parameters
     
     // Filter Configuration Native Methods
@@ -88,12 +131,12 @@ public class WqAecProcessor {
     public native void nativeSetHoldDuration(int duration);               // 0-10000 range, 0=default
     public native void nativeSetTriggerThreshold(int threshold);          // 0-10000 range, 0=default
     
-    // 🎯 ENHANCED ERLE OPTIMIZATION METHODS (2025-01-31)
+    // ENHANCED ERLE OPTIMIZATION METHODS 
     public native boolean nativeAutoOptimizeDelay();               // Automatic delay optimization
     public native double[] nativeGetEnhancedMetrics();             // [ERL, ERLE, delay, render_frames, capture_frames, optimal_delay]
     public native boolean nativeEnableTimingSync(boolean enable);   // Enable/disable precise timing sync
     
-    // 🎯 ERLE ADJUSTMENT PARAMETER NATIVE METHODS FOR MOBILE DEVELOPERS (2025-01-31)
+    // ERLE ADJUSTMENT PARAMETER NATIVE METHODS FOR MOBILE DEVELOPERS 
     public native void nativeSetFilterLengthBlocks(int blocks);           // Filter length blocks (1-100)
     public native void nativeSetFilterLeakageConverged(float leakage);    // Filter leakage converged (0.000001-1.0)
     public native void nativeSetFilterLeakageDiverged(float leakage);     // Filter leakage diverged (0.001-1.0)
@@ -101,7 +144,7 @@ public class WqAecProcessor {
     public native void nativeSetDelayNumFilters(int filters);             // Delay number of filters (1-32)
     public native void nativeSetDelayEstimateSmoothing(float smoothing);  // Delay estimate smoothing (0.1-0.99)
     
-    // 🎯 CLEAN AUDIO CONVERSION NATIVE METHODS (2025-01-31)
+    // CLEAN AUDIO CONVERSION NATIVE METHODS 
     public native byte[] nativeGetCleanAudioAsWAV(int outputSampleRate);  // Get buffered clean audio as WAV
     public native byte[] nativeGetCleanAudioAsPCM(int outputSampleRate);  // Get buffered clean audio as PCM
     public native void nativeClearCleanAudioBuffer();                     // Clear clean audio buffer
@@ -110,7 +153,7 @@ public class WqAecProcessor {
     private boolean initialized = false;
 
     /**
-     * Initialize the AEC processor
+     * Initialize the production-grade AEC processor
      * @return true if successful
      */
     public boolean initialize() {
@@ -174,6 +217,59 @@ public class WqAecProcessor {
     }
 
     /**
+     * Get production-grade ERLE performance metrics 
+     * @return ProductionErleMetrics object with comprehensive performance data
+     */
+    public ProductionErleMetrics getProductionErleMetrics() {
+        if (!initialized) return null;
+        
+        double[] metrics = nativeGetProductionErleMetrics();
+        if (metrics != null && metrics.length == 9) {
+            return new ProductionErleMetrics(
+                metrics[0],  // erl_estimate
+                metrics[1],  // erle_fullband_log2
+                metrics[2],  // erle_subband_average
+                metrics[3],  // linear_filter_quality
+                (int)metrics[4],  // matched_filter_delay_samples
+                metrics[5] > 0.5,  // delay_estimate_reliable
+                metrics[6],  // clockdrift_level
+                metrics[7] > 0.5,  // filter_converged
+                metrics[8]   // timing_sync_accuracy_ms
+            );
+        }
+        return null;
+    }
+
+    /**
+     * Optimize production-grade ERLE performance 
+     * @return true if optimization successful
+     */
+    public boolean optimizeProductionErlePerformance() {
+        if (!initialized) return false;
+        return nativeOptimizeProductionErlePerformance();
+    }
+
+    /**
+     * Enable production-grade precise timing synchronization 
+     * @param enablePreciseSync Enable precise timing sync using WebRTC EchoPathDelayEstimator
+     * @param enableClockdriftDetection Enable clock drift detection and compensation
+     * @return true if settings applied successfully
+     */
+    public boolean enableProductionTimingSync(boolean enablePreciseSync, boolean enableClockdriftDetection) {
+        if (!initialized) return false;
+        return nativeEnableProductionTimingSync(enablePreciseSync, enableClockdriftDetection);
+    }
+
+    /**
+     * Force recalibration of delay estimation 
+     * @return true if recalibration successful
+     */
+    public boolean recalibrateDelayEstimation() {
+        if (!initialized) return false;
+        return nativeRecalibrateDelayEstimation();
+    }
+
+    /**
      * Adjust stream delay for optimal performance
      * @param delayMs Delay in milliseconds
      */
@@ -183,7 +279,7 @@ public class WqAecProcessor {
         }
     }
     
-    // 🎛️ OFFICIAL AEC3 PARAMETER CONTROL METHODS (2025-01-31)
+    // OFFICIAL AEC3 PARAMETER CONTROL METHODS 
     // These methods directly control the official WebRTC AEC3 configuration parameters
     // Use 0 values to apply AEC3 defaults, or set specific values for custom tuning
     
@@ -316,7 +412,7 @@ public class WqAecProcessor {
         }
     }
     
-    // 🎯 ENHANCED ERLE OPTIMIZATION METHODS FOR MOBILE DEVELOPERS (2025-01-31)
+    // ENHANCED ERLE OPTIMIZATION METHODS FOR MOBILE DEVELOPERS 
     
     /**
      * Automatically optimize delay for maximum ERLE performance
@@ -354,13 +450,13 @@ public class WqAecProcessor {
         return nativeEnableTimingSync(enable);
     }
     
-    // 🎯 ERLE ADJUSTMENT PARAMETER METHODS FOR MOBILE DEVELOPERS (2025-01-31)
+    // ERLE ADJUSTMENT PARAMETER METHODS FOR MOBILE DEVELOPERS 
     // Based on adjust-ERLE-result.md - fine-tune ERLE performance and convergence speed
     
     /**
      * Set filter length in blocks for echo learning
      * Higher values = better echo learning but slower convergence
-     * @param blocks 1-100 range, default=25 (from adjust-ERLE-result.md)
+     * @param blocks 1-100 range, default=30 (production-grade)
      */
     public void setFilterLengthBlocks(int blocks) {
         if (initialized) {
@@ -371,7 +467,7 @@ public class WqAecProcessor {
     /**
      * Set filter leakage when converged for stability
      * Lower values = faster convergence but less stability
-     * @param leakage 0.000001-1.0 range, default=0.000005 (from adjust-ERLE-result.md)
+     * @param leakage 0.000001-1.0 range, default=0.000003 (production-grade)
      */
     public void setFilterLeakageConverged(float leakage) {
         if (initialized) {
@@ -382,7 +478,7 @@ public class WqAecProcessor {
     /**
      * Set filter leakage when diverged for recovery
      * Lower values = tighter divergence recovery
-     * @param leakage 0.001-1.0 range, default=0.005 (from adjust-ERLE-result.md)
+     * @param leakage 0.001-1.0 range, default=0.003 (production-grade)
      */
     public void setFilterLeakageDiverged(float leakage) {
         if (initialized) {
@@ -393,7 +489,7 @@ public class WqAecProcessor {
     /**
      * Set delay estimation down sampling factor for precision
      * Lower values = higher precision but more CPU usage
-     * @param factor 1-8 range, default=2 (from adjust-ERLE-result.md)
+     * @param factor 1-8 range, default=2 (production-grade)
      */
     public void setDelayDownSamplingFactor(int factor) {
         if (initialized) {
@@ -404,7 +500,7 @@ public class WqAecProcessor {
     /**
      * Set number of delay estimation filters
      * Higher values = better delay detection across devices
-     * @param filters 1-32 range, default=16 (from adjust-ERLE-result.md)
+     * @param filters 1-32 range, default=20 (production-grade)
      */
     public void setDelayNumFilters(int filters) {
         if (initialized) {
@@ -415,7 +511,7 @@ public class WqAecProcessor {
     /**
      * Set delay estimate smoothing factor for stability
      * Higher values = more stable delay estimation
-     * @param smoothing 0.1-0.99 range, default=0.98 (from adjust-ERLE-result.md)
+     * @param smoothing 0.1-0.99 range, default=0.99 (production-grade)
      */
     public void setDelayEstimateSmoothing(float smoothing) {
         if (initialized) {
@@ -423,7 +519,7 @@ public class WqAecProcessor {
         }
     }
     
-    // 🎯 CLEAN AUDIO CONVERSION METHODS (2025-01-31)
+    // CLEAN AUDIO CONVERSION METHODS 
     
     /**
      * Get accumulated clean audio as WAV format and clear buffer
@@ -472,8 +568,6 @@ public class WqAecProcessor {
             nativeClearCleanAudioBuffer();
         }
     }
-    
-
 
     /**
      * Class to hold AEC performance metrics
@@ -497,7 +591,7 @@ public class WqAecProcessor {
     }
     
     /**
-     * Enhanced AEC performance metrics with detailed information (2025-01-31)
+     * Enhanced AEC performance metrics with detailed information 
      */
     public static class EnhancedAecMetrics {
         public final double echoReturnLoss;
@@ -543,6 +637,86 @@ public class WqAecProcessor {
             if (renderFrames == 0 || captureFrames == 0) return false;
             double ratio = (double) Math.min(renderFrames, captureFrames) / Math.max(renderFrames, captureFrames);
             return ratio > 0.95; // Within 5% is considered synchronized
+        }
+    }
+
+    /**
+     * Production-Grade ERLE Performance Metrics 
+     * Comprehensive metrics from WebRTC's built-in ErlEstimator and ErleEstimator
+     */
+    public static class ProductionErleMetrics {
+        public final double erlEstimate;
+        public final double erleFullbandLog2;
+        public final double erleSubbandAverage;
+        public final double linearFilterQuality;
+        public final int matchedFilterDelaySamples;
+        public final boolean delayEstimateReliable;
+        public final double clockdriftLevel;
+        public final boolean filterConverged;
+        public final double timingSyncAccuracyMs;
+
+        public ProductionErleMetrics(double erlEstimate, double erleFullbandLog2, double erleSubbandAverage,
+                                   double linearFilterQuality, int matchedFilterDelaySamples, boolean delayEstimateReliable,
+                                   double clockdriftLevel, boolean filterConverged, double timingSyncAccuracyMs) {
+            this.erlEstimate = erlEstimate;
+            this.erleFullbandLog2 = erleFullbandLog2;
+            this.erleSubbandAverage = erleSubbandAverage;
+            this.linearFilterQuality = linearFilterQuality;
+            this.matchedFilterDelaySamples = matchedFilterDelaySamples;
+            this.delayEstimateReliable = delayEstimateReliable;
+            this.clockdriftLevel = clockdriftLevel;
+            this.filterConverged = filterConverged;
+            this.timingSyncAccuracyMs = timingSyncAccuracyMs;
+        }
+
+        /**
+         * Get ERLE in dB (converted from log2 scale)
+         * @return ERLE value in dB
+         */
+        public double getErleDb() {
+            return erleFullbandLog2 * 3.01; // Convert log2 to dB approximation
+        }
+
+        /**
+         * Get delay in milliseconds (converted from samples)
+         * @return Delay in milliseconds at 48kHz
+         */
+        public double getDelayMs() {
+            return matchedFilterDelaySamples / 48.0; // Convert samples to ms at 48kHz
+        }
+
+        /**
+         * Get production-grade ERLE quality assessment
+         * @return Quality level based on production targets
+         */
+        public String getProductionErleQuality() {
+            double erleDb = getErleDb();
+            if (erleDb >= TARGET_ERLE_DB) return "Production-Grade";
+            else if (erleDb >= 12.0) return "Near-Production";
+            else if (erleDb >= MIN_ACCEPTABLE_ERLE_DB) return "Acceptable";
+            else return "Below-Standard";
+        }
+
+        /**
+         * Check if the system meets production-grade performance criteria
+         * @return true if all production criteria are met
+         */
+        public boolean meetsProductionStandards() {
+            return getErleDb() >= TARGET_ERLE_DB && 
+                   filterConverged && 
+                   delayEstimateReliable && 
+                   linearFilterQuality > 0.7 && 
+                   clockdriftLevel < 0.5;
+        }
+
+        @Override
+        public String toString() {
+            return String.format("Production ERLE Metrics: ERL=%.1fdB, ERLE=%.1fdB (%s), " +
+                               "Filter Quality=%.2f, Converged=%s, Delay Reliable=%s, " +
+                               "Clock Drift=%.2f, Timing Accuracy=%.1fms",
+                               erlEstimate, getErleDb(), getProductionErleQuality(),
+                               linearFilterQuality, filterConverged, delayEstimateReliable,
+                               clockdriftLevel, timingSyncAccuracyMs);
         }
     }
 }

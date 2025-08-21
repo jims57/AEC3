@@ -170,7 +170,7 @@ CMAKE_PROJECT_DESCRIPTION:STATIC=
 CMAKE_PROJECT_HOMEPAGE_URL:STATIC=
 
 //Value Computed by CMake
-CMAKE_PROJECT_NAME:STATIC=webrtc_aec3_tts
+CMAKE_PROJECT_NAME:STATIC=webrtc_aec3_production_tts
 
 //Ranlib
 CMAKE_RANLIB:FILEPATH=/Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/bin/llvm-ranlib
@@ -240,13 +240,13 @@ CMAKE_TOOLCHAIN_FILE:FILEPATH=/Users/mac/Library/Android/sdk/ndk/25.2.9519653/bu
 CMAKE_VERBOSE_MAKEFILE:BOOL=ON
 
 //Value Computed by CMake
-webrtc_aec3_tts_BINARY_DIR:STATIC=/Users/mac/Documents/GitHub/AEC3/build_android/x86_64
+webrtc_aec3_production_tts_BINARY_DIR:STATIC=/Users/mac/Documents/GitHub/AEC3/build_android/x86_64
 
 //Value Computed by CMake
-webrtc_aec3_tts_IS_TOP_LEVEL:STATIC=ON
+webrtc_aec3_production_tts_IS_TOP_LEVEL:STATIC=ON
 
 //Value Computed by CMake
-webrtc_aec3_tts_SOURCE_DIR:STATIC=/Users/mac/Documents/GitHub/AEC3/build_android
+webrtc_aec3_production_tts_SOURCE_DIR:STATIC=/Users/mac/Documents/GitHub/AEC3/build_android
 
 
 ########################
