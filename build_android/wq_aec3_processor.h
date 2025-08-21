@@ -18,7 +18,7 @@
 
 namespace webrtc_aec3_tts {
 
-// Enhanced timing synchronization buffer for optimal ERLE
+// 用于最优ERLE的增强时序同步缓冲区
 struct TimedFrame {
     std::vector<int16_t> data;
     std::chrono::high_resolution_clock::time_point timestamp;
@@ -28,27 +28,27 @@ struct TimedFrame {
 };
 
 /**
- * WebRTC AEC3 Processor for TTS Echo Cancellation (2025-01-31)
+ * 用于TTS回声消除的WebRTC AEC3处理器 (2025-01-31)
  * 
- * This class provides production-grade acoustic echo cancellation specifically
- * optimized for TTS (Text-to-Speech) applications using WebRTC AEC3 algorithm.
+ * 该类为TTS（文本转语音）应用提供生产级声学回声消除功能，
+ * 使用WebRTC AEC3算法进行了特别优化。
  * 
- * Key Features:
- * - Enhanced ERLE performance (>12dB target vs standard 6.2dB)
- * - Universal Android device compatibility
- * - Precise timing synchronization
- * - Mobile developer parameter control
- * - Production-ready stability
+ * 主要特性：
+ * - 增强的ERLE性能（目标>12dB vs 标准6.2dB）
+ * - 通用Android设备兼容性
+ * - 精确时序同步
+ * - 移动开发者参数控制
+ * - 生产就绪的稳定性
  */
 class WqAec3Processor {
 public:
-    // Audio configuration constants
+    // 音频配置常量
     static constexpr int kSampleRate = 48000;
-    static constexpr int kFrameSize = 480;  // 10ms at 48kHz
-    static constexpr int kChannels = 1;     // Mono
-    static constexpr int kStreamDelay = 100; // Android typical delay
+    static constexpr int kFrameSize = 480;  // 48kHz下10ms
+    static constexpr int kChannels = 1;     // 单声道
+    static constexpr int kStreamDelay = 100; // Android典型延迟
 
-    // Enhanced ERLE optimization constants
+    // 增强ERLE优化常量
     static constexpr int kMaxDelayMs = 500;
     static constexpr int kMinDelayMs = 20;
     static constexpr int kDelayBufferSize = kMaxDelayMs * kSampleRate / 1000 / kFrameSize;
@@ -57,147 +57,147 @@ public:
     static constexpr int kInitializationFrames = 100;
 
     /**
-     * Constructor with optimized default parameters
-     * Based on adjust-ERLE-result.md for enhanced performance
+     * 使用优化默认参数的构造函数
+     * 基于增强性能的调整结果
      */
     WqAec3Processor();
     
     /**
-     * Destructor - cleans up all resources
+     * 析构函数 - 清理所有资源
      */
     ~WqAec3Processor();
 
-    // ========== CORE AEC3 METHODS ==========
+    // ========== 核心AEC3方法 ==========
     
     /**
-     * Initialize the AEC3 processor with enhanced configuration
-     * @return true if initialization successful
+     * 使用增强配置初始化AEC3处理器
+     * @return 初始化成功则返回true
      */
     bool Initialize();
 
     /**
-     * Process TTS audio (reference signal)
-     * Call this BEFORE playing the TTS audio through speakers
-     * @param tts_data TTS audio samples (must be kFrameSize length)
-     * @param length Number of samples (must equal kFrameSize)
-     * @return true if processing successful
+     * 处理TTS音频（参考信号）
+     * 在通过扬声器播放TTS音频之前调用此方法
+     * @param tts_data TTS音频样本（长度必须为kFrameSize）
+     * @param length 样本数量（必须等于kFrameSize）
+     * @return 处理成功则返回true
      */
     bool ProcessTtsAudio(const int16_t* tts_data, size_t length);
 
     /**
-     * Process microphone audio and remove echo
-     * @param mic_data Microphone input samples (must be kFrameSize length)
-     * @param output_data Output buffer for processed audio (must be kFrameSize length)
-     * @param length Number of samples (must equal kFrameSize)
-     * @return true if processing successful
+     * 处理麦克风音频并移除回声
+     * @param mic_data 麦克风输入样本（长度必须为kFrameSize）
+     * @param output_data 处理后音频的输出缓冲区（长度必须为kFrameSize）
+     * @param length 样本数量（必须等于kFrameSize）
+     * @return 处理成功则返回true
      */
     bool ProcessMicrophoneAudio(const int16_t* mic_data, int16_t* output_data, size_t length);
 
     /**
-     * Get current AEC performance metrics
-     * @param echo_return_loss Output: ERL value
-     * @param echo_return_loss_enhancement Output: ERLE value
-     * @param delay_ms Output: Detected delay in milliseconds
-     * @return true if metrics retrieved successfully
+     * 获取当前AEC性能指标
+     * @param echo_return_loss 输出：ERL值
+     * @param echo_return_loss_enhancement 输出：ERLE值
+     * @param delay_ms 输出：检测到的延迟毫秒数
+     * @return 成功检索指标则返回true
      */
     bool GetMetrics(double* echo_return_loss, double* echo_return_loss_enhancement, int* delay_ms);
 
     /**
-     * Get enhanced AEC performance metrics with detailed information
-     * @param echo_return_loss Output: ERL value
-     * @param echo_return_loss_enhancement Output: ERLE value
-     * @param delay_ms Output: Detected delay in milliseconds
-     * @param render_frames Output: Total processed TTS frames
-     * @param capture_frames Output: Total processed microphone frames
-     * @param optimal_delay Output: Current optimal delay setting
-     * @return true if metrics retrieved successfully
+     * 获取带有详细信息的增强AEC性能指标
+     * @param echo_return_loss 输出：ERL值
+     * @param echo_return_loss_enhancement 输出：ERLE值
+     * @param delay_ms 输出：检测到的延迟毫秒数
+     * @param render_frames 输出：已处理的TTS帧总数
+     * @param capture_frames 输出：已处理的麦克风帧总数
+     * @param optimal_delay 输出：当前最优延迟设置
+     * @return 成功检索指标则返回true
      */
     bool GetEnhancedMetrics(double* echo_return_loss, double* echo_return_loss_enhancement, 
                            int* delay_ms, uint64_t* render_frames, uint64_t* capture_frames, 
                            int* optimal_delay);
 
-    // ========== CONFIGURATION METHODS ==========
+    // ========== 配置方法 ==========
     
     /**
-     * Update stream delay compensation
-     * @param delay_ms Delay in milliseconds (typically 80-150ms for Android)
+     * 更新流延迟补偿
+     * @param delay_ms 延迟毫秒数（Android通常为80-150ms）
      */
     void SetStreamDelay(int delay_ms);
     
     /**
-     * Enable or disable precise timing synchronization
-     * @param enable true to enable timing sync, false to disable
-     * @return true if setting applied successfully
+     * 启用或禁用精确时序同步
+     * @param enable true启用时序同步，false禁用
+     * @return 设置成功应用则返回true
      */
     bool EnableTimingSync(bool enable);
     
     /**
-     * Automatically optimize delay for maximum ERLE performance
-     * @return true if optimization completed successfully
+     * 自动优化延迟以获得最大ERLE性能
+     * @return 优化成功完成则返回true
      */
     bool AutoOptimizeDelay();
 
-    // ========== OFFICIAL AEC3 PARAMETER CONTROL ==========
+    // ========== 官方AEC3参数控制 ==========
     
-    // Filter Configuration Methods
+    // 滤波器配置方法
     void SetConfigChangeDuration(int blocks);
     void SetInitialStateSeconds(float seconds);
     void SetConservativeInitialPhase(bool enable);
     
-    // Suppressor Normal Tuning Methods
+    // 抑制器正常调优方法
     void SetMaxDecFactorLF(float factor);
     void SetMaxIncFactor(float factor);
     
-    // Suppressor Nearend Tuning Methods
+    // 抑制器近端调优方法
     void SetNearendMaxDecFactorLF(float factor);
     void SetNearendMaxIncFactor(float factor);
     
-    // Dominant Nearend Detection Methods
+    // 主导近端检测方法
     void SetEnrThreshold(float threshold);
     void SetSnrThreshold(float threshold);
     void SetHoldDuration(int duration);
     void SetTriggerThreshold(int threshold);
 
-    // ========== ERLE ADJUSTMENT PARAMETERS FOR MOBILE DEVELOPERS ==========
+    // ========== 移动开发者ERLE调整参数 ==========
     
     /**
-     * Set filter length in blocks for echo learning
-     * @param blocks 1-100 range, default=25 (from adjust-ERLE-result.md)
+     * 设置回声学习的滤波器长度块数
+     * @param blocks 1-100范围，默认=25
      */
     void SetFilterLengthBlocks(int blocks);
     
     /**
-     * Set filter leakage when converged for stability
-     * @param leakage 0.000001-1.0 range, default=0.000005 (from adjust-ERLE-result.md)
+     * 设置收敛时的滤波器泄漏以保持稳定性
+     * @param leakage 0.000001-1.0范围，默认=0.000005
      */
     void SetFilterLeakageConverged(float leakage);
     
     /**
-     * Set filter leakage when diverged for recovery
-     * @param leakage 0.001-1.0 range, default=0.005 (from adjust-ERLE-result.md)
+     * 设置发散时的滤波器泄漏以进行恢复
+     * @param leakage 0.001-1.0范围，默认=0.005
      */
     void SetFilterLeakageDiverged(float leakage);
     
     /**
-     * Set delay estimation down sampling factor for precision
-     * @param factor 1-8 range, default=2 (from adjust-ERLE-result.md)
+     * 设置延迟估计下采样因子以提高精度
+     * @param factor 1-8范围，默认=2
      */
     void SetDelayDownSamplingFactor(int factor);
     
     /**
-     * Set number of delay estimation filters
-     * @param filters 1-32 range, default=16 (from adjust-ERLE-result.md)
+     * 设置延迟估计滤波器数量
+     * @param filters 1-32范围，默认=16
      */
     void SetDelayNumFilters(int filters);
     
     /**
-     * Set delay estimate smoothing factor for stability
-     * @param smoothing 0.1-0.99 range, default=0.98 (from adjust-ERLE-result.md)
+     * 设置延迟估计平滑因子以保持稳定性
+     * @param smoothing 0.1-0.99范围，默认=0.98
      */
     void SetDelayEstimateSmoothing(float smoothing);
 
 private:
-    // Internal implementation methods
+    // 内部实现方法
     double CalculateFrameEnergy(const int16_t* samples, size_t length) const;
     const TimedFrame* FindOptimalReferenceFrame(const std::chrono::high_resolution_clock::time_point& capture_time);
     int EstimateOptimalDelay(const std::chrono::high_resolution_clock::time_point& capture_time,
@@ -205,7 +205,7 @@ private:
     void PerformDelayEstimationOptimization();
     int GetTimingBasedDelayEstimate();
 
-    // Core WebRTC components
+    // 核心WebRTC组件
     std::mutex mutex_;
     std::unique_ptr<webrtc::EchoCanceller3Factory> aec_factory_;
     std::unique_ptr<webrtc::EchoControl> echo_controller_;
@@ -213,7 +213,7 @@ private:
     std::unique_ptr<webrtc::AudioBuffer> audio_capture_buffer_;
     std::unique_ptr<webrtc::HighPassFilter> high_pass_filter_;
     
-    // Enhanced timing synchronization
+    // 增强时序同步
     std::deque<TimedFrame> render_buffer_;
     uint64_t frame_counter_;
     int last_delay_estimation_;
@@ -223,15 +223,15 @@ private:
     uint64_t total_capture_frames_;
     bool timing_sync_enabled_;
     
-    // Initialization stabilization
+    // 初始化稳定化
     int initialization_frames_;
     bool is_initialization_complete_;
     
-    // Adaptive delay management
+    // 自适应延迟管理
     int current_delay_ms_;
     int manual_delay_ms_;
     
-    // Configuration parameters (runtime adjustable)
+    // 配置参数（运行时可调整）
     int config_change_duration_blocks_;
     float initial_state_seconds_;
     bool conservative_initial_phase_;
@@ -244,7 +244,7 @@ private:
     int hold_duration_;
     int trigger_threshold_;
     
-    // ERLE adjustment parameters for mobile developers
+    // 移动开发者ERLE调整参数
     int filter_length_blocks_;
     float filter_leakage_converged_;
     float filter_leakage_diverged_;
@@ -252,7 +252,7 @@ private:
     int delay_num_filters_;
     float delay_estimate_smoothing_;
     
-    // Real-time clean audio buffering system (2025-01-31)
+    // 实时清洁音频缓冲系统 (2025-01-31)
     std::vector<std::vector<float>> clean_audio_buffer_;
     std::mutex clean_audio_buffer_mutex_;
     
@@ -260,21 +260,21 @@ private:
     
 public:
     /**
-     * Get accumulated clean audio frames and clear buffer
-     * @param outputFrames Output vector to receive clean audio frames
-     * @return Number of frames retrieved
+     * 获取累积的清洁音频帧并清除缓冲区
+     * @param outputFrames 接收清洁音频帧的输出向量
+     * @return 检索到的帧数量
      */
     size_t GetAndClearCleanAudioBuffer(std::vector<std::vector<float>>& outputFrames);
     
     /**
-     * Get accumulated clean audio frames without clearing buffer
-     * @param outputFrames Output vector to receive clean audio frames
-     * @return Number of frames retrieved
+     * 获取累积的清洁音频帧而不清除缓冲区
+     * @param outputFrames 接收清洁音频帧的输出向量
+     * @return 检索到的帧数量
      */
     size_t GetCleanAudioBuffer(std::vector<std::vector<float>>& outputFrames);
     
     /**
-     * Clear the clean audio buffer
+     * 清除清洁音频缓冲区
      */
     void ClearCleanAudioBuffer();
     

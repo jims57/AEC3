@@ -3,19 +3,19 @@
 #include "wq_aec3_processor.h"
 #include "wq_aec3_convertor.h"
 
-// JNI Implementation for WebRTC AEC3 TTS Echo Cancellation (2025-01-31)
-// This file provides the JNI bridge between Java and C++ for the TTS AEC3 processor
+// WebRTC AEC3 TTS回声消除的JNI实现 
+// 该文件提供Java和C++之间的JNI桥梁，用于TTS AEC3处理器
 
-// Global processor instance
+// 全局处理器实例
 static std::unique_ptr<webrtc_aec3_tts::WqAec3Processor> g_processor;
 
 extern "C" {
 
-// ========== CORE AEC3 JNI METHODS ==========
+// ========== 核心AEC3 JNI方法 ==========
 
 /**
- * Initialize the AEC3 processor
- * @return true if initialization successful
+ * 初始化AEC3处理器
+ * @return 初始化成功则返回true
  */
 JNIEXPORT jboolean JNICALL
 Java_cn_watchfun_aec3_WqAecProcessor_nativeInitialize(JNIEnv *env, jobject thiz) {
@@ -24,7 +24,7 @@ Java_cn_watchfun_aec3_WqAecProcessor_nativeInitialize(JNIEnv *env, jobject thiz)
 }
 
 /**
- * Clean up and destroy the AEC3 processor
+ * 清理并销毁AEC3处理器
  */
 JNIEXPORT void JNICALL
 Java_cn_watchfun_aec3_WqAecProcessor_nativeDestroy(JNIEnv *env, jobject thiz) {
@@ -32,9 +32,9 @@ Java_cn_watchfun_aec3_WqAecProcessor_nativeDestroy(JNIEnv *env, jobject thiz) {
 }
 
 /**
- * Process TTS audio (reference signal)
- * @param tts_data TTS audio samples (must be 480 samples)
- * @return true if processing successful
+ * 处理TTS音频（参考信号）
+ * @param tts_data TTS音频样本（必须是480个样本）
+ * @return 处理成功则返回true
  */
 JNIEXPORT jboolean JNICALL
 Java_cn_watchfun_aec3_WqAecProcessor_nativeProcessTtsAudio(JNIEnv *env, jobject thiz, jshortArray tts_data) {
@@ -52,10 +52,10 @@ Java_cn_watchfun_aec3_WqAecProcessor_nativeProcessTtsAudio(JNIEnv *env, jobject 
 }
 
 /**
- * Process microphone audio and remove echo
- * @param mic_data Microphone input samples (must be 480 samples)
- * @param output_data Output buffer for processed audio (must be 480 samples)
- * @return true if processing successful
+ * 处理麦克风音频并移除回声
+ * @param mic_data 麦克风输入样本（必须是480个样本）
+ * @param output_data 处理后音频的输出缓冲区（必须是480个样本）
+ * @return 处理成功则返回true
  */
 JNIEXPORT jboolean JNICALL
 Java_cn_watchfun_aec3_WqAecProcessor_nativeProcessMicrophoneAudio(JNIEnv *env, jobject thiz, 
@@ -79,8 +79,8 @@ Java_cn_watchfun_aec3_WqAecProcessor_nativeProcessMicrophoneAudio(JNIEnv *env, j
 }
 
 /**
- * Get current AEC performance metrics
- * @return double array: [echo_return_loss, echo_return_loss_enhancement, delay_ms]
+ * 获取当前AEC性能指标
+ * @return double数组: [回声返回损耗, 回声返回损耗增强, 延迟毫秒数]
  */
 JNIEXPORT jdoubleArray JNICALL
 Java_cn_watchfun_aec3_WqAecProcessor_nativeGetMetrics(JNIEnv *env, jobject thiz) {
@@ -99,8 +99,8 @@ Java_cn_watchfun_aec3_WqAecProcessor_nativeGetMetrics(JNIEnv *env, jobject thiz)
 }
 
 /**
- * Update stream delay compensation
- * @param delay_ms Delay in milliseconds
+ * 更新流延迟补偿
+ * @param delay_ms 延迟毫秒数
  */
 JNIEXPORT void JNICALL
 Java_cn_watchfun_aec3_WqAecProcessor_nativeSetStreamDelay(JNIEnv *env, jobject thiz, jint delay_ms) {
@@ -109,9 +109,9 @@ Java_cn_watchfun_aec3_WqAecProcessor_nativeSetStreamDelay(JNIEnv *env, jobject t
     }
 }
 
-// ========== OFFICIAL AEC3 PARAMETER CONTROL JNI METHODS ==========
+// ========== 官方AEC3参数控制JNI方法 ==========
 
-// Filter Configuration JNI Methods
+// 滤波器配置JNI方法
 JNIEXPORT void JNICALL
 Java_cn_watchfun_aec3_WqAecProcessor_nativeSetConfigChangeDuration(JNIEnv *env, jobject thiz, jint blocks) {
     if (g_processor) {
@@ -133,7 +133,7 @@ Java_cn_watchfun_aec3_WqAecProcessor_nativeSetConservativeInitialPhase(JNIEnv *e
     }
 }
 
-// Suppressor Normal Tuning JNI Methods
+// 抑制器正常调优JNI方法
 JNIEXPORT void JNICALL
 Java_cn_watchfun_aec3_WqAecProcessor_nativeSetMaxDecFactorLF(JNIEnv *env, jobject thiz, jfloat factor) {
     if (g_processor) {
@@ -148,7 +148,7 @@ Java_cn_watchfun_aec3_WqAecProcessor_nativeSetMaxIncFactor(JNIEnv *env, jobject 
     }
 }
 
-// Suppressor Nearend Tuning JNI Methods
+// 抑制器近端调优JNI方法
 JNIEXPORT void JNICALL
 Java_cn_watchfun_aec3_WqAecProcessor_nativeSetNearendMaxDecFactorLF(JNIEnv *env, jobject thiz, jfloat factor) {
     if (g_processor) {
@@ -163,7 +163,7 @@ Java_cn_watchfun_aec3_WqAecProcessor_nativeSetNearendMaxIncFactor(JNIEnv *env, j
     }
 }
 
-// Dominant Nearend Detection JNI Methods
+// 主导近端检测JNI方法
 JNIEXPORT void JNICALL
 Java_cn_watchfun_aec3_WqAecProcessor_nativeSetEnrThreshold(JNIEnv *env, jobject thiz, jfloat threshold) {
     if (g_processor) {
@@ -192,11 +192,11 @@ Java_cn_watchfun_aec3_WqAecProcessor_nativeSetTriggerThreshold(JNIEnv *env, jobj
     }
 }
 
-// ========== ENHANCED ERLE OPTIMIZATION JNI METHODS ==========
+// ========== 增强ERLE优化JNI方法 ==========
 
 /**
- * Automatically optimize delay for maximum ERLE performance
- * @return true if optimization completed successfully
+ * 自动优化延迟以获得最大ERLE性能
+ * @return 优化成功完成则返回true
  */
 JNIEXPORT jboolean JNICALL
 Java_cn_watchfun_aec3_WqAecProcessor_nativeAutoOptimizeDelay(JNIEnv *env, jobject thiz) {
@@ -207,8 +207,8 @@ Java_cn_watchfun_aec3_WqAecProcessor_nativeAutoOptimizeDelay(JNIEnv *env, jobjec
 }
 
 /**
- * Get enhanced AEC performance metrics with detailed information
- * @return double array: [ERL, ERLE, delay, render_frames, capture_frames, optimal_delay]
+ * 获取带有详细信息的增强AEC性能指标
+ * @return double数组: [ERL, ERLE, 延迟, 渲染帧数, 捕获帧数, 最优延迟]
  */
 JNIEXPORT jdoubleArray JNICALL
 Java_cn_watchfun_aec3_WqAecProcessor_nativeGetEnhancedMetrics(JNIEnv *env, jobject thiz) {
@@ -232,9 +232,9 @@ Java_cn_watchfun_aec3_WqAecProcessor_nativeGetEnhancedMetrics(JNIEnv *env, jobje
 }
 
 /**
- * Enable or disable precise timing synchronization
- * @param enable true to enable timing sync, false to disable
- * @return true if setting applied successfully
+ * 启用或禁用精确时序同步
+ * @param enable true启用时序同步，false禁用
+ * @return 设置成功应用则返回true
  */
 JNIEXPORT jboolean JNICALL
 Java_cn_watchfun_aec3_WqAecProcessor_nativeEnableTimingSync(JNIEnv *env, jobject thiz, jboolean enable) {
@@ -244,11 +244,11 @@ Java_cn_watchfun_aec3_WqAecProcessor_nativeEnableTimingSync(JNIEnv *env, jobject
     return JNI_FALSE;
 }
 
-// ========== ERLE ADJUSTMENT PARAMETER JNI METHODS FOR MOBILE DEVELOPERS ==========
+// ========== 移动开发者ERLE调整参数JNI方法 ==========
 
 /**
- * Set filter length in blocks for echo learning
- * @param blocks 1-100 range, default=25 (from adjust-ERLE-result.md)
+ * 设置回声学习的滤波器长度块数
+ * @param blocks 1-100范围，默认=25
  */
 JNIEXPORT void JNICALL
 Java_cn_watchfun_aec3_WqAecProcessor_nativeSetFilterLengthBlocks(JNIEnv *env, jobject thiz, jint blocks) {
@@ -258,8 +258,8 @@ Java_cn_watchfun_aec3_WqAecProcessor_nativeSetFilterLengthBlocks(JNIEnv *env, jo
 }
 
 /**
- * Set filter leakage when converged for stability
- * @param leakage 0.000001-1.0 range, default=0.000005 (from adjust-ERLE-result.md)
+ * 设置收敛时的滤波器泄漏以保持稳定性
+ * @param leakage 0.000001-1.0范围，默认=0.000005
  */
 JNIEXPORT void JNICALL
 Java_cn_watchfun_aec3_WqAecProcessor_nativeSetFilterLeakageConverged(JNIEnv *env, jobject thiz, jfloat leakage) {
@@ -269,8 +269,8 @@ Java_cn_watchfun_aec3_WqAecProcessor_nativeSetFilterLeakageConverged(JNIEnv *env
 }
 
 /**
- * Set filter leakage when diverged for recovery
- * @param leakage 0.001-1.0 range, default=0.005 (from adjust-ERLE-result.md)
+ * 设置发散时的滤波器泄漏以进行恢复
+ * @param leakage 0.001-1.0范围，默认=0.005
  */
 JNIEXPORT void JNICALL
 Java_cn_watchfun_aec3_WqAecProcessor_nativeSetFilterLeakageDiverged(JNIEnv *env, jobject thiz, jfloat leakage) {
@@ -280,8 +280,8 @@ Java_cn_watchfun_aec3_WqAecProcessor_nativeSetFilterLeakageDiverged(JNIEnv *env,
 }
 
 /**
- * Set delay estimation down sampling factor for precision
- * @param factor 1-8 range, default=2 (from adjust-ERLE-result.md)
+ * 设置延迟估计下采样因子以提高精度
+ * @param factor 1-8范围，默认=2
  */
 JNIEXPORT void JNICALL
 Java_cn_watchfun_aec3_WqAecProcessor_nativeSetDelayDownSamplingFactor(JNIEnv *env, jobject thiz, jint factor) {
@@ -291,8 +291,8 @@ Java_cn_watchfun_aec3_WqAecProcessor_nativeSetDelayDownSamplingFactor(JNIEnv *en
 }
 
 /**
- * Set number of delay estimation filters
- * @param filters 1-32 range, default=16 (from adjust-ERLE-result.md)
+ * 设置延迟估计滤波器数量
+ * @param filters 1-32范围，默认=16
  */
 JNIEXPORT void JNICALL
 Java_cn_watchfun_aec3_WqAecProcessor_nativeSetDelayNumFilters(JNIEnv *env, jobject thiz, jint filters) {
@@ -302,8 +302,8 @@ Java_cn_watchfun_aec3_WqAecProcessor_nativeSetDelayNumFilters(JNIEnv *env, jobje
 }
 
 /**
- * Set delay estimate smoothing factor for stability
- * @param smoothing 0.1-0.99 range, default=0.98 (from adjust-ERLE-result.md)
+ * 设置延迟估计平滑因子以保持稳定性
+ * @param smoothing 0.1-0.99范围，默认=0.98
  */
 JNIEXPORT void JNICALL
 Java_cn_watchfun_aec3_WqAecProcessor_nativeSetDelayEstimateSmoothing(JNIEnv *env, jobject thiz, jfloat smoothing) {
@@ -312,26 +312,26 @@ Java_cn_watchfun_aec3_WqAecProcessor_nativeSetDelayEstimateSmoothing(JNIEnv *env
     }
 }
 
-// ========== CLEAN AUDIO CONVERSION JNI METHODS ==========
+// ========== 清洁音频转换JNI方法 ==========
 
 /**
- * Get clean audio buffer and convert to WAV format
- * @param outputSampleRate Output sample rate (default: 44100)
- * @return byte array containing WAV data, or null on error
+ * 获取清洁音频缓冲区并转换为WAV格式
+ * @param outputSampleRate 输出采样率（默认：44100）
+ * @return 包含WAV数据的字节数组，出错时返回null
  */
 JNIEXPORT jbyteArray JNICALL
 Java_cn_watchfun_aec3_WqAecProcessor_nativeGetCleanAudioAsWAV(JNIEnv *env, jobject thiz, jint outputSampleRate) {
     if (!g_processor) return nullptr;
     
-    // Get clean audio frames from processor buffer (no clear - PCM method will clear)
+    // 从处理器缓冲区获取清洁音频帧（不清除 - PCM方法会清除）
     std::vector<std::vector<float>> audioFrames;
     size_t frameCount = g_processor->GetCleanAudioBuffer(audioFrames);
     
     if (frameCount == 0) {
-        return nullptr; // No audio frames available
+        return nullptr; // 没有可用的音频帧
     }
     
-    // Convert to WAV format
+    // 转换为WAV格式
     uint8_t* wavData = nullptr;
     size_t wavSize = 0;
     int result = webrtc_aec3_tts::WqAec3Convertor::convertCleanAudioToWAV(
@@ -342,7 +342,7 @@ Java_cn_watchfun_aec3_WqAecProcessor_nativeGetCleanAudioAsWAV(JNIEnv *env, jobje
         return nullptr;
     }
     
-    // Create Java byte array
+    // 创建Java字节数组
     jbyteArray wavArray = env->NewByteArray(static_cast<jsize>(wavSize));
     if (!wavArray) {
         free(wavData);
@@ -357,61 +357,61 @@ Java_cn_watchfun_aec3_WqAecProcessor_nativeGetCleanAudioAsWAV(JNIEnv *env, jobje
 }
 
 /**
- * Get clean audio buffer and convert to PCM format
- * @param outputSampleRate Output sample rate (default: 44100)
- * @return byte array containing PCM data, or null on error
+ * 获取清洁音频缓冲区并转换为PCM格式
+ * @param outputSampleRate 输出采样率（默认：44100）
+ * @return 包含PCM数据的字节数组，出错时返回null
  */
 JNIEXPORT jbyteArray JNICALL
 Java_cn_watchfun_aec3_WqAecProcessor_nativeGetCleanAudioAsPCM(JNIEnv *env, jobject thiz, jint outputSampleRate) {
     if (!g_processor) {
-        __android_log_print(ANDROID_LOG_ERROR, "WebRTC_AEC3_TTS", "PCM: g_processor is null");
+        __android_log_print(ANDROID_LOG_ERROR, "WebRTC_AEC3_TTS", "PCM: g_processor为空");
         return nullptr;
     }
     
-    // Get clean audio frames from processor buffer
+    // 从处理器缓冲区获取清洁音频帧
     std::vector<std::vector<float>> audioFrames;
     size_t frameCount = g_processor->GetCleanAudioBuffer(audioFrames);
     
-    __android_log_print(ANDROID_LOG_INFO, "WebRTC_AEC3_TTS", "PCM: Retrieved %zu frames from buffer", frameCount);
+    __android_log_print(ANDROID_LOG_INFO, "WebRTC_AEC3_TTS", "PCM: 从缓冲区检索到%zu帧", frameCount);
     
     if (frameCount == 0) {
-        __android_log_print(ANDROID_LOG_WARN, "WebRTC_AEC3_TTS", "PCM: No audio frames available");
-        return nullptr; // No audio frames available
+        __android_log_print(ANDROID_LOG_WARN, "WebRTC_AEC3_TTS", "PCM: 没有可用的音频帧");
+        return nullptr; // 没有可用的音频帧
     }
     
-    // Debug: Check first frame content
+    // 调试：检查第一帧内容
     if (!audioFrames.empty() && !audioFrames[0].empty()) {
         float firstSample = audioFrames[0][0];
         float lastSample = audioFrames[0][audioFrames[0].size()-1];
-        __android_log_print(ANDROID_LOG_INFO, "WebRTC_AEC3_TTS", "PCM: First frame samples: first=%.6f, last=%.6f, size=%zu", 
+        __android_log_print(ANDROID_LOG_INFO, "WebRTC_AEC3_TTS", "PCM: 第一帧样本: 首个=%.6f, 最后=%.6f, 大小=%zu", 
                            firstSample, lastSample, audioFrames[0].size());
     }
     
-    // Convert to PCM format
+    // 转换为PCM格式
     uint8_t* pcmData = nullptr;
     size_t pcmSize = 0;
     int result = webrtc_aec3_tts::WqAec3Convertor::convertCleanAudioToPCM(
         audioFrames, 48000, &pcmData, &pcmSize, outputSampleRate);
     
-    __android_log_print(ANDROID_LOG_INFO, "WebRTC_AEC3_TTS", "PCM: Conversion result=%d, pcmData=%p, pcmSize=%zu", 
+    __android_log_print(ANDROID_LOG_INFO, "WebRTC_AEC3_TTS", "PCM: 转换结果=%d, pcmData=%p, pcmSize=%zu", 
                        result, pcmData, pcmSize);
     
     if (result != 0 || !pcmData || pcmSize == 0) {
-        __android_log_print(ANDROID_LOG_ERROR, "WebRTC_AEC3_TTS", "PCM: Conversion failed - result=%d, data=%p, size=%zu", 
+        __android_log_print(ANDROID_LOG_ERROR, "WebRTC_AEC3_TTS", "PCM: 转换失败 - 结果=%d, 数据=%p, 大小=%zu", 
                            result, pcmData, pcmSize);
         if (pcmData) free(pcmData);
         return nullptr;
     }
     
-    // Debug: Check first few PCM bytes
+    // 调试：检查前几个PCM字节
     int16_t* pcmSamples = reinterpret_cast<int16_t*>(pcmData);
-    __android_log_print(ANDROID_LOG_INFO, "WebRTC_AEC3_TTS", "PCM: First samples: [%d, %d, %d, %d]", 
+    __android_log_print(ANDROID_LOG_INFO, "WebRTC_AEC3_TTS", "PCM: 前几个样本: [%d, %d, %d, %d]", 
                        pcmSamples[0], pcmSamples[1], pcmSamples[2], pcmSamples[3]);
     
-    // Create Java byte array
+    // 创建Java字节数组
     jbyteArray pcmArray = env->NewByteArray(static_cast<jsize>(pcmSize));
     if (!pcmArray) {
-        __android_log_print(ANDROID_LOG_ERROR, "WebRTC_AEC3_TTS", "PCM: Failed to create Java byte array");
+        __android_log_print(ANDROID_LOG_ERROR, "WebRTC_AEC3_TTS", "PCM: 创建Java字节数组失败");
         free(pcmData);
         return nullptr;
     }
@@ -419,14 +419,14 @@ Java_cn_watchfun_aec3_WqAecProcessor_nativeGetCleanAudioAsPCM(JNIEnv *env, jobje
     env->SetByteArrayRegion(pcmArray, 0, static_cast<jsize>(pcmSize), 
                            reinterpret_cast<const jbyte*>(pcmData));
     
-    __android_log_print(ANDROID_LOG_INFO, "WebRTC_AEC3_TTS", "PCM: Successfully created byte array of size %zu", pcmSize);
+    __android_log_print(ANDROID_LOG_INFO, "WebRTC_AEC3_TTS", "PCM: 成功创建大小为%zu的字节数组", pcmSize);
     
     free(pcmData);
     return pcmArray;
 }
 
 /**
- * Clear the clean audio buffer without retrieving data
+ * 清除清洁音频缓冲区而不检索数据
  */
 JNIEXPORT void JNICALL
 Java_cn_watchfun_aec3_WqAecProcessor_nativeClearCleanAudioBuffer(JNIEnv *env, jobject thiz) {
