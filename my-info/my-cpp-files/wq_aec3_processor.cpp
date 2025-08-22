@@ -95,7 +95,6 @@ bool WqAec3Processor::Initialize() {
         config.filter.main.error_ceil = 2.0f;
         config.filter.main_initial.leakage_converged = 0.01f;
         config.filter.main_initial.leakage_diverged = 0.2f;
-        config.filter.main.leakage_diverged = 0.05f;
         
         // 🎯 AGGRESSIVE SUPPRESSOR TUNING FOR >10dB ERLE
         config.suppressor.normal_tuning.max_dec_factor_lf = 15.0f;
