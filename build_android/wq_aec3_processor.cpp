@@ -261,6 +261,16 @@ bool WqAec3Processor::ProcessMicrophoneAudio(const int16_t* mic_data, int16_t* o
                  initialization_frames_);
         }
         
+        // Check if reference signal is active (TTS playing)
+        bool has_recent_reference = false;
+        if (!render_buffer_.empty()) {
+            auto now = std::chrono::high_resolution_clock::now();
+            auto latest_render_time = render_buffer_.back().timestamp;
+            auto time_since_last_render = std::chrono::duration_cast<std::chrono::milliseconds>(
+                now - latest_render_time).count();
+            has_recent_reference = (time_since_last_render < 1000); // Within 1 second
+        }
+        
         // Enhanced device-adaptive timing synchronization
         if (timing_sync_enabled_) {
             webrtc::EchoControl::Metrics current_metrics = echo_controller_->GetMetrics();
@@ -345,7 +355,11 @@ bool WqAec3Processor::ProcessMicrophoneAudio(const int16_t* mic_data, int16_t* o
         audio_capture_buffer_->SplitIntoFrequencyBands();
         high_pass_filter_->Process(audio_capture_buffer_.get(), true);
         echo_controller_->SetAudioBufferDelay(current_optimal_delay_ms_);
-        echo_controller_->ProcessCapture(audio_capture_buffer_.get(), false);
+        
+        // Smart near-end detection: reduce suppression when no reference signal
+        bool linear_aec_output = has_recent_reference; // Use linear AEC when reference is active
+        echo_controller_->ProcessCapture(audio_capture_buffer_.get(), !linear_aec_output);
+        
         audio_capture_buffer_->MergeFrequencyBands();
         
         // Copy processed data back to output
@@ -533,8 +547,9 @@ bool WqAec3Processor::AutoOptimizeDelay() {
     }
     
     if (auto_adaptive_enabled_) {
-        // Auto-adaptive mechanism handles optimization automatically
-        LOGI("⚡ Auto-adaptive optimization active - delay adjusts automatically");
+        // Get current AEC3 metrics for adaptive optimization
+        webrtc::EchoControl::Metrics current_metrics = echo_controller_->GetMetrics();
+        int aec3_detected_delay = current_metrics.delay_ms;
         
         // Update convergence state based on frame processing
         adaptive_update_counter_++;
@@ -543,12 +558,69 @@ bool WqAec3Processor::AutoOptimizeDelay() {
             adaptive_update_counter_ = 0;
         }
         
+        // Check if we have recent reference signal for smart adaptation
+        bool has_recent_reference = false;
+        if (!render_buffer_.empty()) {
+            auto now = std::chrono::high_resolution_clock::now();
+            auto latest_render_time = render_buffer_.back().timestamp;
+            auto time_since_last_render = std::chrono::duration_cast<std::chrono::milliseconds>(
+                now - latest_render_time).count();
+            has_recent_reference = (time_since_last_render < 1000); // Within 1 second
+        }
+        
+        // Auto-adaptive delay optimization based on AEC3 feedback
+        bool delay_adjusted = false;
+        
+        if (has_recent_reference) {
+            // Normal echo cancellation mode - optimize delay
+            if (aec3_detected_delay > 0 && aec3_detected_delay <= 500) {
+                // Valid delay detected - use it for optimization
+                int old_delay = current_optimal_delay_ms_;
+                
+                // Gradual adjustment towards detected delay
+                int delay_diff = aec3_detected_delay - current_optimal_delay_ms_;
+                if (std::abs(delay_diff) > 10) {
+                    // Adjust by 25% of the difference for stability
+                    int adjustment = delay_diff / 4;
+                    adjustment = std::max(-20, std::min(20, adjustment)); // Limit adjustment range
+                    
+                    current_optimal_delay_ms_ += adjustment;
+                    current_optimal_delay_ms_ = std::max(kMinDelayMs, std::min(kMaxDelayMs, current_optimal_delay_ms_));
+                    
+                    echo_controller_->SetAudioBufferDelay(current_optimal_delay_ms_);
+                    delay_adjusted = true;
+                    
+                    LOGI("⚡ Auto-adaptive delay optimization: %dms -> %dms (detected: %dms, adj: %dms)", 
+                         old_delay, current_optimal_delay_ms_, aec3_detected_delay, adjustment);
+                }
+            } else if (aec3_detected_delay <= 0 || aec3_detected_delay > 500) {
+                // Invalid delay - try timing-based estimation
+                int timing_delay = GetTimingBasedDelayEstimate();
+                if (timing_delay > 0 && timing_delay != current_optimal_delay_ms_) {
+                    int old_delay = current_optimal_delay_ms_;
+                    current_optimal_delay_ms_ = timing_delay;
+                    echo_controller_->SetAudioBufferDelay(current_optimal_delay_ms_);
+                    delay_adjusted = true;
+                    
+                    LOGI("⚡ Auto-adaptive timing-based optimization: %dms -> %dms (AEC3 invalid: %dms)", 
+                         old_delay, current_optimal_delay_ms_, aec3_detected_delay);
+                }
+            }
+        } else {
+            // Near-end only mode - no reference signal, preserve voice quality
+            LOGI("🎤 Near-end only mode: No recent reference signal, preserving voice clarity");
+        }
+        
         // Environment detection for adaptive behavior
         if (frame_counter_ % 500 == 0) {
             // Simple noise level estimation from recent frames
             is_noisy_environment_ = (noise_level_estimate_ > 0.3f);
             LOGI("🌍 Environment: %s (noise level: %.2f)", 
                  is_noisy_environment_ ? "Noisy" : "Quiet", noise_level_estimate_);
+        }
+        
+        if (delay_adjusted) {
+            LOGI("⚡ Auto-adaptive optimization completed - delay adjusted automatically");
         }
         
         return true;
