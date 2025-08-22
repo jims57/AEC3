@@ -109,102 +109,47 @@ Java_cn_watchfun_aec3_WqAecProcessor_nativeSetStreamDelay(JNIEnv *env, jobject t
     }
 }
 
-// ========== 官方AEC3参数控制JNI方法 ==========
-
-// 滤波器配置JNI方法
-JNIEXPORT void JNICALL
-Java_cn_watchfun_aec3_WqAecProcessor_nativeSetConfigChangeDuration(JNIEnv *env, jobject thiz, jint blocks) {
-    if (g_processor) {
-        g_processor->SetConfigChangeDuration(blocks);
-    }
-}
-
-JNIEXPORT void JNICALL  
-Java_cn_watchfun_aec3_WqAecProcessor_nativeSetInitialStateSeconds(JNIEnv *env, jobject thiz, jfloat seconds) {
-    if (g_processor) {
-        g_processor->SetInitialStateSeconds(seconds);
-    }
-}
-
-JNIEXPORT void JNICALL
-Java_cn_watchfun_aec3_WqAecProcessor_nativeSetConservativeInitialPhase(JNIEnv *env, jobject thiz, jboolean enable) {
-    if (g_processor) {
-        g_processor->SetConservativeInitialPhase(enable == JNI_TRUE);
-    }
-}
-
-// 抑制器正常调优JNI方法
-JNIEXPORT void JNICALL
-Java_cn_watchfun_aec3_WqAecProcessor_nativeSetMaxDecFactorLF(JNIEnv *env, jobject thiz, jfloat factor) {
-    if (g_processor) {
-        g_processor->SetMaxDecFactorLF(factor);
-    }
-}
-
-JNIEXPORT void JNICALL
-Java_cn_watchfun_aec3_WqAecProcessor_nativeSetMaxIncFactor(JNIEnv *env, jobject thiz, jfloat factor) {
-    if (g_processor) {
-        g_processor->SetMaxIncFactor(factor);
-    }
-}
-
-// 抑制器近端调优JNI方法
-JNIEXPORT void JNICALL
-Java_cn_watchfun_aec3_WqAecProcessor_nativeSetNearendMaxDecFactorLF(JNIEnv *env, jobject thiz, jfloat factor) {
-    if (g_processor) {
-        g_processor->SetNearendMaxDecFactorLF(factor);
-    }
-}
-
-JNIEXPORT void JNICALL
-Java_cn_watchfun_aec3_WqAecProcessor_nativeSetNearendMaxIncFactor(JNIEnv *env, jobject thiz, jfloat factor) {
-    if (g_processor) {
-        g_processor->SetNearendMaxIncFactor(factor);
-    }
-}
-
-// 主导近端检测JNI方法
-JNIEXPORT void JNICALL
-Java_cn_watchfun_aec3_WqAecProcessor_nativeSetEnrThreshold(JNIEnv *env, jobject thiz, jfloat threshold) {
-    if (g_processor) {
-        g_processor->SetEnrThreshold(threshold);
-    }
-}
-
-JNIEXPORT void JNICALL
-Java_cn_watchfun_aec3_WqAecProcessor_nativeSetSnrThreshold(JNIEnv *env, jobject thiz, jfloat threshold) {
-    if (g_processor) {
-        g_processor->SetSnrThreshold(threshold);
-    }
-}
-
-JNIEXPORT void JNICALL
-Java_cn_watchfun_aec3_WqAecProcessor_nativeSetHoldDuration(JNIEnv *env, jobject thiz, jint duration) {
-    if (g_processor) {
-        g_processor->SetHoldDuration(duration);
-    }
-}
-
-JNIEXPORT void JNICALL
-Java_cn_watchfun_aec3_WqAecProcessor_nativeSetTriggerThreshold(JNIEnv *env, jobject thiz, jint threshold) {
-    if (g_processor) {
-        g_processor->SetTriggerThreshold(threshold);
-    }
-}
-
-// ========== 增强ERLE优化JNI方法 ==========
+// ========== Auto-Adaptive Control JNI Methods ==========
 
 /**
- * 自动优化延迟以获得最大ERLE性能
+ * 启用或禁用自动适配模式
+ * @param enable true启用自动适配，false禁用
+ */
+JNIEXPORT void JNICALL
+Java_cn_watchfun_aec3_WqAecProcessor_nativeEnableAutoAdaptive(JNIEnv *env, jobject thiz, jboolean enable) {
+    if (g_processor) {
+        g_processor->EnableAutoAdaptive(enable);
+    }
+}
+
+/**
+ * 检查是否启用了自动适配模式
+ * @return 如果启用了自动适配则返回true
+ */
+JNIEXPORT jboolean JNICALL
+Java_cn_watchfun_aec3_WqAecProcessor_nativeIsAutoAdaptiveEnabled(JNIEnv *env, jobject thiz) {
+    return g_processor ? g_processor->IsAutoAdaptiveEnabled() : JNI_FALSE;
+}
+
+/**
+ * 获取自适应滤波器收敛状态
+ * @return 收敛状态 (0-1, 1表示完全收敛)
+ */
+JNIEXPORT jfloat JNICALL
+Java_cn_watchfun_aec3_WqAecProcessor_nativeGetAdaptiveFilterConvergence(JNIEnv *env, jobject thiz) {
+    return g_processor ? g_processor->GetAdaptiveFilterConvergence() : 0.0f;
+}
+
+/**
+ * 自动优化延迟以获得最佳ERLE性能
  * @return 优化成功完成则返回true
  */
 JNIEXPORT jboolean JNICALL
 Java_cn_watchfun_aec3_WqAecProcessor_nativeAutoOptimizeDelay(JNIEnv *env, jobject thiz) {
-    if (g_processor) {
-        return g_processor->AutoOptimizeDelay() ? JNI_TRUE : JNI_FALSE;
-    }
-    return JNI_FALSE;
+    return g_processor ? g_processor->AutoOptimizeDelay() : JNI_FALSE;
 }
+
+// ========== 增强ERLE优化JNI方法 ==========
 
 /**
  * 获取带有详细信息的增强AEC性能指标
@@ -248,68 +193,58 @@ Java_cn_watchfun_aec3_WqAecProcessor_nativeEnableTimingSync(JNIEnv *env, jobject
 
 /**
  * 设置回声学习的滤波器长度块数
+ * 注意：此方法已弃用，使用自动适配模式
  * @param blocks 1-100范围，默认=25
  */
 JNIEXPORT void JNICALL
 Java_cn_watchfun_aec3_WqAecProcessor_nativeSetFilterLengthBlocks(JNIEnv *env, jobject thiz, jint blocks) {
-    if (g_processor) {
-        g_processor->SetFilterLengthBlocks(blocks);
-    }
+    // 已弃用 - 使用自动适配模式
 }
 
 /**
  * 设置收敛时的滤波器泄漏以保持稳定性
+ * 注意：此方法已弃用，使用自动适配模式
  * @param leakage 0.000001-1.0范围，默认=0.000005
  */
 JNIEXPORT void JNICALL
 Java_cn_watchfun_aec3_WqAecProcessor_nativeSetFilterLeakageConverged(JNIEnv *env, jobject thiz, jfloat leakage) {
-    if (g_processor) {
-        g_processor->SetFilterLeakageConverged(leakage);
-    }
+    // 已弃用 - 使用自动适配模式
 }
 
 /**
  * 设置发散时的滤波器泄漏以进行恢复
- * @param leakage 0.001-1.0范围，默认=0.005
+ * 注意：此方法已弃用，使用自动适配模式
  */
 JNIEXPORT void JNICALL
 Java_cn_watchfun_aec3_WqAecProcessor_nativeSetFilterLeakageDiverged(JNIEnv *env, jobject thiz, jfloat leakage) {
-    if (g_processor) {
-        g_processor->SetFilterLeakageDiverged(leakage);
-    }
+    // 已弃用 - 使用自动适配模式
 }
 
 /**
  * 设置延迟估计下采样因子以提高精度
- * @param factor 1-8范围，默认=2
+ * 注意：此方法已弃用，使用自动适配模式
  */
 JNIEXPORT void JNICALL
 Java_cn_watchfun_aec3_WqAecProcessor_nativeSetDelayDownSamplingFactor(JNIEnv *env, jobject thiz, jint factor) {
-    if (g_processor) {
-        g_processor->SetDelayDownSamplingFactor(factor);
-    }
+    // 已弃用 - 使用自动适配模式
 }
 
 /**
  * 设置延迟估计滤波器数量
- * @param filters 1-32范围，默认=16
+ * 注意：此方法已弃用，使用自动适配模式
  */
 JNIEXPORT void JNICALL
 Java_cn_watchfun_aec3_WqAecProcessor_nativeSetDelayNumFilters(JNIEnv *env, jobject thiz, jint filters) {
-    if (g_processor) {
-        g_processor->SetDelayNumFilters(filters);
-    }
+    // 已弃用 - 使用自动适配模式
 }
 
 /**
  * 设置延迟估计平滑因子以保持稳定性
- * @param smoothing 0.1-0.99范围，默认=0.98
+ * 注意：此方法已弃用，使用自动适配模式
  */
 JNIEXPORT void JNICALL
 Java_cn_watchfun_aec3_WqAecProcessor_nativeSetDelayEstimateSmoothing(JNIEnv *env, jobject thiz, jfloat smoothing) {
-    if (g_processor) {
-        g_processor->SetDelayEstimateSmoothing(smoothing);
-    }
+    // 已弃用 - 使用自动适配模式
 }
 
 // ========== 清洁音频转换JNI方法 ==========

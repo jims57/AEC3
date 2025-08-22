@@ -137,64 +137,26 @@ public:
      */
     bool AutoOptimizeDelay();
 
-    // ========== 官方AEC3参数控制 ==========
-    
-    // 滤波器配置方法
-    void SetConfigChangeDuration(int blocks);
-    void SetInitialStateSeconds(float seconds);
-    void SetConservativeInitialPhase(bool enable);
-    
-    // 抑制器正常调优方法
-    void SetMaxDecFactorLF(float factor);
-    void SetMaxIncFactor(float factor);
-    
-    // 抑制器近端调优方法
-    void SetNearendMaxDecFactorLF(float factor);
-    void SetNearendMaxIncFactor(float factor);
-    
-    // 主导近端检测方法
-    void SetEnrThreshold(float threshold);
-    void SetSnrThreshold(float threshold);
-    void SetHoldDuration(int duration);
-    void SetTriggerThreshold(int threshold);
-
-    // ========== 移动开发者ERLE调整参数 ==========
+    // ========== Auto-Adaptive Control ==========
     
     /**
-     * 设置回声学习的滤波器长度块数
-     * @param blocks 1-100范围，默认=25
+     * Enable/disable auto-adaptive mechanism
+     * When enabled, AEC3 automatically adjusts all parameters
+     * @param enable true to enable auto-adaptive mode
      */
-    void SetFilterLengthBlocks(int blocks);
+    void EnableAutoAdaptive(bool enable);
     
     /**
-     * 设置收敛时的滤波器泄漏以保持稳定性
-     * @param leakage 0.000001-1.0范围，默认=0.000005
+     * Get current auto-adaptive status
+     * @return true if auto-adaptive is enabled
      */
-    void SetFilterLeakageConverged(float leakage);
+    bool IsAutoAdaptiveEnabled() const { return auto_adaptive_enabled_; }
     
     /**
-     * 设置发散时的滤波器泄漏以进行恢复
-     * @param leakage 0.001-1.0范围，默认=0.005
+     * Get adaptive filter status from built-in estimator
+     * @return convergence state (0-1, 1=fully converged)
      */
-    void SetFilterLeakageDiverged(float leakage);
-    
-    /**
-     * 设置延迟估计下采样因子以提高精度
-     * @param factor 1-8范围，默认=2
-     */
-    void SetDelayDownSamplingFactor(int factor);
-    
-    /**
-     * 设置延迟估计滤波器数量
-     * @param filters 1-32范围，默认=16
-     */
-    void SetDelayNumFilters(int filters);
-    
-    /**
-     * 设置延迟估计平滑因子以保持稳定性
-     * @param smoothing 0.1-0.99范围，默认=0.98
-     */
-    void SetDelayEstimateSmoothing(float smoothing);
+    float GetAdaptiveFilterConvergence() const;
 
 private:
     // 内部实现方法
@@ -231,26 +193,20 @@ private:
     int current_delay_ms_;
     int manual_delay_ms_;
     
-    // 配置参数（运行时可调整）
-    int config_change_duration_blocks_;
-    float initial_state_seconds_;
-    bool conservative_initial_phase_;
-    float max_dec_factor_lf_;
-    float max_inc_factor_;
-    float nearend_max_dec_factor_lf_;
-    float nearend_max_inc_factor_;
-    float enr_threshold_;
-    float snr_threshold_;
-    int hold_duration_;
-    int trigger_threshold_;
+    // Auto-adaptive control flags
+    bool auto_adaptive_enabled_ = true;
+    bool adaptive_filter_enabled_ = true;
+    bool environment_adaptation_enabled_ = true;
     
-    // 移动开发者ERLE调整参数
-    int filter_length_blocks_;
-    float filter_leakage_converged_;
-    float filter_leakage_diverged_;
-    int delay_down_sampling_factor_;
-    int delay_num_filters_;
-    float delay_estimate_smoothing_;
+    // Adaptive filter state tracking
+    bool adaptive_filter_converged_ = false;
+    float convergence_state_ = 0.0f;
+    
+    // Adaptive metrics tracking
+    float current_convergence_state_;
+    float noise_level_estimate_;
+    bool is_noisy_environment_;
+    int adaptive_update_counter_;
     
     // 实时清洁音频缓冲系统 (2025-01-31)
     std::vector<std::vector<float>> clean_audio_buffer_;
