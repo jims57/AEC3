@@ -30,24 +30,29 @@ WqAec3Processor::WqAec3Processor() :
     is_initialization_complete_(false),
     current_delay_ms_(kStreamDelay),
     manual_delay_ms_(0),
-    // 🎯 BALANCED DEFAULTS FOR UNIVERSAL CONVERGENCE + GOOD ERLE (2025-01-31)
+    // 🎯 BALANCED DEFAULTS FOR UNIVERSAL CONVERGENCE + GOOD ERLE
     config_change_duration_blocks_(125),
     initial_state_seconds_(2.5f),
     conservative_initial_phase_(false),
     max_dec_factor_lf_(4.0f),
-    max_inc_factor_(3.5f),
-    nearend_max_dec_factor_lf_(2.0f),
-    nearend_max_inc_factor_(4.5f),
-    enr_threshold_(0.20f),
-    snr_threshold_(11.0f),
-    hold_duration_(6),
+    max_inc_factor_(3.5f), // A higher value allows faster adaptation but might make the filter less stable
+
+    // nearend_max_dec_factor_lf_:It determines the maximum rate at which the suppression is decreased (decay factor) for low frequencies when near-end speech is present.
+    // Higher values (e.g., 3.0f), allow faster recovery of near-end speech, Better preserve voice naturalness in the low frequencies, May let through more residual echo
+    // Lower values (e.g., 1.0f)， Provide stronger echo suppression, May cause more voice distortion,  Better for echo control but can make voice sound more processed
+    nearend_max_dec_factor_lf_(3.0f), 
+
+    nearend_max_inc_factor_(8.0f),  // Increased from 4.5f for faster voice gain recovery
+    enr_threshold_(0.25f),          // Decreased from 0.18f for more sensitive voice detection
+    snr_threshold_(25.0f),
+    hold_duration_(85),             // Increased from 55 to maintain voice detection longer after TTS stops
     trigger_threshold_(2),
-    // 🎯 ERLE ADJUSTMENT PARAMETERS FOR MOBILE DEVELOPERS (2025-01-31)
+    // 🎯 ERLE ADJUSTMENT PARAMETERS FOR MOBILE DEVELOPERS
     filter_length_blocks_(25),
     filter_leakage_converged_(0.000005f),
     filter_leakage_diverged_(0.005f),
     delay_down_sampling_factor_(2),
-    delay_num_filters_(16),
+    delay_num_filters_(25),
     delay_estimate_smoothing_(0.98f) {
 }
 
@@ -85,7 +90,7 @@ bool WqAec3Processor::Initialize() {
         LOGI("🎯 ERLE limits configured: max_l=%.1fdB, max_h=%.1fdB (production-grade)", 
              config.erle.max_l, config.erle.max_h);
         
-        // 🚀 ENHANCED FILTER CONFIGURATION FOR FASTER CONVERGENCE (2025-01-31)
+        // 🚀 ENHANCED FILTER CONFIGURATION FOR FASTER CONVERGENCE
         config.filter.main.length_blocks = (filter_length_blocks_ > 0) ? filter_length_blocks_ : 25;
         config.filter.main.leakage_converged = (filter_leakage_converged_ > 0.0f) ? filter_leakage_converged_ : 0.000005f;
         config.filter.main.leakage_diverged = (filter_leakage_diverged_ > 0.0f) ? filter_leakage_diverged_ : 0.005f;
@@ -97,10 +102,15 @@ bool WqAec3Processor::Initialize() {
         config.filter.main_initial.leakage_diverged = 0.2f;
         
         // 🎯 AGGRESSIVE SUPPRESSOR TUNING FOR >10dB ERLE
+        // Enable aggressive nearend suppression by setting the ERLE reduction threshold to 0.15dB
+        // and limiting the low-frequency ERLE reduction to 8dB. This allows the suppressor to reduce
+        // the ERLE by more than the default 4dB, which is beneficial for higher ERLE values.
+        config.suppressor.nearend_tuning.mask_lf.enr_transparent = 1.2f;
+        config.suppressor.nearend_tuning.mask_hf.enr_transparent = 0.2f;
         config.suppressor.normal_tuning.max_dec_factor_lf = 15.0f;
-        config.suppressor.nearend_tuning.max_dec_factor_lf = 8.0f;
+        // config.suppressor.nearend_tuning.max_dec_factor_lf = 3.0f;
         
-        // 🚀 ENHANCED DELAY ESTIMATION FOR UNIVERSAL ANDROID COMPATIBILITY (2025-01-31)
+        // 🚀 ENHANCED DELAY ESTIMATION FOR UNIVERSAL ANDROID COMPATIBILITY
         config.delay.down_sampling_factor = (delay_down_sampling_factor_ > 0) ? delay_down_sampling_factor_ : 2;
         config.delay.num_filters = (delay_num_filters_ > 0) ? delay_num_filters_ : 16;
         config.delay.delay_estimate_smoothing = (delay_estimate_smoothing_ > 0.0f) ? delay_estimate_smoothing_ : 0.98f;
