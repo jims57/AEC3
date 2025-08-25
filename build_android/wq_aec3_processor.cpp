@@ -75,15 +75,22 @@ bool WqAec3Processor::Initialize() {
         high_pass_filter_.reset();
         render_buffer_.clear();
         
-        // 🚀 PRODUCTION-GRADE AEC3 CONFIGURATION WITH NEWER ANDROID COMPATIBILITY (2025-01-31)
+        // 🚀 PRODUCTION-GRADE AEC3 CONFIGURATION FOR 48KHZ OPTIMAL PERFORMANCE (2025-08-25)
         webrtc::EchoCanceller3Config config;
         
-        // 🎯 CRITICAL FIX: Remove ERLE hard limits for production-grade performance
-        config.erle.max_l = 25.0f;  // Low-freq ERLE limit: 25dB (vs default 4dB)
-        config.erle.max_h = 15.0f;  // High-freq ERLE limit: 15dB (vs default 1.5dB)
-        config.erle.min = 0.1f;     // Minimum ERLE: 0.1dB (vs default 1dB)
-        LOGI("🎯 ERLE limits configured: max_l=%.1fdB, max_h=%.1fdB (production-grade)", 
-             config.erle.max_l, config.erle.max_h);
+        // 🎯 CRITICAL FIX: Production-grade ERLE limits for 48kHz optimal performance
+        config.erle.max_l = 35.0f;  // Low-freq ERLE limit: 35dB for 48kHz production-grade
+        config.erle.max_h = 25.0f;  // High-freq ERLE limit: 25dB for 48kHz production-grade  
+        config.erle.min = 0.03f;    // Minimum ERLE: 0.03dB for higher sensitivity at 48kHz
+        config.erle.onset_detection = true;  // Enable onset detection for better voice handling
+        LOGI("🎯 48kHz Production ERLE limits: max_l=%.1fdB, max_h=%.1fdB, min=%.2fdB", 
+             config.erle.max_l, config.erle.max_h, config.erle.min);
+        
+        // 🚀 SHADOW FILTER FOR ENHANCED CONVERGENCE (48kHz optimized)
+        config.filter.shadow.length_blocks = config.filter.main.length_blocks;
+        config.filter.shadow.rate = 0.8f;  // Optimized shadow filter adaptation for 48kHz
+        config.filter.shadow_initial.length_blocks = 15;  // More blocks for 48kHz precision
+        config.filter.enable_shadow_filter_output_usage = true;  // Use shadow filter output
         
         // 🚀 ENHANCED FILTER CONFIGURATION FOR FASTER CONVERGENCE (2025-01-31)
         config.filter.main.length_blocks = (filter_length_blocks_ > 0) ? filter_length_blocks_ : 25;
@@ -97,17 +104,30 @@ bool WqAec3Processor::Initialize() {
         config.filter.main_initial.leakage_diverged = 0.2f;
         config.filter.main.leakage_diverged = 0.05f;
         
-        // 🎯 AGGRESSIVE SUPPRESSOR TUNING FOR >10dB ERLE
-        config.suppressor.normal_tuning.max_dec_factor_lf = 15.0f;
-        config.suppressor.nearend_tuning.max_dec_factor_lf = 8.0f;
+        // 🎯 AGGRESSIVE SUPPRESSOR TUNING FOR PRODUCTION-GRADE ERLE (>15dB)
+        config.suppressor.normal_tuning.max_dec_factor_lf = (max_dec_factor_lf_ > 0.0f) ? max_dec_factor_lf_ : 20.0f;
+        config.suppressor.normal_tuning.max_inc_factor = (max_inc_factor_ > 0.0f) ? max_inc_factor_ : 3.0f;
+        config.suppressor.nearend_tuning.max_dec_factor_lf = (nearend_max_dec_factor_lf_ > 0.0f) ? nearend_max_dec_factor_lf_ : 12.0f;
+        config.suppressor.nearend_tuning.max_inc_factor = (nearend_max_inc_factor_ > 0.0f) ? nearend_max_inc_factor_ : 4.0f;
         
-        // 🚀 ENHANCED DELAY ESTIMATION FOR UNIVERSAL ANDROID COMPATIBILITY (2025-01-31)
-        config.delay.down_sampling_factor = (delay_down_sampling_factor_ > 0) ? delay_down_sampling_factor_ : 2;
-        config.delay.num_filters = (delay_num_filters_ > 0) ? delay_num_filters_ : 16;
-        config.delay.delay_estimate_smoothing = (delay_estimate_smoothing_ > 0.0f) ? delay_estimate_smoothing_ : 0.98f;
+        // 🔧 VOICE DETECTION OPTIMIZATION FOR 48KHZ
+        config.suppressor.dominant_nearend_detection.enr_threshold = (enr_threshold_ > 0.0f) ? enr_threshold_ : 0.06f;  // More sensitive for 48kHz
+        config.suppressor.dominant_nearend_detection.snr_threshold = (snr_threshold_ > 0.0f) ? snr_threshold_ : 18.0f;  // Higher SNR for 48kHz quality
+        config.suppressor.dominant_nearend_detection.hold_duration = (hold_duration_ > 0) ? hold_duration_ : 12;        // Longer hold for 48kHz stability
+        config.suppressor.dominant_nearend_detection.trigger_threshold = (trigger_threshold_ > 0) ? trigger_threshold_ : 3;  // More conservative for 48kHz
         
-        LOGI("🚀 Production-grade AEC3 configured: filter_length=%zu, max_dec_lf=%.1f", 
-             config.filter.main.length_blocks, config.suppressor.normal_tuning.max_dec_factor_lf);
+        // ENHANCED DELAY ESTIMATION FOR 48KHZ PRODUCTION STABILITY (2025-08-25)
+        config.delay.default_delay = kStreamDelay;
+        config.delay.down_sampling_factor = 2;  // Optimized downsampling for 48kHz
+        config.delay.num_filters = 32;          // More filters for 48kHz precision
+        config.delay.delay_headroom_samples = 192; // Extra headroom for 48kHz processing (4 blocks * 48 samples)
+        config.delay.hysteresis_limit_blocks = 3;
+        config.delay.fixed_capture_delay_samples = 0;
+        config.delay.delay_estimate_smoothing = 0.92f;  // Balanced smoothing for 48kHz
+        config.delay.delay_candidate_detection_threshold = 0.12f;  // Optimized for 48kHz
+        
+        LOGI(" Production AEC3 configured: filter_length=%zu, max_dec_lf=%.1f, delay_filters=%d", 
+             config.filter.main.length_blocks, config.suppressor.normal_tuning.max_dec_factor_lf, config.delay.num_filters);
         
         // Apply runtime adjustable parameters
         if (config_change_duration_blocks_ > 0) {
