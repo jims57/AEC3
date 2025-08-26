@@ -79,6 +79,39 @@ Java_cn_watchfun_aec3_WqAecProcessor_nativeProcessMicrophoneAudio(JNIEnv *env, j
 }
 
 /**
+ * 同时处理TTS参考信号和麦克风音频进行回声消除
+ * @param tts_data TTS参考信号样本（必须是480个样本）
+ * @param mic_data 麦克风输入样本（必须是480个样本）
+ * @param output_data 处理后音频的输出缓冲区（必须是480个样本）
+ * @return 处理成功则返回true
+ */
+JNIEXPORT jboolean JNICALL
+Java_cn_watchfun_aec3_WqAecProcessor_nativeProcessAudio(JNIEnv *env, jobject thiz, 
+                                                        jshortArray tts_data, jshortArray mic_data, jshortArray output_data) {
+    if (!g_processor) return JNI_FALSE;
+    
+    jsize tts_length = env->GetArrayLength(tts_data);
+    jsize mic_length = env->GetArrayLength(mic_data);
+    if (tts_length != webrtc_aec3_tts::WqAec3Processor::kFrameSize || 
+        mic_length != webrtc_aec3_tts::WqAec3Processor::kFrameSize) return JNI_FALSE;
+    
+    jshort* tts_input = env->GetShortArrayElements(tts_data, nullptr);
+    jshort* mic_input = env->GetShortArrayElements(mic_data, nullptr);
+    jshort* output = env->GetShortArrayElements(output_data, nullptr);
+    
+    bool result = g_processor->ProcessAudio(
+        reinterpret_cast<const int16_t*>(tts_input),
+        reinterpret_cast<const int16_t*>(mic_input), 
+        reinterpret_cast<int16_t*>(output), tts_length);
+    
+    env->ReleaseShortArrayElements(tts_data, tts_input, JNI_ABORT);
+    env->ReleaseShortArrayElements(mic_data, mic_input, JNI_ABORT);
+    env->ReleaseShortArrayElements(output_data, output, 0);
+    
+    return result ? JNI_TRUE : JNI_FALSE;
+}
+
+/**
  * 获取当前AEC性能指标
  * @return double数组: [回声返回损耗, 回声返回损耗增强, 延迟毫秒数]
  */

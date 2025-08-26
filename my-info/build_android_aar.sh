@@ -319,6 +319,16 @@ public class WqAecProcessor {
     public native boolean nativeProcessMicrophoneAudio(short[] micData, short[] outputData);
 
     /**
+     * Process both TTS reference signal and microphone audio for echo cancellation
+     * 
+     * @param ttsData TTS reference signal (480 samples, 16-bit PCM)
+     * @param micData Microphone audio data (480 samples, 16-bit PCM)
+     * @param outputData Output buffer for processed audio (480 samples)
+     * @return true if processing successful
+     */
+    public native boolean nativeProcessAudio(short[] ttsData, short[] micData, short[] outputData);
+
+    /**
      * Get current AEC metrics for monitoring performance
      * @return double array: [echo_return_loss, echo_return_loss_enhancement, delay_ms]
      */
@@ -418,6 +428,24 @@ public class WqAecProcessor {
         
         short[] output = new short[FRAME_SIZE];
         if (nativeProcessMicrophoneAudio(micData, output)) {
+            return output;
+        }
+        return null;
+    }
+
+    /**
+     * Process both TTS reference signal and microphone audio for echo cancellation
+     * @param ttsData TTS reference signal (must be exactly 480 samples)
+     * @param micData Microphone input (must be exactly 480 samples)
+     * @return Echo-cancelled audio, or null if error
+     */
+    public short[] processAudio(short[] ttsData, short[] micData) {
+        if (!initialized || ttsData.length != FRAME_SIZE || micData.length != FRAME_SIZE) {
+            return null;
+        }
+        
+        short[] output = new short[FRAME_SIZE];
+        if (nativeProcessAudio(ttsData, micData, output)) {
             return output;
         }
         return null;

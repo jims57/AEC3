@@ -463,7 +463,26 @@ void WqAec3Processor::ClearCleanAudioBuffer() {
     LOGI("🎯 Clean audio buffer cleared");
 }
 
+bool WqAec3Processor::ProcessAudio(const int16_t* tts_data, const int16_t* mic_data, int16_t* output_data, size_t length) {
+    if (length != kFrameSize) {
+        LOGE("Invalid audio data: length=%zu, expected=%d", length, kFrameSize);
+        return false;
+    }
 
+    // First process the TTS reference signal
+    if (!ProcessTtsAudio(tts_data, length)) {
+        LOGE("Failed to process TTS audio in ProcessAudio");
+        return false;
+    }
+
+    // Then process the microphone audio with echo cancellation
+    if (!ProcessMicrophoneAudio(mic_data, output_data, length)) {
+        LOGE("Failed to process microphone audio in ProcessAudio");
+        return false;
+    }
+
+    return true;
+}
 
 bool WqAec3Processor::GetMetrics(double* echo_return_loss, double* echo_return_loss_enhancement, int* delay_ms) {
     std::lock_guard<std::mutex> lock(mutex_);

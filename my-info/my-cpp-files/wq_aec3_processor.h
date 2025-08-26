@@ -94,6 +94,16 @@ public:
     bool ProcessMicrophoneAudio(const int16_t* mic_data, int16_t* output_data, size_t length);
 
     /**
+     * 同时处理TTS参考信号和麦克风音频进行回声消除
+     * @param tts_data TTS参考信号样本（长度必须为kFrameSize）
+     * @param mic_data 麦克风输入样本（长度必须为kFrameSize）
+     * @param output_data 处理后音频的输出缓冲区（长度必须为kFrameSize）
+     * @param length 样本数量（必须等于kFrameSize）
+     * @return 处理成功则返回true
+     */
+    bool ProcessAudio(const int16_t* tts_data, const int16_t* mic_data, int16_t* output_data, size_t length);
+
+    /**
      * 获取当前AEC性能指标
      * @param echo_return_loss 输出：ERL值
      * @param echo_return_loss_enhancement 输出：ERLE值
