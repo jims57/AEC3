@@ -104,17 +104,18 @@ bool WqAec3Processor::Initialize() {
         config.filter.main_initial.leakage_diverged = 0.2f;
         config.filter.main.leakage_diverged = 0.05f;
         
-        // 🎯 AGGRESSIVE SUPPRESSOR TUNING FOR PRODUCTION-GRADE ERLE (>15dB)
-        config.suppressor.normal_tuning.max_dec_factor_lf = (max_dec_factor_lf_ > 0.0f) ? max_dec_factor_lf_ : 20.0f;
-        config.suppressor.normal_tuning.max_inc_factor = (max_inc_factor_ > 0.0f) ? max_inc_factor_ : 3.0f;
-        config.suppressor.nearend_tuning.max_dec_factor_lf = (nearend_max_dec_factor_lf_ > 0.0f) ? nearend_max_dec_factor_lf_ : 12.0f;
-        config.suppressor.nearend_tuning.max_inc_factor = (nearend_max_inc_factor_ > 0.0f) ? nearend_max_inc_factor_ : 4.0f;
+        // 🎯 ADAPTIVE SUPPRESSOR TUNING FOR VOICE PRESERVATION (2025-08-25)
+        config.suppressor.normal_tuning.max_dec_factor_lf = (max_dec_factor_lf_ > 0.0f) ? max_dec_factor_lf_ : 8.0f;   // Reduced suppression for voice clarity
+        config.suppressor.normal_tuning.max_inc_factor = (max_inc_factor_ > 0.0f) ? max_inc_factor_ : 2.5f;           // Faster voice recovery
+        config.suppressor.nearend_tuning.max_dec_factor_lf = (nearend_max_dec_factor_lf_ > 0.0f) ? nearend_max_dec_factor_lf_ : 6.0f;  // Gentle nearend suppression
+        config.suppressor.nearend_tuning.max_inc_factor = (nearend_max_inc_factor_ > 0.0f) ? nearend_max_inc_factor_ : 3.5f;           // Quick voice restoration
         
-        // 🔧 VOICE DETECTION OPTIMIZATION FOR 48KHZ
-        config.suppressor.dominant_nearend_detection.enr_threshold = (enr_threshold_ > 0.0f) ? enr_threshold_ : 0.06f;  // More sensitive for 48kHz
-        config.suppressor.dominant_nearend_detection.snr_threshold = (snr_threshold_ > 0.0f) ? snr_threshold_ : 18.0f;  // Higher SNR for 48kHz quality
-        config.suppressor.dominant_nearend_detection.hold_duration = (hold_duration_ > 0) ? hold_duration_ : 12;        // Longer hold for 48kHz stability
-        config.suppressor.dominant_nearend_detection.trigger_threshold = (trigger_threshold_ > 0) ? trigger_threshold_ : 3;  // More conservative for 48kHz
+        // 🔧 VOICE DETECTION OPTIMIZATION FOR 48KHZ - ADAPTIVE SUPPRESSION (2025-08-25)
+        config.suppressor.dominant_nearend_detection.enr_threshold = (enr_threshold_ > 0.0f) ? enr_threshold_ : 0.15f;  // Less aggressive when no TTS
+        config.suppressor.dominant_nearend_detection.snr_threshold = (snr_threshold_ > 0.0f) ? snr_threshold_ : 25.0f;  // Higher SNR preserves voice
+        config.suppressor.dominant_nearend_detection.hold_duration = (hold_duration_ > 0) ? hold_duration_ : 8;         // Shorter hold for voice clarity
+        config.suppressor.dominant_nearend_detection.trigger_threshold = (trigger_threshold_ > 0) ? trigger_threshold_ : 5;  // More conservative trigger
+        config.suppressor.dominant_nearend_detection.use_during_initial_phase = false;  // Disable during initialization
         
         // ENHANCED DELAY ESTIMATION FOR 48KHZ PRODUCTION STABILITY (2025-08-25)
         config.delay.default_delay = kStreamDelay;
