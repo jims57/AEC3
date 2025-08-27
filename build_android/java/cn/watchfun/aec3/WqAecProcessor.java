@@ -443,13 +443,6 @@ public class WqAecProcessor {
     public byte[] getCleanAudioAsWAV() {
         return getCleanAudioAsWAV(44100);
     }
-    
-    /**
-     * Get accumulated clean audio as PCM format and clear buffer
-     * This method retrieves all processed clean audio frames since recording started
-     * @param outputSampleRate Desired output sample rate (default: 44100)
-     * @return PCM audio data as byte array (16-bit little-endian), or null if no audio available
-     */
     public byte[] getCleanAudioAsPCM(int outputSampleRate) {
         if (!initialized) return null;
         return nativeGetCleanAudioAsPCM(outputSampleRate);
