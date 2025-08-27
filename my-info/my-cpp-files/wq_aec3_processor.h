@@ -28,7 +28,7 @@ struct TimedFrame {
 };
 
 /**
- * 用于TTS回声消除的WebRTC AEC3处理器 (2025-01-31)
+ * 用于TTS回声消除的WebRTC AEC3处理器
  * 
  * 该类为TTS（文本转语音）应用提供生产级声学回声消除功能，
  * 使用WebRTC AEC3算法进行了特别优化。
@@ -50,7 +50,7 @@ public:
 
     // 增强ERLE优化常量
     static constexpr int kMaxDelayMs = 500;
-    static constexpr int kMinDelayMs = 20;
+    static constexpr int kMinDelayMs = 5;
     static constexpr int kDelayBufferSize = kMaxDelayMs * kSampleRate / 1000 / kFrameSize;
     static constexpr double kTimingToleranceMs = 2.0;
     static constexpr int kDelayEstimationFrames = 50;
@@ -231,28 +231,45 @@ private:
     int current_delay_ms_;
     int manual_delay_ms_;
     
-    // 配置参数（运行时可调整）
-    int config_change_duration_blocks_;
-    float initial_state_seconds_;
-    bool conservative_initial_phase_;
-    float max_dec_factor_lf_;
-    float max_inc_factor_;
-    float nearend_max_dec_factor_lf_;
-    float nearend_max_inc_factor_;
-    float enr_threshold_;
-    float snr_threshold_;
-    int hold_duration_;
-    int trigger_threshold_;
+    // 🎯 ERLE配置参数 (August 26, 2025)
+    float erle_max_l_;                           // Low-freq ERLE limit
+    float erle_max_h_;                           // High-freq ERLE limit  
+    float erle_min_;                             // Minimum ERLE
     
-    // 移动开发者ERLE调整参数
-    int filter_length_blocks_;
-    float filter_leakage_converged_;
-    float filter_leakage_diverged_;
-    int delay_down_sampling_factor_;
-    int delay_num_filters_;
-    float delay_estimate_smoothing_;
+    // 🎯 滤波器配置参数 (August 26, 2025)
+    int filter_length_blocks_;                   // Filter length in blocks
+    float filter_leakage_converged_;             // Leakage when converged
+    float filter_leakage_diverged_;              // Leakage when diverged
+    float filter_error_floor_;                   // Error floor
+    float filter_error_ceil_;                    // Error ceiling
+    float filter_main_initial_leakage_converged_; // Initial main filter leakage converged
+    float filter_main_initial_leakage_diverged_; // Initial main filter leakage diverged
     
-    // 实时清洁音频缓冲系统 (2025-01-31)
+    // 🎯 滤波器时序配置参数 (August 26, 2025)
+    int config_change_duration_blocks_;          // Config change duration in blocks
+    float initial_state_seconds_;                // Initial state duration in seconds
+    bool conservative_initial_phase_;            // Conservative initial phase
+    
+    // 🎯 抑制器正常调优参数 (August 26, 2025)
+    float max_dec_factor_lf_;                    // Normal max decrease factor low-freq
+    float max_inc_factor_;                       // Normal max increase factor
+    
+    // 🎯 抑制器近端调优参数 (August 26, 2025)
+    float nearend_max_dec_factor_lf_;            // Nearend max decrease factor low-freq
+    float nearend_max_inc_factor_;               // Nearend max increase factor
+    
+    // 🎯 主导近端检测参数 (August 26, 2025)
+    float enr_threshold_;                        // ENR threshold
+    float snr_threshold_;                        // SNR threshold
+    int hold_duration_;                          // Hold duration in blocks
+    int trigger_threshold_;                      // Trigger threshold
+    
+    // 🎯 延迟估计配置参数 (August 26, 2025)
+    int delay_down_sampling_factor_;             // Delay down sampling factor
+    int delay_num_filters_;                      // Number of delay filters
+    float delay_estimate_smoothing_;             // Delay estimate smoothing
+    
+    // 实时清洁音频缓冲系统
     std::vector<std::vector<float>> clean_audio_buffer_;
     std::mutex clean_audio_buffer_mutex_;
     

@@ -30,25 +30,44 @@ WqAec3Processor::WqAec3Processor() :
     is_initialization_complete_(false),
     current_delay_ms_(kStreamDelay),
     manual_delay_ms_(0),
-    // 🎯 BALANCED DEFAULTS FOR UNIVERSAL CONVERGENCE + GOOD ERLE (2025-01-31)
-    config_change_duration_blocks_(125),
-    initial_state_seconds_(2.5f),
-    conservative_initial_phase_(false),
-    max_dec_factor_lf_(4.0f),
-    max_inc_factor_(3.5f),
-    nearend_max_dec_factor_lf_(2.0f),
-    nearend_max_inc_factor_(4.5f),
-    enr_threshold_(0.20f),
-    snr_threshold_(11.0f),
-    hold_duration_(6),
-    trigger_threshold_(2),
-    // 🎯 ERLE ADJUSTMENT PARAMETERS FOR MOBILE DEVELOPERS (2025-01-31)
-    filter_length_blocks_(25),
-    filter_leakage_converged_(0.000005f),
-    filter_leakage_diverged_(0.005f),
-    delay_down_sampling_factor_(2),
-    delay_num_filters_(16),
-    delay_estimate_smoothing_(0.98f) {
+    
+    // ERLE CONFIGURATION
+    erle_max_l_(25.0f),          // Low-freq ERLE limit: 25dB (vs default 4dB) - Higher = stronger low-freq echo suppression
+    erle_max_h_(15.0f),          // High-freq ERLE limit: 15dB (vs default 1.5dB) - Higher = stronger high-freq echo suppression  
+    erle_min_(0.1f),             // Minimum ERLE: 0.1dB (vs default 1dB) - Lower = more aggressive minimum suppression
+    
+    // FILTER CONFIGURATION
+    filter_length_blocks_(25),                    // Filter length in blocks (default 13) - Higher = better echo learning but slower adaptation
+    filter_leakage_converged_(0.000005f),         // Leakage when converged (default 0.00005f) - Lower = more stable when converged
+    filter_leakage_diverged_(0.005f),             // Leakage when diverged (default 0.05f) - Lower = faster recovery from divergence
+    filter_error_floor_(0.001f),                  // Error floor (default 0.001f) - Lower = more sensitive error detection
+    filter_error_ceil_(2.0f),                     // Error ceiling (default 2.0f) - Higher = more tolerance for errors
+    filter_main_initial_leakage_converged_(0.01f), // Initial main filter leakage converged (default 0.005f)
+    filter_main_initial_leakage_diverged_(0.2f),  // Initial main filter leakage diverged (default 0.5f)
+    
+    // FILTER TIMING CONFIGURATION 
+    config_change_duration_blocks_(125),          // Config change duration in blocks (default 250) - Lower = faster config changes
+    initial_state_seconds_(2.5f),                 // Initial state duration in seconds (default 2.5f) - Higher = longer initial learning
+    conservative_initial_phase_(false),           // Conservative initial phase (default false) - true = more cautious initial adaptation
+    
+    // SUPPRESSOR NORMAL TUNING
+    max_dec_factor_lf_(0.55f),                     // Normal max decrease factor low-freq (default 0.25f) - Higher = stronger echo suppression
+    max_inc_factor_(2.0f),                        // Normal max increase factor (default 2.0f) - Higher = faster voice recovery
+    
+    // SUPPRESSOR NEAREND TUNING
+    nearend_max_dec_factor_lf_(.15f),             // Nearend max decrease factor low-freq (default 0.25f) - Higher = stronger nearend suppression
+    nearend_max_inc_factor_(2.0f),                // Nearend max increase factor (default 2.0f) - Higher = faster nearend voice recovery
+    
+    // DOMINANT NEAREND DETECTION
+    enr_threshold_(0.1f),                         // ENR threshold (default 0.25f) - Higher = less sensitive nearend detection
+    snr_threshold_(5.0f),                        // SNR threshold (default 30.0f) - Lower = more sensitive to noise
+    hold_duration_(20),                            // Hold duration in blocks (default 50) - Lower = faster switching
+    trigger_threshold_(1),                        // Trigger threshold (default 12) - Lower = easier to trigger nearend detection
+    
+    // DELAY ESTIMATION CONFIGURATION
+    delay_down_sampling_factor_(4),               // Delay down sampling factor (default 4) - Lower = higher precision, more CPU
+    delay_num_filters_(16),                       // Number of delay filters (default 5) - Higher = more accurate delay estimation
+    delay_estimate_smoothing_(0.98f) {            // Delay estimate smoothing (default 0.7f) - Higher = more stable delay estimates
 }
 
 WqAec3Processor::~WqAec3Processor() {
@@ -78,71 +97,48 @@ bool WqAec3Processor::Initialize() {
         // 🚀 PRODUCTION-GRADE AEC3 CONFIGURATION WITH NEWER ANDROID COMPATIBILITY (2025-01-31)
         webrtc::EchoCanceller3Config config;
         
-        // 🎯 CRITICAL FIX: Remove ERLE hard limits for production-grade performance
-        config.erle.max_l = 25.0f;  // Low-freq ERLE limit: 25dB (vs default 4dB)
-        config.erle.max_h = 15.0f;  // High-freq ERLE limit: 15dB (vs default 1.5dB)
-        config.erle.min = 0.1f;     // Minimum ERLE: 0.1dB (vs default 1dB)
-        LOGI("🎯 ERLE limits configured: max_l=%.1fdB, max_h=%.1fdB (production-grade)", 
-             config.erle.max_l, config.erle.max_h);
+        // // 🎯 ERLE CONFIGURATION FROM CONSTRUCTOR PARAMETERS 
+        // config.erle.max_l = erle_max_l_;  // Low-freq ERLE limit from constructor
+        // config.erle.max_h = erle_max_h_;  // High-freq ERLE limit from constructor
+        // config.erle.min = erle_min_;      // Minimum ERLE from constructor
+        // LOGI("🎯 ERLE limits configured: max_l=%.1fdB, max_h=%.1fdB (from constructor)", 
+        //      config.erle.max_l, config.erle.max_h);
         
-        // 🚀 ENHANCED FILTER CONFIGURATION FOR FASTER CONVERGENCE (2025-01-31)
-        config.filter.main.length_blocks = (filter_length_blocks_ > 0) ? filter_length_blocks_ : 25;
-        config.filter.main.leakage_converged = (filter_leakage_converged_ > 0.0f) ? filter_leakage_converged_ : 0.000005f;
-        config.filter.main.leakage_diverged = (filter_leakage_diverged_ > 0.0f) ? filter_leakage_diverged_ : 0.005f;
+        // // 🚀 ENHANCED FILTER CONFIGURATION FROM CONSTRUCTOR PARAMETERS 
+        // config.filter.main.length_blocks = filter_length_blocks_;
+        // config.filter.main.leakage_converged = filter_leakage_converged_;
+        // config.filter.main.leakage_diverged = filter_leakage_diverged_;
         
-        // 🔧 CRITICAL FIX: Robust initialization for inconsistent devices
-        config.filter.main.error_floor = 0.001f;
-        config.filter.main.error_ceil = 2.0f;
-        config.filter.main_initial.leakage_converged = 0.01f;
-        config.filter.main_initial.leakage_diverged = 0.2f;
-        config.filter.main.leakage_diverged = 0.05f;
+        // // 🔧 FILTER ERROR AND INITIAL CONFIGURATION FROM CONSTRUCTOR PARAMETERS
+        // config.filter.main.error_floor = filter_error_floor_;
+        // config.filter.main.error_ceil = filter_error_ceil_;
+        // config.filter.main_initial.leakage_converged = filter_main_initial_leakage_converged_;
+        // config.filter.main_initial.leakage_diverged = filter_main_initial_leakage_diverged_;
         
-        // 🎯 AGGRESSIVE SUPPRESSOR TUNING FOR >10dB ERLE
-        config.suppressor.normal_tuning.max_dec_factor_lf = 15.0f;
-        config.suppressor.nearend_tuning.max_dec_factor_lf = 8.0f;
+        // // 🎯 SUPPRESSOR TUNING FROM CONSTRUCTOR PARAMETERS 
+        // config.suppressor.normal_tuning.max_dec_factor_lf = max_dec_factor_lf_;
+        // config.suppressor.normal_tuning.max_inc_factor = max_inc_factor_;
+        // config.suppressor.nearend_tuning.max_dec_factor_lf = nearend_max_dec_factor_lf_;
+        // config.suppressor.nearend_tuning.max_inc_factor = nearend_max_inc_factor_;
         
-        // 🚀 ENHANCED DELAY ESTIMATION FOR UNIVERSAL ANDROID COMPATIBILITY (2025-01-31)
-        config.delay.down_sampling_factor = (delay_down_sampling_factor_ > 0) ? delay_down_sampling_factor_ : 2;
-        config.delay.num_filters = (delay_num_filters_ > 0) ? delay_num_filters_ : 16;
-        config.delay.delay_estimate_smoothing = (delay_estimate_smoothing_ > 0.0f) ? delay_estimate_smoothing_ : 0.98f;
+        // // 🚀 DELAY ESTIMATION FROM CONSTRUCTOR PARAMETERS 
+        // config.delay.down_sampling_factor = delay_down_sampling_factor_;
+        // config.delay.num_filters = delay_num_filters_;
+        // config.delay.delay_estimate_smoothing = delay_estimate_smoothing_;
         
-        LOGI("🚀 Production-grade AEC3 configured: filter_length=%zu, max_dec_lf=%.1f", 
-             config.filter.main.length_blocks, config.suppressor.normal_tuning.max_dec_factor_lf);
+        // LOGI("🚀 AEC3 configured from constructor parameters: filter_length=%zu, max_dec_lf=%.1f", 
+        //      config.filter.main.length_blocks, config.suppressor.normal_tuning.max_dec_factor_lf);
         
-        // Apply runtime adjustable parameters
-        if (config_change_duration_blocks_ > 0) {
-            config.filter.config_change_duration_blocks = config_change_duration_blocks_;
-        }
-        if (initial_state_seconds_ > 0.0f) {
-            config.filter.initial_state_seconds = initial_state_seconds_;
-        }
-        config.filter.conservative_initial_phase = conservative_initial_phase_;
+        // // 🎯 FILTER TIMING CONFIGURATION FROM CONSTRUCTOR PARAMETERS 
+        // config.filter.config_change_duration_blocks = config_change_duration_blocks_;
+        // config.filter.initial_state_seconds = initial_state_seconds_;
+        // config.filter.conservative_initial_phase = conservative_initial_phase_;
         
-        if (max_dec_factor_lf_ > 0.0f) {
-            config.suppressor.normal_tuning.max_dec_factor_lf = max_dec_factor_lf_;
-        }
-        if (max_inc_factor_ > 0.0f) {
-            config.suppressor.normal_tuning.max_inc_factor = max_inc_factor_;
-        }
-        if (nearend_max_dec_factor_lf_ > 0.0f) {
-            config.suppressor.nearend_tuning.max_dec_factor_lf = nearend_max_dec_factor_lf_;
-        }
-        if (nearend_max_inc_factor_ > 0.0f) {
-            config.suppressor.nearend_tuning.max_inc_factor = nearend_max_inc_factor_;
-        }
-        
-        if (enr_threshold_ > 0.0f) {
-            config.suppressor.dominant_nearend_detection.enr_threshold = enr_threshold_;
-        }
-        if (snr_threshold_ > 0.0f) {
-            config.suppressor.dominant_nearend_detection.snr_threshold = snr_threshold_;
-        }
-        if (hold_duration_ > 0) {
-            config.suppressor.dominant_nearend_detection.hold_duration = hold_duration_;
-        }
-        if (trigger_threshold_ > 0) {
-            config.suppressor.dominant_nearend_detection.trigger_threshold = trigger_threshold_;
-        }
+        // // 🎯 DOMINANT NEAREND DETECTION FROM CONSTRUCTOR PARAMETERS 
+        // config.suppressor.dominant_nearend_detection.enr_threshold = enr_threshold_;
+        // config.suppressor.dominant_nearend_detection.snr_threshold = snr_threshold_;
+        // config.suppressor.dominant_nearend_detection.hold_duration = hold_duration_;
+        // config.suppressor.dominant_nearend_detection.trigger_threshold = trigger_threshold_;
         
         // Create AEC3 factory and controller
         aec_factory_ = std::make_unique<webrtc::EchoCanceller3Factory>(config);
