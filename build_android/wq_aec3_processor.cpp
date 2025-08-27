@@ -153,6 +153,9 @@ bool WqAec3Processor::ProcessCaptureAudio(const int16_t* capture_data, int16_t* 
         // Apply high-pass filter
         high_pass_filter_->Process(capture_audio_buffer_.get(), true);
         
+        // CRITICAL: Set audio buffer delay (required for proper AEC3 operation)
+        echo_controller_->SetAudioBufferDelay(0);
+        
         // Apply echo cancellation
         echo_controller_->ProcessCapture(capture_audio_buffer_.get(), 
                                        linear_output_buffer_.get(), false);
@@ -163,8 +166,12 @@ bool WqAec3Processor::ProcessCaptureAudio(const int16_t* capture_data, int16_t* 
         capture_audio_buffer_->CopyTo(&capture_frame);
         std::memcpy(output_data, capture_frame.data(), length * sizeof(int16_t));
 
-        // Store clean audio for real-time buffer
-        AddCleanAudioFrame(capture_audio_buffer_->channels()[0], length);
+        // Store clean audio for real-time buffer (convert int16 to float for storage)
+        std::vector<float> float_frame(length);
+        for (size_t i = 0; i < length; ++i) {
+            float_frame[i] = static_cast<float>(output_data[i]) / 32768.0f;
+        }
+        AddCleanAudioFrame(float_frame.data(), length);
 
         return true;
     } catch (const std::exception& e) {
@@ -222,6 +229,25 @@ size_t WqAec3Processor::GetCleanAudioBuffer(std::vector<std::vector<float>>& aud
 void WqAec3Processor::ClearCleanAudioBuffer() {
     std::lock_guard<std::mutex> lock(clean_audio_mutex_);
     clean_audio_frames_.clear();
+}
+
+std::vector<uint8_t> WqAec3Processor::GetCleanAudioAsBytes() {
+    std::lock_guard<std::mutex> lock(clean_audio_mutex_);
+    
+    std::vector<uint8_t> byte_data;
+    
+    for (const auto& frame : clean_audio_frames_) {
+        for (float sample : frame) {
+            // Convert float [-1.0, 1.0] to int16 [-32768, 32767]
+            int16_t int_sample = static_cast<int16_t>(std::clamp(sample * 32767.0f, -32768.0f, 32767.0f));
+            
+            // Convert to little-endian bytes
+            byte_data.push_back(static_cast<uint8_t>(int_sample & 0xFF));
+            byte_data.push_back(static_cast<uint8_t>((int_sample >> 8) & 0xFF));
+        }
+    }
+    
+    return byte_data;
 }
 
 void WqAec3Processor::ProcessAudioFrame(webrtc::AudioBuffer* buffer) {

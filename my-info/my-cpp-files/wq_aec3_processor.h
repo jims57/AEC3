@@ -23,10 +23,10 @@ namespace webrtc_aec3_tts {
  */
 class WqAec3Processor {
 public:
-    // Audio configuration constants - WebRTC AEC3 optimal
-    static constexpr int kSampleRateHz = 48000;    // WebRTC AEC3 optimal sample rate
-    static constexpr int kFrameSize = 480;         // 10ms at 48kHz
-    static constexpr int kChannels = 1;            // Mono audio
+    // Audio configuration constants
+    static constexpr int kSampleRateHz = 48000;
+    static constexpr int kChannels = 1;
+    static constexpr int kFrameSize = 480;  // 10ms at 48kHz (samples_per_frame = sample_rate / 100)
     static constexpr int kBitsPerSample = 16;      // 16-bit PCM
 
     WqAec3Processor();
@@ -48,6 +48,9 @@ public:
     void AddCleanAudioFrame(const float* audio_data, size_t length);
     size_t GetCleanAudioBuffer(std::vector<std::vector<float>>& audio_frames);
     void ClearCleanAudioBuffer();
+    
+    // Get clean audio as byte array for WAV file generation
+    std::vector<uint8_t> GetCleanAudioAsBytes();
 
 private:
     // Official WebRTC AEC3 components

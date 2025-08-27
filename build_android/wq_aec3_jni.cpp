@@ -48,7 +48,7 @@ Java_cn_watchfun_aec3_WqAecProcessor_nativeDestroy(JNIEnv *env, jobject thiz) {
 
 /**
  * Process render audio (reference signal for TTS)
- * @param render_data TTS audio samples (must be 160 samples for 16kHz)
+ * @param render_data TTS audio samples (must be 480 samples for 48kHz)
  * @return true if processing successful
  */
 JNIEXPORT jboolean JNICALL
@@ -73,8 +73,8 @@ Java_cn_watchfun_aec3_WqAecProcessor_nativeProcessRenderAudio(JNIEnv *env, jobje
 
 /**
  * Process capture audio and remove echo
- * @param capture_data Microphone input samples (must be 160 samples for 16kHz)
- * @param output_data Output buffer for processed audio (must be 160 samples)
+ * @param capture_data Microphone input samples (must be 480 samples for 48kHz)
+ * @param output_data Output buffer for processed audio (must be 480 samples)
  * @return true if processing successful
  */
 JNIEXPORT jboolean JNICALL
@@ -137,51 +137,35 @@ Java_cn_watchfun_aec3_WqAecProcessor_nativeSetAudioBufferDelay(JNIEnv *env, jobj
 // ========== Clean Audio Buffer Management ==========
 
 /**
- * Get clean audio buffer and clear it
- * @return byte array containing clean audio frames as raw float data, or null if no audio available
+ * Get clean audio buffer as byte array for WAV file generation
+ * @return byte array containing processed audio data as int16 PCM
  */
 JNIEXPORT jbyteArray JNICALL
 Java_cn_watchfun_aec3_WqAecProcessor_nativeGetCleanAudioBuffer(JNIEnv *env, jobject thiz) {
     if (!g_processor) return nullptr;
     
-    std::vector<std::vector<float>> audioFrames;
-    size_t frameCount = g_processor->GetCleanAudioBuffer(audioFrames);
-    
-    if (frameCount == 0) {
+    try {
+        std::vector<uint8_t> audio_bytes = g_processor->GetCleanAudioAsBytes();
+        
+        if (audio_bytes.empty()) {
+            return nullptr;
+        }
+        
+        jbyteArray result = env->NewByteArray(audio_bytes.size());
+        env->SetByteArrayRegion(result, 0, audio_bytes.size(), 
+                               reinterpret_cast<const jbyte*>(audio_bytes.data()));
+        
+        __android_log_print(ANDROID_LOG_INFO, "WebRTC_AEC3", 
+                           "Retrieved %zu frames, %zu total samples", 
+                           audio_bytes.size() / (2 * webrtc_aec3_tts::WqAec3Processor::kFrameSize),
+                           audio_bytes.size() / 2);
+        
+        return result;
+    } catch (const std::exception& e) {
+        __android_log_print(ANDROID_LOG_ERROR, "WebRTC_AEC3", 
+                           "Error getting clean audio buffer: %s", e.what());
         return nullptr;
     }
-    
-    // Calculate total samples
-    size_t totalSamples = 0;
-    for (const auto& frame : audioFrames) {
-        totalSamples += frame.size();
-    }
-    
-    if (totalSamples == 0) {
-        return nullptr;
-    }
-    
-    // Create Java byte array for float data
-    jbyteArray result = env->NewByteArray(static_cast<jsize>(totalSamples * sizeof(float)));
-    if (!result) {
-        return nullptr;
-    }
-    
-    // Copy audio data
-    std::vector<float> combinedAudio;
-    combinedAudio.reserve(totalSamples);
-    
-    for (const auto& frame : audioFrames) {
-        combinedAudio.insert(combinedAudio.end(), frame.begin(), frame.end());
-    }
-    
-    env->SetByteArrayRegion(result, 0, static_cast<jsize>(totalSamples * sizeof(float)),
-                           reinterpret_cast<const jbyte*>(combinedAudio.data()));
-    
-    __android_log_print(ANDROID_LOG_INFO, "WebRTC_AEC3", 
-                       "Retrieved %zu frames, %zu total samples", frameCount, totalSamples);
-    
-    return result;
 }
 
 /**
