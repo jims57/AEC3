@@ -28,7 +28,7 @@ struct TimedFrame {
 };
 
 /**
- * 用于TTS回声消除的WebRTC AEC3处理器 (2025-01-31)
+ * 用于TTS回声消除的WebRTC AEC3处理器
  * 
  * 该类为TTS（文本转语音）应用提供生产级声学回声消除功能，
  * 使用WebRTC AEC3算法进行了特别优化。
@@ -49,12 +49,12 @@ public:
     static constexpr int kStreamDelay = 100; // Android典型延迟
 
     // 增强ERLE优化常量
-    static constexpr int kMaxDelayMs = 500;
-    static constexpr int kMinDelayMs = 20;
-    static constexpr int kDelayBufferSize = kMaxDelayMs * kSampleRate / 1000 / kFrameSize;
-    static constexpr double kTimingToleranceMs = 2.0;
-    static constexpr int kDelayEstimationFrames = 50;
-    static constexpr int kInitializationFrames = 100;
+    static constexpr int kMaxDelayMs = 500; // 最大延迟时间（毫秒）
+    static constexpr int kMinDelayMs = 20;  // 最小延迟时间（毫秒）
+    static constexpr int kDelayBufferSize = kMaxDelayMs * kSampleRate / 1000 / kFrameSize; // 延迟缓冲区大小
+    static constexpr double kTimingToleranceMs = 2.0; // 时序容忍度（毫秒）
+    static constexpr int kDelayEstimationFrames = 50; // 延迟估计帧数
+    static constexpr int kInitializationFrames = 100; // 初始化帧数
 
     /**
      * 使用优化默认参数的构造函数
@@ -252,7 +252,7 @@ private:
     int delay_num_filters_;
     float delay_estimate_smoothing_;
     
-    // 实时清洁音频缓冲系统 (2025-01-31)
+    // 实时清洁音频缓冲系统
     std::vector<std::vector<float>> clean_audio_buffer_;
     std::mutex clean_audio_buffer_mutex_;
     

@@ -6,7 +6,7 @@
 namespace webrtc_aec3_tts {
 
 /**
- * 清洁音频输出的音频格式转换器 (2025-01-31)
+ * 清洁音频输出的音频格式转换器
  * 提供将清洁音频帧转换为WAV和PCM格式的方法
  */
 class WqAec3Convertor {

@@ -1,14 +1,14 @@
-// TTS AEC3 Wrapper - Main entry point (2025-01-31)
-// This file combines all C++ components for the WebRTC AEC3 TTS library
+// TTS AEC3包装器 - 主入口点
+// 该文件组合了WebRTC AEC3 TTS库的所有C++组件
 
-// Include the main processor implementation
+// 包含主处理器实现
 #include "wq_aec3_processor.cpp"
 
-// Include WebRTC compatibility layer
+// 包含WebRTC兼容层
 #include "webrtc_compat.cpp"
 
-// Include audio converter implementation
+// 包含音频转换器实现
 #include "wq_aec3_convertor.cpp"
 
-// Include JNI implementation  
+// 包含JNI实现
 #include "wq_aec3_jni.cpp"
