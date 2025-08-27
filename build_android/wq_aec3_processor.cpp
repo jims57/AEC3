@@ -26,10 +26,31 @@ bool WqAec3Processor::Initialize() {
         // Initialize AEC3 configuration with default settings optimized for production
         aec3_config_ = webrtc::EchoCanceller3Config();
         
-        // Optimize for TTS echo cancellation
+        // Optimize for TTS echo cancellation - production-grade ERLE settings
         aec3_config_.filter.export_linear_aec_output = true;
-        aec3_config_.delay.default_delay = 5;  // Typical mobile delay
-        aec3_config_.delay.delay_estimate_smoothing = 0.9f;  // Stable delay estimation
+        aec3_config_.filter.enable_shadow_filter_output_usage = true;
+        aec3_config_.filter.conservative_initial_phase = false;
+        aec3_config_.filter.initial_state_seconds = 1.5f;  // Faster initial convergence
+        
+        // Enhanced delay estimation for better ERLE
+        aec3_config_.delay.default_delay = 0;  // Start with 0, let AEC3 auto-detect
+        aec3_config_.delay.delay_estimate_smoothing = 0.6f;  // More aggressive tracking
+        aec3_config_.delay.delay_candidate_detection_threshold = 0.15f;  // More sensitive detection
+        aec3_config_.delay.delay_selection_thresholds.initial = 12;  // Faster initial detection
+        aec3_config_.delay.delay_selection_thresholds.converged = 2;   // Maintain convergence
+        
+        // ERLE settings for better echo suppression
+        aec3_config_.erle.max_l = 8.0f;  // Allow higher ERLE in low frequencies
+        aec3_config_.erle.max_h = 4.0f;  // Allow higher ERLE in high frequencies
+        aec3_config_.erle.onset_detection = true;
+        
+        // Suppressor tuning for aggressive echo suppression
+        aec3_config_.suppressor.normal_tuning.mask_lf.enr_transparent = 0.3f;
+        aec3_config_.suppressor.normal_tuning.mask_lf.enr_suppress = 0.25f;  // More aggressive
+        aec3_config_.suppressor.normal_tuning.mask_hf.enr_transparent = 0.07f;
+        aec3_config_.suppressor.normal_tuning.mask_hf.enr_suppress = 0.08f;  // More aggressive
+        aec3_config_.suppressor.normal_tuning.max_inc_factor = 2.5f;
+        aec3_config_.suppressor.normal_tuning.max_dec_factor_lf = 0.2f;
         
         // Initialize audio processing configuration for 48kHz
         // Note: Using EchoControl directly, no need for AudioProcessing::Config
@@ -153,8 +174,9 @@ bool WqAec3Processor::ProcessCaptureAudio(const int16_t* capture_data, int16_t* 
         // Apply high-pass filter
         high_pass_filter_->Process(capture_audio_buffer_.get(), true);
         
-        // CRITICAL: Set audio buffer delay (required for proper AEC3 operation)
-        echo_controller_->SetAudioBufferDelay(0);
+        // CRITICAL: Set audio buffer delay (let AEC3 auto-detect optimal delay)
+        // Don't force to 0 - let the delay estimator work properly
+        // echo_controller_->SetAudioBufferDelay(0);
         
         // Apply echo cancellation
         echo_controller_->ProcessCapture(capture_audio_buffer_.get(), 
@@ -166,10 +188,11 @@ bool WqAec3Processor::ProcessCaptureAudio(const int16_t* capture_data, int16_t* 
         capture_audio_buffer_->CopyTo(&capture_frame);
         std::memcpy(output_data, capture_frame.data(), length * sizeof(int16_t));
 
-        // Store clean audio for real-time buffer (convert int16 to float for storage)
+        // Store clean audio for later retrieval (convert int16 to float with proper normalization)
         std::vector<float> float_frame(length);
         for (size_t i = 0; i < length; ++i) {
-            float_frame[i] = static_cast<float>(output_data[i]) / 32768.0f;
+            // Proper int16 to float conversion with full dynamic range preservation
+            float_frame[i] = static_cast<float>(output_data[i]) / 32767.0f;  // Use 32767 not 32768
         }
         AddCleanAudioFrame(float_frame.data(), length);
 
@@ -234,20 +257,34 @@ void WqAec3Processor::ClearCleanAudioBuffer() {
 std::vector<uint8_t> WqAec3Processor::GetCleanAudioAsBytes() {
     std::lock_guard<std::mutex> lock(clean_audio_mutex_);
     
-    std::vector<uint8_t> byte_data;
+    std::vector<uint8_t> result;
+    if (clean_audio_frames_.empty()) {
+        return result;
+    }
+    
+    // Convert float samples to int16 PCM bytes with proper clamping
+    result.reserve(clean_audio_frames_.size() * kFrameSize * sizeof(int16_t));
     
     for (const auto& frame : clean_audio_frames_) {
         for (float sample : frame) {
-            // Convert float [-1.0, 1.0] to int16 [-32768, 32767]
-            int16_t int_sample = static_cast<int16_t>(std::clamp(sample * 32767.0f, -32768.0f, 32767.0f));
+            // Clamp sample to valid range [-1.0, 1.0] to prevent overflow
+            sample = std::max(-1.0f, std::min(1.0f, sample));
             
-            // Convert to little-endian bytes
-            byte_data.push_back(static_cast<uint8_t>(int_sample & 0xFF));
-            byte_data.push_back(static_cast<uint8_t>((int_sample >> 8) & 0xFF));
+            // Convert float [-1.0, 1.0] to int16 [-32767, 32767] (avoid -32768 for symmetry)
+            int16_t pcm_sample;
+            if (sample >= 0.0f) {
+                pcm_sample = static_cast<int16_t>(sample * 32767.0f);
+            } else {
+                pcm_sample = static_cast<int16_t>(sample * 32767.0f);
+            }
+            
+            // Add bytes in little-endian format
+            result.push_back(static_cast<uint8_t>(pcm_sample & 0xFF));
+            result.push_back(static_cast<uint8_t>((pcm_sample >> 8) & 0xFF));
         }
     }
     
-    return byte_data;
+    return result;
 }
 
 void WqAec3Processor::ProcessAudioFrame(webrtc::AudioBuffer* buffer) {
