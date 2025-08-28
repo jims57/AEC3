@@ -128,6 +128,12 @@ public class WqAecProcessor {
     // 数组转换工具原生方法
     public native boolean nativeConvertByteArrayToShortArray(byte[] byteArray, short[] shortArray);  // Convert byte[] to short[]
     public native boolean nativeConvertShortArrayToByteArray(short[] shortArray, byte[] byteArray);  // Convert short[] to byte[]
+    
+    // WAV文件头写入原生方法
+    public native boolean nativeWriteWavHeader(byte[] buffer, int audioDataSize, int sampleRate, int channels, int bitsPerSample);  // Write WAV header to byte array
+    
+    // 字节数组版本的音频转换原生方法
+    public native byte[] nativeConvertCleanAudioToWAVBytes(byte[][] audioFramesBytes, int inputSampleRate, int outputSampleRate);  // Convert clean audio frames to WAV using byte arrays
 
     // 高级Java API
     private boolean initialized = false;
@@ -548,28 +554,67 @@ public class WqAecProcessor {
         return nativeConvertShortArrayToByteArray(shortArray, byteArray);
     }
     
-
-
     /**
-     * 用于保存AEC性能指标的类
+     * 写入WAV文件头到字节数组
+     * @param buffer 输出字节数组（至少44字节）
+     * @param audioDataSize 音频数据大小（字节）
+     * @param sampleRate 采样率
+     * @param channels 声道数（默认：1）
+     * @param bitsPerSample 每样本位数（默认：16）
+     * @return 成功时返回true
      */
-    public static class AecMetrics {
-        public final double echoReturnLoss;
-        public final double echoReturnLossEnhancement;
-        public final int delayMs;
-
-        public AecMetrics(double erl, double erle, int delay) {
-            this.echoReturnLoss = erl;
-            this.echoReturnLossEnhancement = erle;
-            this.delayMs = delay;
+    public boolean writeWavHeader(byte[] buffer, int audioDataSize, int sampleRate, int channels, int bitsPerSample) {
+        if (!initialized || buffer == null || buffer.length < 44) {
+            return false;
         }
-
-        @Override
-        public String toString() {
-            return String.format("AEC Metrics: ERL=%.2fdB, ERLE=%.2fdB, Delay=%dms", 
-                               echoReturnLoss, echoReturnLossEnhancement, delayMs);
-        }
+        return nativeWriteWavHeader(buffer, audioDataSize, sampleRate, channels, bitsPerSample);
     }
+    
+    /**
+     * 写入WAV文件头到字节数组（使用默认参数）
+     * @param buffer 输出字节数组（至少44字节）
+     * @param audioDataSize 音频数据大小（字节）
+     * @param sampleRate 采样率
+     * @return 成功时返回true
+     */
+    public boolean writeWavHeader(byte[] buffer, int audioDataSize, int sampleRate) {
+        return writeWavHeader(buffer, audioDataSize, sampleRate, 1, 16);
+    }
+    
+    /**
+     * 将清洁音频帧转换为WAV格式 - 字节数组版本
+     * @param audioFramesBytes 音频帧字节数据的二维数组
+     * @param inputSampleRate 输入采样率
+     * @param outputSampleRate 输出采样率
+     * @return WAV数据的字节数组，出错时返回null
+     */
+    public byte[] convertCleanAudioToWAVBytes(byte[][] audioFramesBytes, int inputSampleRate, int outputSampleRate) {
+        if (!initialized || audioFramesBytes == null) {
+            return null;
+        }
+        return nativeConvertCleanAudioToWAVBytes(audioFramesBytes, inputSampleRate, outputSampleRate);
+    }
+    
+/**
+ * 用于保存AEC性能指标的类
+ */
+public static class AecMetrics {
+    public final double echoReturnLoss;
+    public final double echoReturnLossEnhancement;
+    public final int delayMs;
+
+    public AecMetrics(double erl, double erle, int delay) {
+        this.echoReturnLoss = erl;
+        this.echoReturnLossEnhancement = erle;
+        this.delayMs = delay;
+    }
+
+    @Override
+    public String toString() {
+        return String.format("AEC Metrics: ERL=%.2fdB, ERLE=%.2fdB, Delay=%dms", 
+                           echoReturnLoss, echoReturnLossEnhancement, delayMs);
+    }
+}
     
     /**
      * 包含详细信息的增强型AEC性能指标

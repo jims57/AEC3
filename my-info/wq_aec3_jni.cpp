@@ -388,11 +388,27 @@ Java_cn_watchfun_aec3_WqAecProcessor_nativeGetCleanAudioAsWAV(JNIEnv *env, jobje
         return nullptr; // 没有可用的音频帧
     }
     
+    // Convert float vectors to byte vectors
+    std::vector<std::vector<uint8_t>> audioFramesBytes;
+    audioFramesBytes.reserve(audioFrames.size());
+    
+    for (const auto& floatFrame : audioFrames) {
+        std::vector<uint8_t> byteFrame;
+        byteFrame.reserve(floatFrame.size() * sizeof(float));
+        
+        // Convert float samples to bytes (little-endian)
+        for (float sample : floatFrame) {
+            const uint8_t* bytes = reinterpret_cast<const uint8_t*>(&sample);
+            byteFrame.insert(byteFrame.end(), bytes, bytes + sizeof(float));
+        }
+        audioFramesBytes.push_back(std::move(byteFrame));
+    }
+    
     // 转换为WAV格式
     uint8_t* wavData = nullptr;
     size_t wavSize = 0;
     int result = webrtc_aec3_tts::WqAec3Convertor::convertCleanAudioToWAV(
-        audioFrames, 48000, &wavData, &wavSize, outputSampleRate);
+        audioFramesBytes, 48000, &wavData, &wavSize, outputSampleRate);
     
     if (result != 0 || !wavData || wavSize == 0) {
         if (wavData) free(wavData);
@@ -444,11 +460,27 @@ Java_cn_watchfun_aec3_WqAecProcessor_nativeGetCleanAudioAsPCM(JNIEnv *env, jobje
                            firstSample, lastSample, audioFrames[0].size());
     }
     
+    // Convert float vectors to byte vectors
+    std::vector<std::vector<uint8_t>> audioFramesBytes;
+    audioFramesBytes.reserve(audioFrames.size());
+    
+    for (const auto& floatFrame : audioFrames) {
+        std::vector<uint8_t> byteFrame;
+        byteFrame.reserve(floatFrame.size() * sizeof(float));
+        
+        // Convert float samples to bytes (little-endian)
+        for (float sample : floatFrame) {
+            const uint8_t* bytes = reinterpret_cast<const uint8_t*>(&sample);
+            byteFrame.insert(byteFrame.end(), bytes, bytes + sizeof(float));
+        }
+        audioFramesBytes.push_back(std::move(byteFrame));
+    }
+    
     // 转换为PCM格式
     uint8_t* pcmData = nullptr;
     size_t pcmSize = 0;
     int result = webrtc_aec3_tts::WqAec3Convertor::convertCleanAudioToPCM(
-        audioFrames, 48000, &pcmData, &pcmSize, outputSampleRate);
+        audioFramesBytes, 48000, &pcmData, &pcmSize, outputSampleRate);
     
     __android_log_print(ANDROID_LOG_INFO, "WebRTC_AEC3_TTS", "PCM: 转换结果=%d, pcmData=%p, pcmSize=%zu", 
                        result, pcmData, pcmSize);
@@ -590,6 +622,122 @@ Java_cn_watchfun_aec3_WqAecProcessor_nativeConvertShortArrayToByteArray(
     env->ReleaseByteArrayElements(byte_array, byte_data, success ? 0 : JNI_ABORT);
     
     return success ? JNI_TRUE : JNI_FALSE;
+}
+
+/**
+ * 写入WAV文件头到字节数组
+ * @param buffer 输出字节数组（至少44字节）
+ * @param audioDataSize 音频数据大小（字节）
+ * @param sampleRate 采样率
+ * @param channels 声道数（默认：1）
+ * @param bitsPerSample 每样本位数（默认：16）
+ * @return 成功时返回true
+ */
+JNIEXPORT jboolean JNICALL
+Java_cn_watchfun_aec3_WqAecProcessor_nativeWriteWavHeader(JNIEnv *env, jobject thiz, 
+                                                          jbyteArray buffer, 
+                                                          jint audioDataSize,
+                                                          jint sampleRate,
+                                                          jint channels,
+                                                          jint bitsPerSample) {
+    if (!buffer) {
+        return JNI_FALSE;
+    }
+    
+    jsize bufferLength = env->GetArrayLength(buffer);
+    if (bufferLength < 44) {
+        return JNI_FALSE;
+    }
+    
+    jbyte* bufferData = env->GetByteArrayElements(buffer, nullptr);
+    if (!bufferData) {
+        return JNI_FALSE;
+    }
+    
+    int result = webrtc_aec3_tts::WqAec3Convertor::writeWavHeader(
+        reinterpret_cast<uint8_t*>(bufferData),
+        static_cast<size_t>(audioDataSize),
+        sampleRate,
+        channels,
+        bitsPerSample
+    );
+    
+    env->ReleaseByteArrayElements(buffer, bufferData, result == 0 ? 0 : JNI_ABORT);
+    
+    return result == 0 ? JNI_TRUE : JNI_FALSE;
+}
+
+/**
+ * 将清洁音频帧转换为WAV格式 - 字节数组版本
+ * @param audioFramesBytes 音频帧字节数据的二维数组
+ * @param inputSampleRate 输入采样率
+ * @param outputSampleRate 输出采样率
+ * @return WAV数据的字节数组，出错时返回null
+ */
+JNIEXPORT jbyteArray JNICALL
+Java_cn_watchfun_aec3_WqAecProcessor_nativeConvertCleanAudioToWAVBytes(JNIEnv *env, jobject thiz,
+                                                                       jobjectArray audioFramesBytes,
+                                                                       jint inputSampleRate,
+                                                                       jint outputSampleRate) {
+    if (!audioFramesBytes) {
+        return nullptr;
+    }
+    
+    jsize frameCount = env->GetArrayLength(audioFramesBytes);
+    if (frameCount == 0) {
+        return nullptr;
+    }
+    
+    // Convert Java byte[][] to C++ vector<vector<uint8_t>>
+    std::vector<std::vector<uint8_t>> cppFrames;
+    cppFrames.reserve(frameCount);
+    
+    for (jsize i = 0; i < frameCount; ++i) {
+        jbyteArray frameArray = static_cast<jbyteArray>(env->GetObjectArrayElement(audioFramesBytes, i));
+        if (!frameArray) continue;
+        
+        jsize frameLength = env->GetArrayLength(frameArray);
+        jbyte* frameData = env->GetByteArrayElements(frameArray, nullptr);
+        
+        if (frameData && frameLength > 0) {
+            std::vector<uint8_t> cppFrame(frameLength);
+            memcpy(cppFrame.data(), frameData, frameLength);
+            cppFrames.push_back(std::move(cppFrame));
+        }
+        
+        if (frameData) {
+            env->ReleaseByteArrayElements(frameArray, frameData, JNI_ABORT);
+        }
+        env->DeleteLocalRef(frameArray);
+    }
+    
+    if (cppFrames.empty()) {
+        return nullptr;
+    }
+    
+    // Convert using C++ method
+    uint8_t* wavData = nullptr;
+    size_t wavSize = 0;
+    // Call the C++ method with byte array input
+    int result = webrtc_aec3_tts::WqAec3Convertor::convertCleanAudioToWAV(cppFrames, inputSampleRate, &wavData, &wavSize, outputSampleRate);
+    
+    if (result != 0 || !wavData || wavSize == 0) {
+        if (wavData) free(wavData);
+        return nullptr;
+    }
+    
+    // Create Java byte array
+    jbyteArray wavArray = env->NewByteArray(static_cast<jsize>(wavSize));
+    if (!wavArray) {
+        free(wavData);
+        return nullptr;
+    }
+    
+    env->SetByteArrayRegion(wavArray, 0, static_cast<jsize>(wavSize), 
+                           reinterpret_cast<const jbyte*>(wavData));
+    
+    free(wavData);
+    return wavArray;
 }
 
 } // extern "C"
