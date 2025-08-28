@@ -43,7 +43,7 @@ public class WqAecProcessor {
      * @param ttsData TTS音频数据（480个样本，16位PCM）
      * @return 处理成功返回true
      */
-    public native boolean nativeProcessTtsAudio(short[] ttsData);
+    private native boolean nativeProcessTtsAudio(short[] ttsData);
 
     /**
      * 处理麦克风音频并移除回声
@@ -52,7 +52,24 @@ public class WqAecProcessor {
      * @param outputData 处理后音频的输出缓冲区（480个样本，16位PCM）
      * @return 处理成功返回true
      */
-    public native boolean nativeProcessMicrophoneAudio(short[] micData, short[] outputData);
+    private native boolean nativeProcessMicrophoneAudio(short[] micData, short[] outputData);
+
+    /**
+     * 处理TTS音频（参考信号）- 字节数组版本
+     * 在通过扬声器播放TTS音频之前调用此方法
+     * 
+     * @param ttsData TTS音频字节数据（960字节，即480个样本 * 2字节）
+     * @return 处理成功返回true
+     */
+    public native boolean nativeProcessTtsAudioBytes(byte[] ttsData);
+
+    /**
+     * 处理麦克风音频并移除回声 - 字节数组版本
+     * 
+     * @param micData 麦克风输入字节数据（960字节，即480个样本 * 2字节）
+     * @return 处理后的音频字节数组，如果出错则返回null
+     */
+    public native byte[] nativeProcessMicrophoneAudioBytes(byte[] micData);
 
     /**
      * 获取当前AEC性能指标
@@ -107,6 +124,10 @@ public class WqAecProcessor {
     public native byte[] nativeGetCleanAudioAsWAV(int outputSampleRate);  // Get buffered clean audio as WAV
     public native byte[] nativeGetCleanAudioAsPCM(int outputSampleRate);  // Get buffered clean audio as PCM
     public native void nativeClearCleanAudioBuffer();                     // Clear clean audio buffer
+    
+    // 数组转换工具原生方法
+    public native boolean nativeConvertByteArrayToShortArray(byte[] byteArray, short[] shortArray);  // Convert byte[] to short[]
+    public native boolean nativeConvertShortArrayToByteArray(short[] shortArray, byte[] byteArray);  // Convert short[] to byte[]
 
     // 高级Java API
     private boolean initialized = false;
@@ -137,7 +158,7 @@ public class WqAecProcessor {
      * @param ttsData 音频数据（必须是480个样本）
      * @return 处理成功返回true
      */
-    public boolean processTtsAudio(short[] ttsData) {
+    private boolean processTtsAudio(short[] ttsData) {
         if (!initialized || ttsData.length != FRAME_SIZE) {
             return false;
         }
@@ -149,7 +170,7 @@ public class WqAecProcessor {
      * @param micData 麦克风输入（必须是480个样本）
      * @return 回声消除后的音频，如果出错则返回null
      */
-    public short[] processMicrophoneAudio(short[] micData) {
+    private short[] processMicrophoneAudio(short[] micData) {
         if (!initialized || micData.length != FRAME_SIZE) {
             return null;
         }
@@ -159,6 +180,30 @@ public class WqAecProcessor {
             return output;
         }
         return null;
+    }
+
+    /**
+     * 处理TTS音频块 - 字节数组版本（推荐使用）
+     * @param ttsData 音频字节数据（必须是960字节，即480个样本 * 2字节）
+     * @return 处理成功返回true
+     */
+    public boolean processTtsAudioBytes(byte[] ttsData) {
+        if (!initialized || ttsData.length != FRAME_SIZE * 2) {
+            return false;
+        }
+        return nativeProcessTtsAudioBytes(ttsData);
+    }
+
+    /**
+     * 处理麦克风音频并获取回声消除后的音频 - 字节数组版本（推荐使用）
+     * @param micData 麦克风输入字节数据（必须是960字节，即480个样本 * 2字节）
+     * @return 回声消除后的音频字节数组，如果出错则返回null
+     */
+    public byte[] processMicrophoneAudioBytes(byte[] micData) {
+        if (!initialized || micData.length != FRAME_SIZE * 2) {
+            return null;
+        }
+        return nativeProcessMicrophoneAudioBytes(micData);
     }
 
     /**
@@ -467,6 +512,40 @@ public class WqAecProcessor {
         if (initialized) {
             nativeClearCleanAudioBuffer();
         }
+    }
+    
+    // ======= 数组转换工具方法 =======
+    
+    /**
+     * 将字节数组转换为短整型数组
+     * @param byteArray 输入字节数组
+     * @param shortArray 输出短整型数组（必须预分配正确大小：byteArray.length / 2）
+     * @return 转换成功则返回true
+     */
+    public boolean convertByteArrayToShortArray(byte[] byteArray, short[] shortArray) {
+        if (!initialized || byteArray == null || shortArray == null) {
+            return false;
+        }
+        if (byteArray.length != shortArray.length * 2) {
+            return false;
+        }
+        return nativeConvertByteArrayToShortArray(byteArray, shortArray);
+    }
+    
+    /**
+     * 将短整型数组转换为字节数组
+     * @param shortArray 输入短整型数组
+     * @param byteArray 输出字节数组（必须预分配正确大小：shortArray.length * 2）
+     * @return 转换成功则返回true
+     */
+    public boolean convertShortArrayToByteArray(short[] shortArray, byte[] byteArray) {
+        if (!initialized || shortArray == null || byteArray == null) {
+            return false;
+        }
+        if (byteArray.length != shortArray.length * 2) {
+            return false;
+        }
+        return nativeConvertShortArrayToByteArray(shortArray, byteArray);
     }
     
 

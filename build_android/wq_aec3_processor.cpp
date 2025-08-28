@@ -799,4 +799,82 @@ int WqAec3Processor::GetTimingBasedDelayEstimate() {
                                     std::min(static_cast<long>(kMaxDelayMs), delay_long)));
 }
 
+// ========== Byte Array Conversion Methods ==========
+
+bool WqAec3Processor::ConvertByteArrayToShortArray(const uint8_t* byte_data, size_t byte_length, 
+                                                   int16_t* short_data, size_t expected_short_length) const {
+    if (!byte_data || !short_data || byte_length != expected_short_length * 2) {
+        LOGE("Invalid byte array conversion parameters: byte_length=%zu, expected_short_length=%zu", 
+             byte_length, expected_short_length);
+        return false;
+    }
+    
+    // Convert little-endian byte array to int16_t array
+    for (size_t i = 0; i < expected_short_length; ++i) {
+        short_data[i] = static_cast<int16_t>(byte_data[i * 2] | (byte_data[i * 2 + 1] << 8));
+    }
+    
+    return true;
+}
+
+bool WqAec3Processor::ConvertShortArrayToByteArray(const int16_t* short_data, size_t short_length,
+                                                   uint8_t* byte_data, size_t expected_byte_length) const {
+    if (!short_data || !byte_data || expected_byte_length != short_length * 2) {
+        LOGE("Invalid short array conversion parameters: short_length=%zu, expected_byte_length=%zu", 
+             short_length, expected_byte_length);
+        return false;
+    }
+    
+    // Convert int16_t array to little-endian byte array
+    for (size_t i = 0; i < short_length; ++i) {
+        byte_data[i * 2] = static_cast<uint8_t>(short_data[i] & 0xFF);
+        byte_data[i * 2 + 1] = static_cast<uint8_t>((short_data[i] >> 8) & 0xFF);
+    }
+    
+    return true;
+}
+
+bool WqAec3Processor::ProcessTtsAudioBytes(const uint8_t* tts_byte_data, size_t byte_length) {
+    if (byte_length != kFrameSize * 2) {
+        LOGE("Invalid TTS byte data: byte_length=%zu, expected=%d", byte_length, kFrameSize * 2);
+        return false;
+    }
+    
+    // Convert byte array to short array
+    std::vector<int16_t> tts_short_data(kFrameSize);
+    if (!ConvertByteArrayToShortArray(tts_byte_data, byte_length, tts_short_data.data(), kFrameSize)) {
+        return false;
+    }
+    
+    // Call existing ProcessTtsAudio method
+    return ProcessTtsAudio(tts_short_data.data(), kFrameSize);
+}
+
+bool WqAec3Processor::ProcessMicrophoneAudioBytes(const uint8_t* mic_byte_data, uint8_t* output_byte_data, size_t byte_length) {
+    if (byte_length != kFrameSize * 2) {
+        LOGE("Invalid mic byte data: byte_length=%zu, expected=%d", byte_length, kFrameSize * 2);
+        return false;
+    }
+    
+    // Convert input byte array to short array
+    std::vector<int16_t> mic_short_data(kFrameSize);
+    if (!ConvertByteArrayToShortArray(mic_byte_data, byte_length, mic_short_data.data(), kFrameSize)) {
+        return false;
+    }
+    
+    // Process audio using existing method
+    std::vector<int16_t> output_short_data(kFrameSize);
+    if (!ProcessMicrophoneAudio(mic_short_data.data(), output_short_data.data(), kFrameSize)) {
+        return false;
+    }
+    
+    // Convert output short array back to byte array (little-endian)
+    for (size_t i = 0; i < kFrameSize; ++i) {
+        output_byte_data[i * 2] = static_cast<uint8_t>(output_short_data[i] & 0xFF);
+        output_byte_data[i * 2 + 1] = static_cast<uint8_t>((output_short_data[i] >> 8) & 0xFF);
+    }
+    
+    return true;
+}
+
 } // namespace webrtc_aec3_tts

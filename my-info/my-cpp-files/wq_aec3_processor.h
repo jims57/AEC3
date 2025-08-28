@@ -94,6 +94,24 @@ public:
     bool ProcessMicrophoneAudio(const int16_t* mic_data, int16_t* output_data, size_t length);
 
     /**
+     * 处理TTS音频（参考信号）- 字节数组版本
+     * 在通过扬声器播放TTS音频之前调用此方法
+     * @param tts_byte_data TTS音频字节数据（长度必须为kFrameSize * 2）
+     * @param byte_length 字节数量（必须等于kFrameSize * 2）
+     * @return 处理成功则返回true
+     */
+    bool ProcessTtsAudioBytes(const uint8_t* tts_byte_data, size_t byte_length);
+
+    /**
+     * 处理麦克风音频并移除回声 - 字节数组版本
+     * @param mic_byte_data 麦克风输入字节数据（长度必须为kFrameSize * 2）
+     * @param output_byte_data 处理后音频的输出字节缓冲区（长度必须为kFrameSize * 2）
+     * @param byte_length 字节数量（必须等于kFrameSize * 2）
+     * @return 处理成功则返回true
+     */
+    bool ProcessMicrophoneAudioBytes(const uint8_t* mic_byte_data, uint8_t* output_byte_data, size_t byte_length);
+
+    /**
      * 获取当前AEC性能指标
      * @param echo_return_loss 输出：ERL值
      * @param echo_return_loss_enhancement 输出：ERLE值
@@ -204,7 +222,7 @@ private:
                            const std::chrono::high_resolution_clock::time_point& render_time);
     void PerformDelayEstimationOptimization();
     int GetTimingBasedDelayEstimate();
-
+    
     // 核心WebRTC组件
     std::mutex mutex_;
     std::unique_ptr<webrtc::EchoCanceller3Factory> aec_factory_;
@@ -268,16 +286,21 @@ public:
     
     /**
      * 获取累积的清洁音频帧而不清除缓冲区
-     * @param outputFrames 接收清洁音频帧的输出向量
+     * @param audioFrames 接收清洁音频帧的输出向量
      * @return 检索到的帧数量
      */
-    size_t GetCleanAudioBuffer(std::vector<std::vector<float>>& outputFrames);
+    size_t GetCleanAudioBuffer(std::vector<std::vector<float>>& audioFrames);
     
     /**
      * 清除清洁音频缓冲区
      */
     void ClearCleanAudioBuffer();
     
+    // 字节数组转换工具方法
+    bool ConvertByteArrayToShortArray(const uint8_t* byte_data, size_t byte_length, 
+                                     int16_t* short_data, size_t expected_short_length) const;
+    bool ConvertShortArrayToByteArray(const int16_t* short_data, size_t short_length,
+                                     uint8_t* byte_data, size_t expected_byte_length) const;
 
 };
 

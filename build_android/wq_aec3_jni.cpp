@@ -79,6 +79,63 @@ Java_cn_watchfun_aec3_WqAecProcessor_nativeProcessMicrophoneAudio(JNIEnv *env, j
 }
 
 /**
+ * 处理TTS音频（参考信号）- 字节数组版本
+ * @param tts_byte_data TTS音频字节数据（必须是960字节，即480个样本 * 2字节）
+ * @return 处理成功则返回true
+ */
+JNIEXPORT jboolean JNICALL
+Java_cn_watchfun_aec3_WqAecProcessor_nativeProcessTtsAudioBytes(JNIEnv *env, jobject thiz, jbyteArray tts_byte_data) {
+    if (!g_processor) return JNI_FALSE;
+    
+    jsize byte_length = env->GetArrayLength(tts_byte_data);
+    if (byte_length != webrtc_aec3_tts::WqAec3Processor::kFrameSize * 2) return JNI_FALSE;
+    
+    jbyte* byte_data = env->GetByteArrayElements(tts_byte_data, nullptr);
+    bool result = g_processor->ProcessTtsAudioBytes(
+        reinterpret_cast<const uint8_t*>(byte_data), byte_length);
+    env->ReleaseByteArrayElements(tts_byte_data, byte_data, JNI_ABORT);
+    
+    return result ? JNI_TRUE : JNI_FALSE;
+}
+
+/**
+ * 处理麦克风音频并移除回声 - 字节数组版本
+ * @param mic_byte_data 麦克风输入字节数据（必须是960字节，即480个样本 * 2字节）
+ * @return 处理后的音频字节数组，如果出错则返回null
+ */
+JNIEXPORT jbyteArray JNICALL
+Java_cn_watchfun_aec3_WqAecProcessor_nativeProcessMicrophoneAudioBytes(JNIEnv *env, jobject thiz, jbyteArray mic_byte_data) {
+    if (!g_processor) return nullptr;
+    
+    jsize byte_length = env->GetArrayLength(mic_byte_data);
+    if (byte_length != webrtc_aec3_tts::WqAec3Processor::kFrameSize * 2) return nullptr;
+    
+    jbyte* input_bytes = env->GetByteArrayElements(mic_byte_data, nullptr);
+    
+    // Create output byte array
+    jbyteArray output_byte_array = env->NewByteArray(byte_length);
+    if (!output_byte_array) {
+        env->ReleaseByteArrayElements(mic_byte_data, input_bytes, JNI_ABORT);
+        return nullptr;
+    }
+    
+    jbyte* output_bytes = env->GetByteArrayElements(output_byte_array, nullptr);
+    
+    bool result = g_processor->ProcessMicrophoneAudioBytes(
+        reinterpret_cast<const uint8_t*>(input_bytes), 
+        reinterpret_cast<uint8_t*>(output_bytes), byte_length);
+    
+    env->ReleaseByteArrayElements(mic_byte_data, input_bytes, JNI_ABORT);
+    env->ReleaseByteArrayElements(output_byte_array, output_bytes, 0);
+    
+    if (!result) {
+        return nullptr;
+    }
+    
+    return output_byte_array;
+}
+
+/**
  * 获取当前AEC性能指标
  * @return double数组: [回声返回损耗, 回声返回损耗增强, 延迟毫秒数]
  */
@@ -435,6 +492,104 @@ Java_cn_watchfun_aec3_WqAecProcessor_nativeClearCleanAudioBuffer(JNIEnv *env, jo
     }
 }
 
+// ========== 数组转换工具JNI方法 ==========
 
+/**
+ * 将字节数组转换为短整型数组
+ * @param byte_array 输入字节数组
+ * @param short_array 输出短整型数组（必须预分配正确大小）
+ * @return 转换成功则返回true
+ */
+JNIEXPORT jboolean JNICALL
+Java_cn_watchfun_aec3_WqAecProcessor_nativeConvertByteArrayToShortArray(
+    JNIEnv* env, jobject thiz, jbyteArray byte_array, jshortArray short_array) {
+    
+    if (!byte_array || !short_array) {
+        return JNI_FALSE;
+    }
+    
+    jsize byte_length = env->GetArrayLength(byte_array);
+    jsize short_length = env->GetArrayLength(short_array);
+    
+    if (byte_length != short_length * 2) {
+        return JNI_FALSE;
+    }
+    
+    // Get array elements
+    jbyte* byte_data = env->GetByteArrayElements(byte_array, nullptr);
+    jshort* short_data = env->GetShortArrayElements(short_array, nullptr);
+    
+    if (!byte_data || !short_data) {
+        if (byte_data) env->ReleaseByteArrayElements(byte_array, byte_data, JNI_ABORT);
+        if (short_data) env->ReleaseShortArrayElements(short_array, short_data, JNI_ABORT);
+        return JNI_FALSE;
+    }
+    
+    // Use processor's conversion method
+    bool success = false;
+    if (g_processor) {
+        success = g_processor->ConvertByteArrayToShortArray(
+            reinterpret_cast<const uint8_t*>(byte_data), 
+            byte_length,
+            reinterpret_cast<int16_t*>(short_data), 
+            short_length
+        );
+    }
+    
+    // Release arrays
+    env->ReleaseByteArrayElements(byte_array, byte_data, JNI_ABORT);
+    env->ReleaseShortArrayElements(short_array, short_data, success ? 0 : JNI_ABORT);
+    
+    return success ? JNI_TRUE : JNI_FALSE;
+}
+
+/**
+ * 将短整型数组转换为字节数组
+ * @param short_array 输入短整型数组
+ * @param byte_array 输出字节数组（必须预分配正确大小）
+ * @return 转换成功则返回true
+ */
+JNIEXPORT jboolean JNICALL
+Java_cn_watchfun_aec3_WqAecProcessor_nativeConvertShortArrayToByteArray(
+    JNIEnv* env, jobject thiz, jshortArray short_array, jbyteArray byte_array) {
+    
+    if (!short_array || !byte_array) {
+        return JNI_FALSE;
+    }
+    
+    jsize short_length = env->GetArrayLength(short_array);
+    jsize byte_length = env->GetArrayLength(byte_array);
+    
+    if (byte_length != short_length * 2) {
+        return JNI_FALSE;
+    }
+    
+    // Get array elements
+    jshort* short_data = env->GetShortArrayElements(short_array, nullptr);
+    jbyte* byte_data = env->GetByteArrayElements(byte_array, nullptr);
+    
+    if (!short_data || !byte_data) {
+        if (short_data) env->ReleaseShortArrayElements(short_array, short_data, JNI_ABORT);
+        if (byte_data) env->ReleaseByteArrayElements(byte_array, byte_data, JNI_ABORT);
+        return JNI_FALSE;
+    }
+    
+    // Use processor's conversion method
+    bool success = false;
+    if (g_processor) {
+        success = g_processor->ConvertShortArrayToByteArray(
+            reinterpret_cast<const int16_t*>(short_data), 
+            short_length,
+            reinterpret_cast<uint8_t*>(byte_data), 
+            byte_length
+        );
+    }
+    
+    // Release arrays
+    env->ReleaseShortArrayElements(short_array, short_data, JNI_ABORT);
+    env->ReleaseByteArrayElements(byte_array, byte_data, success ? 0 : JNI_ABORT);
+    
+    return success ? JNI_TRUE : JNI_FALSE;
+}
 
 } // extern "C"
