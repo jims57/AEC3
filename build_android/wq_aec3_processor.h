@@ -107,9 +107,10 @@ public:
      * @param mic_byte_data 麦克风输入字节数据（长度必须为kFrameSize * 2）
      * @param output_byte_data 处理后音频的输出字节缓冲区（长度必须为kFrameSize * 2）
      * @param byte_length 字节数量（必须等于kFrameSize * 2）
+     * @param enableAEC 是否启用AEC处理（true=启用AEC，false=直接返回原始音频）
      * @return 处理成功则返回true
      */
-    bool ProcessMicrophoneAudioBytes(const uint8_t* mic_byte_data, uint8_t* output_byte_data, size_t byte_length);
+    bool ProcessMicrophoneAudioBytes(const uint8_t* mic_byte_data, uint8_t* output_byte_data, size_t byte_length, bool enableAEC);
 
     /**
      * 获取当前AEC性能指标

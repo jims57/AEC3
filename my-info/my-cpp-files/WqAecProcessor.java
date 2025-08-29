@@ -67,9 +67,10 @@ public class WqAecProcessor {
      * 处理麦克风音频并移除回声 - 字节数组版本
      * 
      * @param micData 麦克风输入字节数据（960字节，即480个样本 * 2字节）
+     * @param enableAEC 是否启用AEC处理
      * @return 处理后的音频字节数组，如果出错则返回null
      */
-    public native byte[] nativeProcessMicrophoneAudioBytes(byte[] micData);
+    public native byte[] nativeProcessMicrophoneAudioBytes(byte[] micData, boolean enableAEC);
 
     /**
      * 获取当前AEC性能指标
@@ -203,13 +204,14 @@ public class WqAecProcessor {
     /**
      * 处理麦克风音频并获取回声消除后的音频 - 字节数组版本（推荐使用）
      * @param micData 麦克风输入字节数据（必须是960字节，即480个样本 * 2字节）
+     * @param enableAEC 是否启用AEC处理
      * @return 回声消除后的音频字节数组，如果出错则返回null
      */
-    public byte[] processMicrophoneAudioBytes(byte[] micData) {
+    public byte[] processMicrophoneAudioBytes(byte[] micData, boolean enableAEC) {
         if (!initialized || micData.length != FRAME_SIZE * 2) {
             return null;
         }
-        return nativeProcessMicrophoneAudioBytes(micData);
+        return nativeProcessMicrophoneAudioBytes(micData, enableAEC);
     }
 
     /**

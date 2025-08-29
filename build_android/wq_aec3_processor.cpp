@@ -850,7 +850,7 @@ bool WqAec3Processor::ProcessTtsAudioBytes(const uint8_t* tts_byte_data, size_t 
     return ProcessTtsAudio(tts_short_data.data(), kFrameSize);
 }
 
-bool WqAec3Processor::ProcessMicrophoneAudioBytes(const uint8_t* mic_byte_data, uint8_t* output_byte_data, size_t byte_length) {
+bool WqAec3Processor::ProcessMicrophoneAudioBytes(const uint8_t* mic_byte_data, uint8_t* output_byte_data, size_t byte_length, bool enableAEC) {
     if (byte_length != kFrameSize * 2) {
         LOGE("Invalid mic byte data: byte_length=%zu, expected=%d", byte_length, kFrameSize * 2);
         return false;
@@ -864,8 +864,17 @@ bool WqAec3Processor::ProcessMicrophoneAudioBytes(const uint8_t* mic_byte_data, 
     
     // Process audio using existing method
     std::vector<int16_t> output_short_data(kFrameSize);
-    if (!ProcessMicrophoneAudio(mic_short_data.data(), output_short_data.data(), kFrameSize)) {
-        return false;
+    
+    if (enableAEC) {
+        // Process audio using existing AEC method
+        if (!ProcessMicrophoneAudio(mic_short_data.data(), output_short_data.data(), kFrameSize)) {
+            return false;
+        }
+        LOGV("🎯 AEC processing enabled: processed microphone audio with echo cancellation");
+    } else {
+        // Direct copy without AEC processing
+        std::copy(mic_short_data.begin(), mic_short_data.end(), output_short_data.begin());
+        LOGV("🎯 AEC processing disabled: returning original microphone audio without echo cancellation");
     }
     
     // Convert output short array back to byte array (little-endian)

@@ -101,10 +101,11 @@ Java_cn_watchfun_aec3_WqAecProcessor_nativeProcessTtsAudioBytes(JNIEnv *env, job
 /**
  * 处理麦克风音频并移除回声 - 字节数组版本
  * @param mic_byte_data 麦克风输入字节数据（必须是960字节，即480个样本 * 2字节）
+ * @param enableAEC 是否启用AEC处理（true=启用AEC，false=直接返回原始音频）
  * @return 处理后的音频字节数组，如果出错则返回null
  */
 JNIEXPORT jbyteArray JNICALL
-Java_cn_watchfun_aec3_WqAecProcessor_nativeProcessMicrophoneAudioBytes(JNIEnv *env, jobject thiz, jbyteArray mic_byte_data) {
+Java_cn_watchfun_aec3_WqAecProcessor_nativeProcessMicrophoneAudioBytes(JNIEnv *env, jobject thiz, jbyteArray mic_byte_data, jboolean enableAEC) {
     if (!g_processor) return nullptr;
     
     jsize byte_length = env->GetArrayLength(mic_byte_data);
@@ -123,7 +124,7 @@ Java_cn_watchfun_aec3_WqAecProcessor_nativeProcessMicrophoneAudioBytes(JNIEnv *e
     
     bool result = g_processor->ProcessMicrophoneAudioBytes(
         reinterpret_cast<const uint8_t*>(input_bytes), 
-        reinterpret_cast<uint8_t*>(output_bytes), byte_length);
+        reinterpret_cast<uint8_t*>(output_bytes), byte_length, enableAEC == JNI_TRUE);
     
     env->ReleaseByteArrayElements(mic_byte_data, input_bytes, JNI_ABORT);
     env->ReleaseByteArrayElements(output_byte_array, output_bytes, 0);
