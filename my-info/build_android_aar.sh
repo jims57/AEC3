@@ -16,7 +16,7 @@ AAR_NAME="wq-aec3"
 JAVA_PACKAGE="cn.watchfun.aec3"
 
 # Android NDK配置
-ANDROID_NDK_HOME=${ANDROID_NDK_HOME:-"/Users/mac/Library/Android/sdk/ndk/25.2.9519653"}
+ANDROID_NDK_HOME="/Users/mac/Library/Android/sdk/ndk/25.2.9519653"
 ANDROID_API_LEVEL=27
 ANDROID_STL="c++_static"
 
@@ -206,6 +206,9 @@ if(ANDROID)
         log
         OpenSLES
     )
+    # 添加线程支持用于C++ PCM播放
+    find_package(Threads REQUIRED)
+    target_link_libraries(wq_aec3_tts Threads::Threads)
 endif()
 
 # 设置库属性
@@ -223,10 +226,22 @@ echo "📝 正在复制C++源文件到构建目录..."
 # 从my-cpp-files/复制C++实现文件
 cp "$PROJECT_ROOT/my-info/my-cpp-files/wq_aec3_processor.h" "$BUILD_DIR/"
 cp "$PROJECT_ROOT/my-info/my-cpp-files/wq_aec3_processor.cpp" "$BUILD_DIR/"
+cp "$PROJECT_ROOT/my-info/my-cpp-files/wq_aec3_player.h" "$BUILD_DIR/"
+cp "$PROJECT_ROOT/my-info/my-cpp-files/wq_aec3_player.cpp" "$BUILD_DIR/"
 cp "$PROJECT_ROOT/my-info/my-cpp-files/webrtc_compat.h" "$BUILD_DIR/"
 cp "$PROJECT_ROOT/my-info/my-cpp-files/webrtc_compat.cpp" "$BUILD_DIR/"
 cp "$PROJECT_ROOT/my-info/my-cpp-files/wq_aec3_convertor.h" "$BUILD_DIR/"
 cp "$PROJECT_ROOT/my-info/my-cpp-files/wq_aec3_convertor.cpp" "$BUILD_DIR/"
+
+# 确保Oboe播放器头文件在正确位置
+if [ ! -f "$BUILD_DIR/wq_aec3_player.h" ]; then
+    echo "⚠️  警告: wq_aec3_player.h 未找到，将从my-cpp-files复制"
+    cp "$PROJECT_ROOT/my-info/my-cpp-files/wq_aec3_player.h" "$BUILD_DIR/" || echo "❌ 复制wq_aec3_player.h失败"
+fi
+
+# 复制完整的Oboe源码和头文件到构建目录
+cp -r "$PROJECT_ROOT/my-info/my-cpp-files/oboe_include" "$BUILD_DIR/"
+cp -r "$PROJECT_ROOT/my-info/my-cpp-files/oboe_src" "$BUILD_DIR/"
 
 # 复制JNI实现文件
 cp "$PROJECT_ROOT/my-info/wq_aec3_jni.cpp" "$BUILD_DIR/"
@@ -243,6 +258,9 @@ cat > "$BUILD_DIR/tts_aec3_wrapper.cc" << 'EOWRAPPER'
 
 // 包含主处理器实现
 #include "wq_aec3_processor.cpp"
+
+// 包含PCM播放器实现
+#include "wq_aec3_player.cpp"
 
 // 包含WebRTC兼容层
 #include "webrtc_compat.cpp"
@@ -319,12 +337,12 @@ for arch in "${ARCHITECTURES[@]}"; do
             ANDROID_ABI="armeabi-v7a"
             CMAKE_TOOLCHAIN_FILE="$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake"
             ;;
-        "x86_64")
-            ANDROID_ABI="x86_64"
-            CMAKE_TOOLCHAIN_FILE="$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake"
-            ;;
         "x86")
             ANDROID_ABI="x86"
+            CMAKE_TOOLCHAIN_FILE="$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake"
+            ;;
+        "x86_64")
+            ANDROID_ABI="x86_64"
             CMAKE_TOOLCHAIN_FILE="$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake"
             ;;
     esac
@@ -339,6 +357,7 @@ for arch in "${ARCHITECTURES[@]}"; do
         -DANDROID_STL="$ANDROID_STL" \
         -DCMAKE_BUILD_TYPE=Release \
         -DCMAKE_VERBOSE_MAKEFILE=ON \
+        -DOBOE_DIR="/Users/mac/Documents/GitHub/oboe" \
         ..
 
     # Build

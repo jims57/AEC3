@@ -148,6 +148,9 @@ if(ANDROID)
         log
         OpenSLES
     )
+    # 添加线程支持用于C++ PCM播放
+    find_package(Threads REQUIRED)
+    target_link_libraries(wq_aec3_tts Threads::Threads)
 endif()
 
 # 设置库属性

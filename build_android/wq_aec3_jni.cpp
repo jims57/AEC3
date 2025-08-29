@@ -1,6 +1,7 @@
 #include <jni.h>
 #include <memory>
 #include "wq_aec3_processor.h"
+#include "wq_aec3_player.h"
 #include "wq_aec3_convertor.h"
 
 // WebRTC AEC3 TTS回声消除的JNI实现 
@@ -739,6 +740,83 @@ Java_cn_watchfun_aec3_WqAecProcessor_nativeConvertCleanAudioToWAVBytes(JNIEnv *e
     
     free(wavData);
     return wavArray;
+}
+
+// ========== C++ PCM播放 JNI方法 ==========
+
+/**
+ * C++ PCM播放方法
+ * @param pcmChunks PCM数据块数组
+ * @param bufferChunks 缓冲区块数量
+ * @param delayMs 播放延迟毫秒数，用于精确时序同步，默认为0
+ * @return 播放成功则返回true
+ */
+JNIEXPORT jboolean JNICALL
+Java_cn_watchfun_aec3_WqAecProcessor_nativePlayPcmChunks(JNIEnv *env, jobject thiz, 
+                                                         jobjectArray pcmChunks, jint bufferChunks, jint delayMs) {
+    if (!g_processor) {
+        return JNI_FALSE;
+    }
+    
+    void* player_ptr = g_processor->GetPcmPlayer();
+    if (!player_ptr) {
+        return JNI_FALSE;
+    }
+    webrtc_aec3_tts::WqAec3Player* player = static_cast<webrtc_aec3_tts::WqAec3Player*>(player_ptr);
+    
+    // 设置JavaVM引用用于AudioTrack初始化
+    JavaVM* vm;
+    if (env->GetJavaVM(&vm) == JNI_OK) {
+        player->SetJavaVM(vm);
+    }
+    
+    // 获取数组长度
+    jsize chunksCount = env->GetArrayLength(pcmChunks);
+    if (chunksCount == 0) {
+        return JNI_FALSE;
+    }
+    
+    // 转换Java二维字节数组到C++ vector
+    std::vector<std::vector<uint8_t>> cppChunks;
+    cppChunks.reserve(chunksCount);
+    
+    for (jsize i = 0; i < chunksCount; i++) {
+        jbyteArray chunkArray = (jbyteArray)env->GetObjectArrayElement(pcmChunks, i);
+        if (chunkArray == nullptr) continue;
+        
+        jsize chunkSize = env->GetArrayLength(chunkArray);
+        if (chunkSize > 0) {
+            std::vector<uint8_t> chunk(chunkSize);
+            jbyte* chunkData = env->GetByteArrayElements(chunkArray, nullptr);
+            
+            // 复制数据
+            for (jsize j = 0; j < chunkSize; j++) {
+                chunk[j] = static_cast<uint8_t>(chunkData[j]);
+            }
+            
+            env->ReleaseByteArrayElements(chunkArray, chunkData, JNI_ABORT);
+            cppChunks.push_back(std::move(chunk));
+        }
+        
+        env->DeleteLocalRef(chunkArray);
+    }
+    
+    // 调用PCM播放器方法
+    return player->PlayPcmChunks(cppChunks, bufferChunks, delayMs) ? JNI_TRUE : JNI_FALSE;
+}
+
+/**
+ * 停止C++ PCM播放
+ */
+JNIEXPORT void JNICALL
+Java_cn_watchfun_aec3_WqAecProcessor_nativeStopPcmPlayback(JNIEnv *env, jobject thiz) {
+    if (g_processor) {
+        void* player_ptr = g_processor->GetPcmPlayer();
+        if (player_ptr) {
+            webrtc_aec3_tts::WqAec3Player* player = static_cast<webrtc_aec3_tts::WqAec3Player*>(player_ptr);
+            player->StopPcmPlayback();
+        }
+    }
 }
 
 } // extern "C"

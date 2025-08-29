@@ -4,6 +4,9 @@
 // 包含主处理器实现
 #include "wq_aec3_processor.cpp"
 
+// 包含PCM播放器实现
+#include "wq_aec3_player.cpp"
+
 // 包含WebRTC兼容层
 #include "webrtc_compat.cpp"
 

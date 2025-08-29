@@ -667,4 +667,49 @@ public static class AecMetrics {
             return ratio > 0.95; // 在5%以内视为同步
         }
     } // End of EnhancedAecMetrics class
+    
+    // ========== C++ PCM播放功能 ==========
+    
+    /**
+     * 使用C++播放PCM块数据，提供更精确的时序控制
+     * @param pcmChunks 二维字节数组，包含所有PCM块数据
+     * @param bufferChunks 缓冲区块数量，默认为3
+     * @param delayMs 播放延迟毫秒数，用于精确时序同步，默认为0
+     * @return 播放成功则返回true
+     */
+    public boolean playPcmChunks(byte[][] pcmChunks, int bufferChunks, int delayMs) {
+        return nativePlayPcmChunks(pcmChunks, bufferChunks, delayMs);
+    }
+    
+    /**
+     * 使用C++播放PCM块数据，提供更精确的时序控制（无延迟）
+     * @param pcmChunks 二维字节数组，包含所有PCM块数据
+     * @param bufferChunks 缓冲区块数量，默认为3
+     * @return 播放成功则返回true
+     */
+    public boolean playPcmChunks(byte[][] pcmChunks, int bufferChunks) {
+        return playPcmChunks(pcmChunks, bufferChunks, 0);
+    }
+    
+    /**
+     * 使用C++播放PCM块数据，使用默认缓冲区大小
+     * @param pcmChunks 二维字节数组，包含所有PCM块数据
+     * @return 播放成功则返回true
+     */
+    public boolean playPcmChunks(byte[][] pcmChunks) {
+        return playPcmChunks(pcmChunks, 3);
+    }
+    
+    /**
+     * 停止C++ PCM播放
+     */
+    public void stopPcmPlayback() {
+        nativeStopPcmPlayback();
+    }
+    
+    // ========== C++ PCM播放 Native方法声明 ==========
+    
+    private native boolean nativePlayPcmChunks(byte[][] pcmChunks, int bufferChunks, int delayMs);
+    private native void nativeStopPcmPlayback();
+    
 } // End of WqAecProcessor class

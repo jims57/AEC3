@@ -4,11 +4,13 @@
 #include <memory>
 #include <vector>
 #include <mutex>
-#include <chrono>
 #include <queue>
-#include <deque>
+#include <chrono>
+#include <atomic>
+#include <thread>
 #include <algorithm>
 #include <cmath>
+
 
 #include "api/echo_canceller3_factory.h"
 #include "api/echo_canceller3_config.h"
@@ -186,6 +188,12 @@ public:
     void SetFilterLengthBlocks(int blocks);
     
     /**
+     * 获取自适应滤波器收敛状态
+     * @return 滤波器收敛状态
+     */
+    float GetAdaptiveFilterConvergence() const;
+    
+    /**
      * 设置收敛时的滤波器泄漏以保持稳定性
      * @param leakage 0.000001-1.0范围，默认=0.000005
      */
@@ -275,6 +283,8 @@ private:
     std::vector<std::vector<float>> clean_audio_buffer_;
     std::mutex clean_audio_buffer_mutex_;
     
+    // PCM播放器实例 - 使用void*避免循环依赖
+    void* pcm_player_;
 
     
 public:
@@ -302,6 +312,9 @@ public:
                                      int16_t* short_data, size_t expected_short_length) const;
     bool ConvertShortArrayToByteArray(const int16_t* short_data, size_t short_length,
                                      uint8_t* byte_data, size_t expected_byte_length) const;
+    
+    // PCM播放器访问方法
+    void* GetPcmPlayer() const;
 
 };
 

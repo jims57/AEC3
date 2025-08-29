@@ -1,4 +1,5 @@
 #include "wq_aec3_processor.h"
+#include "wq_aec3_player.h"
 #include "webrtc_compat.h"
 #include <android/log.h>
 
@@ -30,7 +31,7 @@ WqAec3Processor::WqAec3Processor() :
     is_initialization_complete_(false),
     current_delay_ms_(kStreamDelay),
     manual_delay_ms_(0),
-    // 🎯 BALANCED DEFAULTS FOR UNIVERSAL CONVERGENCE + GOOD ERLE (2025-01-31)
+    // 🎯 BALANCED DEFAULTS FOR UNIVERSAL CONVERGENCE + GOOD ERL
     config_change_duration_blocks_(125),
     initial_state_seconds_(2.5f),
     conservative_initial_phase_(false),
@@ -42,16 +43,23 @@ WqAec3Processor::WqAec3Processor() :
     snr_threshold_(11.0f),
     hold_duration_(6),
     trigger_threshold_(2),
-    // 🎯 ERLE ADJUSTMENT PARAMETERS FOR MOBILE DEVELOPERS (2025-01-31)
+    // 🎯 ERLE ADJUSTMENT PARAMETERS FOR MOBILE DEVELOPERS
     filter_length_blocks_(25),
     filter_leakage_converged_(0.000005f),
     filter_leakage_diverged_(0.005f),
     delay_down_sampling_factor_(2),
     delay_num_filters_(16),
-    delay_estimate_smoothing_(0.98f) {
+    delay_estimate_smoothing_(0.98f),
+    pcm_player_(nullptr) {
 }
 
 WqAec3Processor::~WqAec3Processor() {
+    // 清理PCM播放器
+    if (pcm_player_) {
+        delete static_cast<WqAec3Player*>(pcm_player_);
+        pcm_player_ = nullptr;
+    }
+    
     std::lock_guard<std::mutex> lock(mutex_);
     echo_controller_.reset();
     aec_factory_.reset();
@@ -64,6 +72,10 @@ WqAec3Processor::~WqAec3Processor() {
 bool WqAec3Processor::Initialize() {
     std::lock_guard<std::mutex> lock(mutex_);
     
+    // 初始化PCM播放器
+    pcm_player_ = new WqAec3Player();
+    static_cast<WqAec3Player*>(pcm_player_)->SetAec3Processor(this);
+    
     try {
         LOGI("Initializing Enhanced WebRTC AEC3 for TTS: %dHz, %d channels (ERLE Optimization 2025-01-31)", kSampleRate, kChannels);
         
@@ -75,7 +87,7 @@ bool WqAec3Processor::Initialize() {
         high_pass_filter_.reset();
         render_buffer_.clear();
         
-        // 🚀 PRODUCTION-GRADE AEC3 CONFIGURATION WITH NEWER ANDROID COMPATIBILITY (2025-01-31)
+        // 🚀 PRODUCTION-GRADE AEC3 CONFIGURATION WITH NEWER ANDROID COMPATIBILITY
         webrtc::EchoCanceller3Config config;
         
         // 🎯 CRITICAL FIX: Remove ERLE hard limits for production-grade performance
@@ -85,7 +97,7 @@ bool WqAec3Processor::Initialize() {
         LOGI("🎯 ERLE limits configured: max_l=%.1fdB, max_h=%.1fdB (production-grade)", 
              config.erle.max_l, config.erle.max_h);
         
-        // 🚀 ENHANCED FILTER CONFIGURATION FOR FASTER CONVERGENCE (2025-01-31)
+        // 🚀 ENHANCED FILTER CONFIGURATION FOR FASTER CONVERGENCE
         config.filter.main.length_blocks = (filter_length_blocks_ > 0) ? filter_length_blocks_ : 25;
         config.filter.main.leakage_converged = (filter_leakage_converged_ > 0.0f) ? filter_leakage_converged_ : 0.000005f;
         config.filter.main.leakage_diverged = (filter_leakage_diverged_ > 0.0f) ? filter_leakage_diverged_ : 0.005f;
@@ -101,7 +113,7 @@ bool WqAec3Processor::Initialize() {
         config.suppressor.normal_tuning.max_dec_factor_lf = 15.0f;
         config.suppressor.nearend_tuning.max_dec_factor_lf = 8.0f;
         
-        // 🚀 ENHANCED DELAY ESTIMATION FOR UNIVERSAL ANDROID COMPATIBILITY (2025-01-31)
+        // 🚀 ENHANCED DELAY ESTIMATION FOR UNIVERSAL ANDROID COMPATIBILITY
         config.delay.down_sampling_factor = (delay_down_sampling_factor_ > 0) ? delay_down_sampling_factor_ : 2;
         config.delay.num_filters = (delay_num_filters_ > 0) ? delay_num_filters_ : 16;
         config.delay.delay_estimate_smoothing = (delay_estimate_smoothing_ > 0.0f) ? delay_estimate_smoothing_ : 0.98f;
@@ -387,7 +399,7 @@ bool WqAec3Processor::ProcessMicrophoneAudio(const int16_t* mic_data, int16_t* o
         double output_energy = CalculateFrameEnergy(output_data, length);
         double suppression_ratio = capture_energy > 0 ? output_energy / capture_energy : 1.0;
         
-        // 🎯 CONTINUOUS AEC3 PROCESSING (2025-01-31)
+        // 🎯 CONTINUOUS AEC3 PROCESSING
         // Keep AEC3 running continuously for consistent echo removal and clear voice
         // output_data already contains AEC3 processed result - use as is
         LOGV("🎯 Continuous AEC3: Using processed output for optimal echo removal and voice clarity");
@@ -401,7 +413,7 @@ bool WqAec3Processor::ProcessMicrophoneAudio(const int16_t* mic_data, int16_t* o
         LOGV("🎯 Enhanced AEC3 processing: frame=%llu, delay=%dms, suppression=%.3f, in_energy=%.2f, out_energy=%.2f", 
              (unsigned long long)total_capture_frames_, current_optimal_delay_ms_, suppression_ratio, capture_energy, output_energy);
         
-        // 🎯 Real-time clean audio buffering (2025-01-31)
+        // 🎯 Real-time clean audio buffering
         // Store processed clean audio frame for immediate availability
         {
             std::lock_guard<std::mutex> buffer_lock(clean_audio_buffer_mutex_);
@@ -884,6 +896,10 @@ bool WqAec3Processor::ProcessMicrophoneAudioBytes(const uint8_t* mic_byte_data, 
     }
     
     return true;
+}
+
+void* WqAec3Processor::GetPcmPlayer() const {
+    return pcm_player_;
 }
 
 } // namespace webrtc_aec3_tts
