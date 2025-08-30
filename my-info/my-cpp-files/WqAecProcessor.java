@@ -677,11 +677,12 @@ public static class AecMetrics {
     public native boolean nativeInitializeOboePlayback();
 
     /**
-     * 开始C++级别PCM块播放
+     * 开始C++级别PCM播放（原生方法）
      * @param pcmChunksPath PCM块文件路径
+     * @param minBufferChunks 开始播放前需要的最小缓冲块数
      * @return 播放开始成功则返回true
      */
-    public native boolean nativeStartCppPcmPlayback(String pcmChunksPath);
+    public native boolean nativeStartCppPcmPlayback(String pcmChunksPath, int minBufferChunks);
 
     /**
      * 停止C++级别PCM播放
@@ -719,12 +720,13 @@ public static class AecMetrics {
     }
 
     /**
-     * 开始C++级别PCM块播放，实现精确时序同步
+     * 开始C++级别PCM播放
      * @param pcmChunksPath PCM块文件路径（assets目录）
+     * @param minBufferChunks 开始播放前需要的最小缓冲块数
      * @return 播放开始成功则返回true
      */
-    public boolean startCppPcmPlayback(String pcmChunksPath) {
-        return nativeStartCppPcmPlayback(pcmChunksPath);
+    public boolean startCppPcmPlayback(String pcmChunksPath, int minBufferChunks) {
+        return nativeStartCppPcmPlayback(pcmChunksPath, minBufferChunks);
     }
 
     /**

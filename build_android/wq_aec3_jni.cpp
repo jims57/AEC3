@@ -756,14 +756,15 @@ Java_cn_watchfun_aec3_WqAecProcessor_nativeInitializeOboePlayback(JNIEnv *env, j
 /**
  * 开始C++级别PCM块播放
  * @param pcm_chunks_path PCM块文件路径
+ * @param min_buffer_chunks 开始播放前需要的最小缓冲块数
  * @return 播放开始成功则返回true
  */
 JNIEXPORT jboolean JNICALL
-Java_cn_watchfun_aec3_WqAecProcessor_nativeStartCppPcmPlayback(JNIEnv *env, jobject thiz, jstring pcm_chunks_path) {
+Java_cn_watchfun_aec3_WqAecProcessor_nativeStartCppPcmPlayback(JNIEnv *env, jobject thiz, jstring pcm_chunks_path, jint min_buffer_chunks) {
     if (!g_processor) return JNI_FALSE;
     
     const char* path = env->GetStringUTFChars(pcm_chunks_path, nullptr);
-    bool result = g_processor->StartCppPcmPlayback(std::string(path));
+    bool result = g_processor->StartCppPcmPlayback(std::string(path), static_cast<int>(min_buffer_chunks));
     env->ReleaseStringUTFChars(pcm_chunks_path, path);
     
     return result ? JNI_TRUE : JNI_FALSE;

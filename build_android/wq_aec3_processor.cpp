@@ -36,6 +36,7 @@ WqAec3Processor::WqAec3Processor() :
     manual_delay_ms_(0),
     cpp_playback_active_(false),
     current_chunk_index_(0),
+    current_chunk_offset_(0),
     // 🎯 BALANCED DEFAULTS FOR UNIVERSAL CONVERGENCE + GOOD ERLE (2025-01-31)
     config_change_duration_blocks_(125),
     initial_state_seconds_(2.5f),
@@ -925,20 +926,23 @@ bool WqAec3Processor::InitializeOboePlayback() {
     return true;
 }
 
-bool WqAec3Processor::StartCppPcmPlayback(const std::string& pcm_chunks_path) {
-    LOGI("🎵 开始C++级别PCM块播放: %s", pcm_chunks_path.c_str());
+bool WqAec3Processor::StartCppPcmPlayback(const std::string& pcm_chunks_path, int min_buffer_chunks) {
+    LOGI("🎵 开始C++级别PCM块播放: %s, 最小缓冲块数: %d", pcm_chunks_path.c_str(), min_buffer_chunks);
     
     // 停止当前播放
     StopCppPcmPlayback();
     
-    // 检查是否已有PCM块数据（通过Java层加载）
+    // 设置最小缓冲块数
+    min_buffer_chunks_ = min_buffer_chunks;
+    
+    // 检查是否已有足够的PCM块数据（通过Java层加载）
     {
         std::lock_guard<std::mutex> lock(pcm_chunks_mutex_);
-        if (pcm_chunks_.empty()) {
-            LOGE("❌ 没有可用的PCM块数据 - 请先通过Java层加载PCM块");
+        if (pcm_chunks_.size() < min_buffer_chunks) {
+            LOGE("❌ PCM块数据不足 - 当前: %zu, 需要: %d", pcm_chunks_.size(), min_buffer_chunks);
             return false;
         }
-        LOGI("✅ 使用已加载的PCM块数据 - 总块数: %zu", pcm_chunks_.size());
+        LOGI("✅ 使用已加载的PCM块数据 - 当前块数: %zu, 最小需要: %d", pcm_chunks_.size(), min_buffer_chunks);
     }
     
     // 初始化Oboe流（如果尚未初始化）
@@ -956,9 +960,24 @@ bool WqAec3Processor::StartCppPcmPlayback(const std::string& pcm_chunks_path) {
     // 设置播放状态
     cpp_playback_active_ = true;
     current_chunk_index_ = 0;
+    current_chunk_offset_ = 0;
     
-    LOGI("✅ C++级别PCM播放已开始 - 总块数: %zu", pcm_chunks_.size());
-    LOGI("🎵 Oboe音频流开始播放 - 等待onAudioReady回调");
+    // 启动异步加载线程（如果还有更多块需要加载）
+    {
+        std::lock_guard<std::mutex> lock(pcm_chunks_mutex_);
+        if (pcm_chunks_.size() < 4320) { // 假设总共4320块
+            async_loading_active_ = true;
+            async_loading_thread_ = std::thread([this]() {
+                // 异步加载剩余PCM块的逻辑将由Java层继续调用AddPcmChunk实现
+                while (async_loading_active_ && cpp_playback_active_) {
+                    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                }
+            });
+        }
+    }
+    
+    LOGI("✅ C++级别PCM播放已开始 - 当前块数: %zu, 缓冲块数: %d", pcm_chunks_.size(), min_buffer_chunks);
+    LOGI("🎵 Oboe音频流开始播放 - 等待onAudioReady回调 (10ms/块精确时序)");
     return true;
 }
 
@@ -970,6 +989,7 @@ void WqAec3Processor::StopCppPcmPlayback() {
     LOGI("🛑 停止C++级别PCM播放");
     
     cpp_playback_active_ = false;
+    async_loading_active_ = false;
     
     if (oboe_playback_stream_) {
         oboe_playback_stream_->requestStop();
@@ -978,6 +998,11 @@ void WqAec3Processor::StopCppPcmPlayback() {
     // 等待播放线程结束
     if (playback_thread_.joinable()) {
         playback_thread_.join();
+    }
+    
+    // 等待异步加载线程结束
+    if (async_loading_thread_.joinable()) {
+        async_loading_thread_.join();
     }
     
     LOGI("✅ C++级别PCM播放已停止");
@@ -997,6 +1022,7 @@ bool WqAec3Processor::LoadPcmChunks(const std::string& chunks_path) {
     std::lock_guard<std::mutex> lock(pcm_chunks_mutex_);
     pcm_chunks_.clear();
     current_chunk_index_ = 0;
+    current_chunk_offset_ = 0;
     
     // 生产级实现：直接从文件系统加载PCM文件
     if (chunks_path.empty()) {
@@ -1068,37 +1094,77 @@ bool WqAec3Processor::AddPcmChunk(const std::vector<int16_t>& chunk) {
 }
 
 oboe::DataCallbackResult WqAec3Processor::onAudioReady(oboe::AudioStream* audioStream, void* audioData, int32_t numFrames) {
-    if (!cpp_playback_active_ || pcm_chunks_.empty()) {
+    static int callback_count = 0;
+    callback_count++;
+    
+    if (callback_count % 100 == 1) { // Log every 100th callback to avoid spam
+        LOGI("🎵 onAudioReady调用 #%d - numFrames: %d, playback_active: %s", 
+             callback_count, numFrames, cpp_playback_active_ ? "true" : "false");
+    }
+    
+    if (!cpp_playback_active_) {
         // 填充静音
         memset(audioData, 0, numFrames * sizeof(int16_t));
         return oboe::DataCallbackResult::Continue;
     }
     
     int16_t* outputBuffer = static_cast<int16_t*>(audioData);
-    int currentIndex = current_chunk_index_;
+    int framesWritten = 0;
     
-    std::lock_guard<std::mutex> lock(pcm_chunks_mutex_);
-    
-    if (currentIndex < pcm_chunks_.size()) {
-        const auto& chunk = pcm_chunks_[currentIndex];
-        int framesToCopy = std::min(numFrames, static_cast<int32_t>(chunk.size()));
+    // 精确时序控制：支持跨多个回调的块消费
+    while (framesWritten < numFrames && cpp_playback_active_) {
+        int currentIndex = current_chunk_index_;
         
-        // 复制PCM数据
-        memcpy(outputBuffer, chunk.data(), framesToCopy * sizeof(int16_t));
+        std::lock_guard<std::mutex> lock(pcm_chunks_mutex_);
         
-        // 如果需要，填充剩余部分为静音
-        if (framesToCopy < numFrames) {
-            memset(outputBuffer + framesToCopy, 0, (numFrames - framesToCopy) * sizeof(int16_t));
+        if (currentIndex >= pcm_chunks_.size()) {
+            // 播放完成
+            LOGI("🎵 播放完成 - 已播放所有 %zu 块", pcm_chunks_.size());
+            cpp_playback_active_ = false;
+            break;
         }
         
-        // 移动到下一个块
-        current_chunk_index_++;
+        const auto& chunk = pcm_chunks_[currentIndex];
+        int remainingFrames = numFrames - framesWritten;
         
-        LOGI("🎵 播放PCM块 %d/%zu - 帧数: %d", currentIndex + 1, pcm_chunks_.size(), framesToCopy);
-    } else {
-        // 播放完成
-        memset(audioData, 0, numFrames * sizeof(int16_t));
-        cpp_playback_active_ = false;
+        // 计算当前块中剩余未播放的样本数
+        int chunkOffset = current_chunk_offset_.load();
+        int chunkRemaining = static_cast<int>(chunk.size()) - chunkOffset;
+        int framesToCopy = std::min(remainingFrames, chunkRemaining);
+        
+        if (callback_count % 100 == 1) { // Debug info every 100th callback
+            LOGI("🎵 处理块 %d/%zu - 请求帧数: %d, 剩余帧数: %d, 块偏移: %d, 块剩余: %d, 复制帧数: %d", 
+                 currentIndex, pcm_chunks_.size(), numFrames, remainingFrames, chunkOffset, chunkRemaining, framesToCopy);
+        }
+        
+        // 从当前偏移位置复制PCM数据
+        memcpy(outputBuffer + framesWritten, chunk.data() + chunkOffset, framesToCopy * sizeof(int16_t));
+        framesWritten += framesToCopy;
+        current_chunk_offset_ += framesToCopy;
+        
+        // 检查当前块是否完全消费完毕
+        if (current_chunk_offset_.load() >= chunk.size()) {
+            // 移动到下一个块
+            current_chunk_index_++;
+            current_chunk_offset_ = 0;
+            if (currentIndex % 100 == 0 || currentIndex < 10) { // Log first 10 and every 100th
+                LOGI("🎵 完成PCM块 %d/%zu - 480样本/10ms (精确时序同步)", currentIndex + 1, pcm_chunks_.size());
+            }
+        } else {
+            if (callback_count % 100 == 1) {
+                LOGI("🎵 部分块消费 - 块 %d, 已消费 %d/%zu 样本", currentIndex, current_chunk_offset_.load(), chunk.size());
+            }
+            // 当前块未完全消费，等待下次回调继续
+            break;
+        }
+    }
+    
+    // 填充剩余部分为静音
+    if (framesWritten < numFrames) {
+        memset(outputBuffer + framesWritten, 0, (numFrames - framesWritten) * sizeof(int16_t));
+    }
+    
+    if (!cpp_playback_active_) {
         LOGI("🎵 PCM播放完成");
         return oboe::DataCallbackResult::Stop;
     }

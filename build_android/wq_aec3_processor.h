@@ -69,6 +69,10 @@ public:
      * 析构函数 - 清理所有资源
      */
     ~WqAec3Processor();
+    
+    // 禁用拷贝构造函数和赋值操作符（因为包含atomic变量）
+    WqAec3Processor(const WqAec3Processor&) = delete;
+    WqAec3Processor& operator=(const WqAec3Processor&) = delete;
 
     // ========== 核心AEC3方法 ==========
     
@@ -229,9 +233,10 @@ public:
     /**
      * 开始C++级别的PCM块播放，实现精确时序同步
      * @param pcm_chunks_path PCM块文件的路径（assets目录）
+     * @param min_buffer_chunks 开始播放前需要准备的最小PCM块数量（默认100块，约1秒缓冲）
      * @return 播放开始成功则返回true
      */
-    bool StartCppPcmPlayback(const std::string& pcm_chunks_path);
+    bool StartCppPcmPlayback(const std::string& pcm_chunks_path, int min_buffer_chunks = 100);
     
     /**
      * 停止C++级别的PCM播放
@@ -310,13 +315,17 @@ private:
     std::vector<std::vector<float>> clean_audio_buffer_;
     std::mutex clean_audio_buffer_mutex_;
     
-    // ========== C++ Oboe PCM播放组件 ==========
+    // C++ PCM播放相关成员变量
     std::shared_ptr<oboe::AudioStream> oboe_playback_stream_;
-    std::atomic<bool> cpp_playback_active_;
-    std::atomic<int> current_chunk_index_;
     std::vector<std::vector<int16_t>> pcm_chunks_;
     std::mutex pcm_chunks_mutex_;
+    std::atomic<bool> cpp_playback_active_{false};
+    std::atomic<int> current_chunk_index_{0};
+    std::atomic<int> current_chunk_offset_{0};
+    std::atomic<int> min_buffer_chunks_{100};
+    std::atomic<bool> async_loading_active_{false};
     std::thread playback_thread_;
+    std::thread async_loading_thread_;
     
     // Oboe播放内部方法
     void PlaybackThreadFunction();
