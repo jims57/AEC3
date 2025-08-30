@@ -418,9 +418,32 @@ cp -r "$OUTPUT_DIR/jni" "$AAR_DIR/"
 
 # 复制Oboe库到AAR
 for arch in "${ARCHITECTURES[@]}"; do
-    if [ -f "$BUILD_DIR/$arch/oboe_libs/liboboe.so" ]; then
-        cp "$BUILD_DIR/$arch/oboe_libs/liboboe.so" "$AAR_DIR/jni/$arch/"
-        echo "✅ 复制liboboe.so到$arch架构"
+    # 复制oboe库文件到目标目录
+    OBOE_LIB_PATH="$BUILD_DIR/$arch/oboe_libs/liboboe.so"
+    if [ -f "$OBOE_LIB_PATH" ]; then
+        cp "$OBOE_LIB_PATH" "$AAR_DIR/jni/$arch/"
+        echo "✅ 复制oboe库到AAR: $arch/liboboe.so"
+    else
+        echo "⚠️  未找到oboe库: $OBOE_LIB_PATH"
+    fi
+    
+    # 复制libc++_shared.so (oboe依赖)
+    NDK_LIBCXX_DIR="$ANDROID_NDK/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/lib"
+    if [ "$arch" = "arm64-v8a" ]; then
+        LIBCXX_PATH="$NDK_LIBCXX_DIR/aarch64-linux-android/libc++_shared.so"
+    elif [ "$arch" = "armeabi-v7a" ]; then
+        LIBCXX_PATH="$NDK_LIBCXX_DIR/arm-linux-androideabi/libc++_shared.so"
+    elif [ "$arch" = "x86_64" ]; then
+        LIBCXX_PATH="$NDK_LIBCXX_DIR/x86_64-linux-android/libc++_shared.so"
+    elif [ "$arch" = "x86" ]; then
+        LIBCXX_PATH="$NDK_LIBCXX_DIR/i686-linux-android/libc++_shared.so"
+    fi
+    
+    if [ -f "$LIBCXX_PATH" ]; then
+        cp "$LIBCXX_PATH" "$AAR_DIR/jni/$arch/"
+        echo "✅ 复制libc++_shared.so到AAR: $arch"
+    else
+        echo "⚠️  未找到libc++_shared.so: $LIBCXX_PATH"
     fi
 done
 
