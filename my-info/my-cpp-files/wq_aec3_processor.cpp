@@ -931,10 +931,14 @@ bool WqAec3Processor::StartCppPcmPlayback(const std::string& pcm_chunks_path) {
     // 停止当前播放
     StopCppPcmPlayback();
     
-    // 加载PCM块
-    if (!LoadPcmChunks(pcm_chunks_path)) {
-        LOGE("❌ 加载PCM块失败");
-        return false;
+    // 检查是否已有PCM块数据（通过Java层加载）
+    {
+        std::lock_guard<std::mutex> lock(pcm_chunks_mutex_);
+        if (pcm_chunks_.empty()) {
+            LOGE("❌ 没有可用的PCM块数据 - 请先通过Java层加载PCM块");
+            return false;
+        }
+        LOGI("✅ 使用已加载的PCM块数据 - 总块数: %zu", pcm_chunks_.size());
     }
     
     // 初始化Oboe流（如果尚未初始化）
@@ -954,6 +958,7 @@ bool WqAec3Processor::StartCppPcmPlayback(const std::string& pcm_chunks_path) {
     current_chunk_index_ = 0;
     
     LOGI("✅ C++级别PCM播放已开始 - 总块数: %zu", pcm_chunks_.size());
+    LOGI("🎵 Oboe音频流开始播放 - 等待onAudioReady回调");
     return true;
 }
 
@@ -1052,9 +1057,13 @@ bool WqAec3Processor::SetPcmChunks(const std::vector<std::vector<int16_t>>& chun
 
 bool WqAec3Processor::AddPcmChunk(const std::vector<int16_t>& chunk) {
     std::lock_guard<std::mutex> lock(pcm_chunks_mutex_);
+    
+    // Process reference PCM chunk BEFORE adding to playback queue for better timing sync
+    ProcessTtsAudio(chunk.data(), std::min(chunk.size(), static_cast<size_t>(kFrameSize)));
+    
     pcm_chunks_.push_back(chunk);
     
-    LOGV("📂 添加PCM块 - 当前总块数: %zu, 块大小: %zu样本", pcm_chunks_.size(), chunk.size());
+    LOGV("📂 添加PCM块 - 当前总块数: %zu, 块大小: %zu样本 (已预处理AEC3)", pcm_chunks_.size(), chunk.size());
     return true;
 }
 
@@ -1082,13 +1091,10 @@ oboe::DataCallbackResult WqAec3Processor::onAudioReady(oboe::AudioStream* audioS
             memset(outputBuffer + framesToCopy, 0, (numFrames - framesToCopy) * sizeof(int16_t));
         }
         
-        // 同时处理TTS音频用于AEC
-        ProcessTtsAudio(chunk.data(), std::min(static_cast<size_t>(framesToCopy), static_cast<size_t>(kFrameSize)));
-        
         // 移动到下一个块
         current_chunk_index_++;
         
-        LOGV("🎵 播放PCM块 %d/%zu - 帧数: %d", currentIndex + 1, pcm_chunks_.size(), framesToCopy);
+        LOGI("🎵 播放PCM块 %d/%zu - 帧数: %d", currentIndex + 1, pcm_chunks_.size(), framesToCopy);
     } else {
         // 播放完成
         memset(audioData, 0, numFrames * sizeof(int16_t));
