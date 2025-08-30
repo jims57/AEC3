@@ -86,17 +86,32 @@ public:
                              int channels = 1,
                              int bitsPerSample = 16);
 
+    /**
+     * 将PCM数据重采样并分割为480样本块 (48kHz)
+     * @param inputPcmData 输入PCM数据 (16位小端序)
+     * @param inputSampleRate 输入采样率
+     * @param outputSampleRate 输出采样率 (通常48000)
+     * @param outputChunks 输出480样本块的向量
+     * @param hasMoreData 是否还有更多输入数据 (false时会flush剩余数据)
+     * @return 成功时返回0，失败时返回负错误码
+     */
+    static int resamplePCMTo480SampleChunks(const std::vector<uint8_t>& inputPcmData,
+                                           int inputSampleRate,
+                                           int outputSampleRate,
+                                           std::vector<std::vector<uint8_t>>& outputChunks,
+                                           bool hasMoreData = true);
+
 private:
     /**
-     * 使用线性插值重新采样音频数据
-     * @param inputData 输入音频样本
+     * 使用线性插值重新采样音频数据 (uint8_t版本)
+     * @param inputData 输入音频字节数据 (16位PCM小端序)
      * @param inputSampleRate 输入采样率
      * @param outputSampleRate 输出采样率
-     * @return 重新采样的音频数据
+     * @return 重新采样的音频字节数据
      */
-    static std::vector<float> resampleAudio(const std::vector<float>& inputData,
-                                          int inputSampleRate,
-                                          int outputSampleRate);
+    static std::vector<uint8_t> resampleAudio(const std::vector<uint8_t>& inputData,
+                                             int inputSampleRate,
+                                             int outputSampleRate);
 
     /**
      * 以小端格式将32位整数写入缓冲区

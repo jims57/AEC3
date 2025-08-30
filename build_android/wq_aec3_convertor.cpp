@@ -41,87 +41,53 @@ int WqAec3Convertor::convertCleanAudioToWAV(const std::vector<std::vector<uint8_
         return -1;
     }
 
-    if (!isSupportedSampleRate(outputSampleRate)) {
-        LOGE("convertCleanAudioToWAV: Unsupported output sample rate: %d", outputSampleRate);
-        return -2;
-    }
-
     try {
-        // Step 1: Combine all audio frame bytes into single vector
-        std::vector<uint8_t> combinedBytes;
-        size_t totalBytes = 0;
-        for (const auto& frame : audioFramesBytes) {
-            totalBytes += frame.size();
-        }
-        combinedBytes.reserve(totalBytes);
+        // Step 1: Use convertCleanAudioToPCM to get PCM data
+        uint8_t* pcmData = nullptr;
+        size_t pcmSize = 0;
+        int pcmResult = convertCleanAudioToPCM(audioFramesBytes, inputSampleRate, &pcmData, &pcmSize, outputSampleRate);
         
-        for (const auto& frame : audioFramesBytes) {
-            combinedBytes.insert(combinedBytes.end(), frame.begin(), frame.end());
+        if (pcmResult != 0 || !pcmData || pcmSize == 0) {
+            LOGE("convertCleanAudioToWAV: Failed to convert to PCM, result=%d", pcmResult);
+            if (pcmData) free(pcmData);
+            return pcmResult;
         }
-
-        LOGI("convertCleanAudioToWAV: Combined %zu frames into %zu bytes", audioFramesBytes.size(), totalBytes);
-
-        // Step 2: Convert bytes to 16-bit samples for resampling
-        size_t numSamples = totalBytes / 2;
-        std::vector<float> floatSamples;
-        floatSamples.reserve(numSamples);
         
-        for (size_t i = 0; i < totalBytes; i += 2) {
-            int16_t sample = static_cast<int16_t>(combinedBytes[i] | (combinedBytes[i + 1] << 8));
-            floatSamples.push_back(static_cast<float>(sample) / 32767.0f);
-        }
+        LOGI("convertCleanAudioToWAV: Got PCM data: %zu bytes", pcmSize);
 
-        // Step 3: Resample if needed
-        std::vector<float> resampledAudio;
-        if (inputSampleRate != outputSampleRate) {
-            resampledAudio = resampleAudio(floatSamples, inputSampleRate, outputSampleRate);
-            LOGI("convertCleanAudioToWAV: Resampled from %dHz to %dHz, %zu->%zu samples", 
-                 inputSampleRate, outputSampleRate, floatSamples.size(), resampledAudio.size());
-        } else {
-            resampledAudio = std::move(floatSamples);
-        }
-
-        // Step 4: Convert back to 16-bit PCM
-        std::vector<int16_t> pcmSamples;
-        pcmSamples.reserve(resampledAudio.size());
-        for (float sample : resampledAudio) {
-            float clamped = std::max(-1.0f, std::min(1.0f, sample));
-            int16_t pcmSample = static_cast<int16_t>(clamped * 32767.0f);
-            pcmSamples.push_back(pcmSample);
-        }
-
-        // Step 5: Calculate WAV file size
-        size_t pcmDataSize = pcmSamples.size() * sizeof(int16_t);
+        // Step 2: Calculate WAV file size
         size_t wavHeaderSize = 44;
-        size_t totalWavSize = wavHeaderSize + pcmDataSize;
+        size_t totalWavSize = wavHeaderSize + pcmSize;
 
-        // Step 6: Allocate output buffer
+        // Step 3: Allocate output buffer
         *outputWavData = static_cast<uint8_t*>(malloc(totalWavSize));
         if (!*outputWavData) {
             LOGE("convertCleanAudioToWAV: Failed to allocate output buffer");
+            free(pcmData);
             return -3;
         }
 
         uint8_t* buffer = *outputWavData;
         
-        // Step 7: Write WAV header using writeWavHeader method
-        int headerResult = writeWavHeader(buffer, pcmDataSize, outputSampleRate);
+        // Step 4: Write WAV header using writeWavHeader method
+        int headerResult = writeWavHeader(buffer, pcmSize, outputSampleRate);
         if (headerResult != 0) {
+            LOGE("convertCleanAudioToWAV: Failed to write WAV header, result=%d", headerResult);
             free(*outputWavData);
             *outputWavData = nullptr;
+            free(pcmData);
             return headerResult;
         }
         
-        // Step 8: Write PCM data
-        for (size_t i = 0; i < pcmSamples.size(); ++i) {
-            writeInt16LE(buffer + wavHeaderSize + (i * 2), static_cast<uint16_t>(pcmSamples[i]));
-        }
-
+        // Step 5: Copy PCM data after header
+        memcpy(buffer + wavHeaderSize, pcmData, pcmSize);
+        
         *outputSize = totalWavSize;
         
-        LOGI("convertCleanAudioToWAV: Created WAV file in memory: %zu bytes, %dHz, %zu samples", 
-             totalWavSize, outputSampleRate, pcmSamples.size());
+        LOGI("convertCleanAudioToWAV: Created WAV file in memory: %zu bytes, %dHz", 
+             totalWavSize, outputSampleRate);
         
+        free(pcmData);
         return 0; // Success
 
     } catch (const std::exception& e) {
@@ -161,49 +127,30 @@ int WqAec3Convertor::convertCleanAudioToPCM(const std::vector<std::vector<uint8_
 
         LOGI("convertCleanAudioToPCM: Combined %zu frames into %zu bytes", audioFramesBytes.size(), totalBytes);
 
-        // Step 2: Convert bytes to 16-bit samples for resampling
-        size_t numSamples = totalBytes / 2;
-        std::vector<float> floatSamples;
-        floatSamples.reserve(numSamples);
-        
-        for (size_t i = 0; i < totalBytes; i += 2) {
-            int16_t sample = static_cast<int16_t>(combinedBytes[i] | (combinedBytes[i + 1] << 8));
-            floatSamples.push_back(static_cast<float>(sample) / 32767.0f);
-        }
-
-        // Step 3: Resample if needed
-        std::vector<float> resampledAudio;
+        // Step 2: Resample if needed using new uint8_t method
+        std::vector<uint8_t> resampledBytes;
         if (inputSampleRate != outputSampleRate) {
-            resampledAudio = resampleAudio(floatSamples, inputSampleRate, outputSampleRate);
-            LOGI("convertCleanAudioToPCM: Resampled from %dHz to %dHz, %zu->%zu samples", 
-                 inputSampleRate, outputSampleRate, floatSamples.size(), resampledAudio.size());
+            resampledBytes = resampleAudio(combinedBytes, inputSampleRate, outputSampleRate);
+            LOGI("convertCleanAudioToPCM: Resampled from %dHz to %dHz, %zu->%zu bytes", 
+                 inputSampleRate, outputSampleRate, combinedBytes.size(), resampledBytes.size());
         } else {
-            resampledAudio = std::move(floatSamples);
+            resampledBytes = std::move(combinedBytes);
         }
 
-        // Step 4: Convert back to 16-bit PCM
-        size_t pcmDataSize = resampledAudio.size() * sizeof(int16_t);
-        
-        // Step 5: Allocate output buffer
+        // Step 3: Allocate output buffer
+        size_t pcmDataSize = resampledBytes.size();
         *outputPcmData = static_cast<uint8_t*>(malloc(pcmDataSize));
         if (!*outputPcmData) {
             LOGE("convertCleanAudioToPCM: Failed to allocate output buffer");
             return -3;
         }
 
-        uint8_t* pcmBuffer = *outputPcmData;
-        
-        // Step 6: Convert and write PCM data (little-endian format)
-        for (size_t i = 0; i < resampledAudio.size(); ++i) {
-            float clamped = std::max(-1.0f, std::min(1.0f, resampledAudio[i]));
-            int16_t pcmSample = static_cast<int16_t>(clamped * 32767.0f);
-            writeInt16LE(pcmBuffer + (i * 2), static_cast<uint16_t>(pcmSample));
-        }
-
+        // Step 4: Copy resampled data to output buffer
+        memcpy(*outputPcmData, resampledBytes.data(), pcmDataSize);
         *outputSize = pcmDataSize;
         
-        LOGI("convertCleanAudioToPCM: Created PCM data in memory: %zu bytes, %dHz, %zu samples", 
-             pcmDataSize, outputSampleRate, resampledAudio.size());
+        LOGI("convertCleanAudioToPCM: Created PCM data in memory: %zu bytes, %dHz", 
+             pcmDataSize, outputSampleRate);
         
         return 0; // Success
 
@@ -213,36 +160,151 @@ int WqAec3Convertor::convertCleanAudioToPCM(const std::vector<std::vector<uint8_
     }
 }
 
-std::vector<float> WqAec3Convertor::resampleAudio(const std::vector<float>& inputData,
-                                                 int inputSampleRate,
-                                                 int outputSampleRate) {
+std::vector<uint8_t> WqAec3Convertor::resampleAudio(const std::vector<uint8_t>& inputData,
+                                                   int inputSampleRate,
+                                                   int outputSampleRate) {
     if (inputSampleRate == outputSampleRate) {
         return inputData;
     }
 
+    // Convert bytes to 16-bit samples for processing
+    size_t numInputSamples = inputData.size() / 2;
+    std::vector<int16_t> inputSamples;
+    inputSamples.reserve(numInputSamples);
+    
+    for (size_t i = 0; i < inputData.size(); i += 2) {
+        int16_t sample = static_cast<int16_t>(inputData[i] | (inputData[i + 1] << 8));
+        inputSamples.push_back(sample);
+    }
+
     double ratio = static_cast<double>(outputSampleRate) / inputSampleRate;
-    size_t outputLength = static_cast<size_t>(inputData.size() * ratio);
-    std::vector<float> outputData;
-    outputData.reserve(outputLength);
+    size_t outputLength = static_cast<size_t>(inputSamples.size() * ratio);
+    std::vector<int16_t> outputSamples;
+    outputSamples.reserve(outputLength);
 
     for (size_t i = 0; i < outputLength; ++i) {
         double srcIndex = i / ratio;
         size_t index = static_cast<size_t>(srcIndex);
         double fraction = srcIndex - index;
 
-        if (index < inputData.size() - 1) {
+        if (index < inputSamples.size() - 1) {
             // Linear interpolation
-            float interpolated = static_cast<float>(
-                inputData[index] * (1.0 - fraction) + inputData[index + 1] * fraction);
-            outputData.push_back(interpolated);
-        } else if (index < inputData.size()) {
-            outputData.push_back(inputData[index]);
+            double interpolated = inputSamples[index] * (1.0 - fraction) + inputSamples[index + 1] * fraction;
+            outputSamples.push_back(static_cast<int16_t>(std::round(interpolated)));
+        } else if (index < inputSamples.size()) {
+            outputSamples.push_back(inputSamples[index]);
         } else {
-            outputData.push_back(0.0f);
+            outputSamples.push_back(0);
         }
     }
 
+    // Convert back to bytes
+    std::vector<uint8_t> outputData;
+    outputData.reserve(outputSamples.size() * 2);
+    
+    for (int16_t sample : outputSamples) {
+        outputData.push_back(static_cast<uint8_t>(sample & 0xFF));
+        outputData.push_back(static_cast<uint8_t>((sample >> 8) & 0xFF));
+    }
+
     return outputData;
+}
+
+// Static remainder buffer for resamplePCMTo480SampleChunks
+static std::vector<uint8_t> g_remainderBuffer;
+
+int WqAec3Convertor::resamplePCMTo480SampleChunks(const std::vector<uint8_t>& inputPcmData,
+                                                 int inputSampleRate,
+                                                 int outputSampleRate,
+                                                 std::vector<std::vector<uint8_t>>& outputChunks,
+                                                 bool hasMoreData) {
+    if (inputPcmData.empty()) {
+        LOGE("resamplePCMTo480SampleChunks: Empty input data");
+        return -1;
+    }
+    
+    if (!isSupportedSampleRate(inputSampleRate) || !isSupportedSampleRate(outputSampleRate)) {
+        LOGE("resamplePCMTo480SampleChunks: Unsupported sample rates: input=%d, output=%d", 
+             inputSampleRate, outputSampleRate);
+        return -2;
+    }
+    
+    try {
+        // Step 1: Combine remainder buffer with new input data
+        std::vector<uint8_t> combinedData;
+        combinedData.reserve(g_remainderBuffer.size() + inputPcmData.size());
+        combinedData.insert(combinedData.end(), g_remainderBuffer.begin(), g_remainderBuffer.end());
+        combinedData.insert(combinedData.end(), inputPcmData.begin(), inputPcmData.end());
+        
+        LOGI("resamplePCMTo480SampleChunks: Combined %zu remainder + %zu input = %zu total bytes", 
+             g_remainderBuffer.size(), inputPcmData.size(), combinedData.size());
+        
+        // Step 2: Resample to target sample rate if needed
+        std::vector<uint8_t> resampledData;
+        if (inputSampleRate != outputSampleRate) {
+            resampledData = resampleAudio(combinedData, inputSampleRate, outputSampleRate);
+            LOGI("resamplePCMTo480SampleChunks: Resampled from %dHz to %dHz, %zu->%zu bytes", 
+                 inputSampleRate, outputSampleRate, combinedData.size(), resampledData.size());
+        } else {
+            resampledData = std::move(combinedData);
+        }
+        
+        // Step 3: Split into 480-sample chunks (480 samples * 2 bytes = 960 bytes per chunk)
+        const size_t samplesPerChunk = 480;
+        const size_t bytesPerChunk = samplesPerChunk * 2; // 16-bit samples
+        
+        size_t numCompleteChunks = resampledData.size() / bytesPerChunk;
+        size_t remainderBytes = resampledData.size() % bytesPerChunk;
+        
+        LOGI("resamplePCMTo480SampleChunks: Creating %zu complete chunks, %zu remainder bytes", 
+             numCompleteChunks, remainderBytes);
+        
+        // Step 4: Create complete 480-sample chunks
+        outputChunks.clear();
+        outputChunks.reserve(numCompleteChunks);
+        
+        for (size_t i = 0; i < numCompleteChunks; ++i) {
+            size_t startIdx = i * bytesPerChunk;
+            std::vector<uint8_t> chunk(resampledData.begin() + startIdx, 
+                                     resampledData.begin() + startIdx + bytesPerChunk);
+            outputChunks.push_back(std::move(chunk));
+        }
+        
+        // Step 5: Handle remainder data
+        if (remainderBytes > 0) {
+            size_t remainderStartIdx = numCompleteChunks * bytesPerChunk;
+            
+            if (hasMoreData) {
+                // Store remainder for next call
+                g_remainderBuffer.assign(resampledData.begin() + remainderStartIdx, resampledData.end());
+                LOGI("resamplePCMTo480SampleChunks: Stored %zu remainder bytes for next call", remainderBytes);
+            } else {
+                // Flush remainder by padding with silence to make complete 480-sample chunk
+                std::vector<uint8_t> finalChunk(resampledData.begin() + remainderStartIdx, resampledData.end());
+                
+                // Pad with silence (zeros) to reach 480 samples
+                size_t paddingBytes = bytesPerChunk - remainderBytes;
+                finalChunk.resize(bytesPerChunk, 0);
+                
+                outputChunks.push_back(std::move(finalChunk));
+                g_remainderBuffer.clear();
+                
+                LOGI("resamplePCMTo480SampleChunks: Flushed final chunk with %zu padding bytes", paddingBytes);
+            }
+        } else {
+            // No remainder, clear buffer if not expecting more data
+            if (!hasMoreData) {
+                g_remainderBuffer.clear();
+            }
+        }
+        
+        LOGI("resamplePCMTo480SampleChunks: Successfully created %zu chunks", outputChunks.size());
+        return 0; // Success
+        
+    } catch (const std::exception& e) {
+        LOGE("resamplePCMTo480SampleChunks: Exception: %s", e.what());
+        return -3;
+    }
 }
 
 int WqAec3Convertor::writeWavHeader(uint8_t* buffer,

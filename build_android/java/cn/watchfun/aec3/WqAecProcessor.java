@@ -135,6 +135,8 @@ public class WqAecProcessor {
     
     // 字节数组版本的音频转换原生方法
     public native byte[] nativeConvertCleanAudioToWAVBytes(byte[][] audioFramesBytes, int inputSampleRate, int outputSampleRate);  // Convert clean audio frames to WAV using byte arrays
+    public native byte[] nativeConvertPCMData(byte[] inputPcmData, int inputSampleRate, int outputSampleRate);  // Convert PCM data with resampling
+    public native byte[][] nativeResamplePCMTo480SampleChunks(byte[] inputPcmData, int inputSampleRate, int outputSampleRate, boolean hasMoreData);  // Resample PCM and split into 480-sample chunks
 
     // 高级Java API
     private boolean initialized = false;
@@ -595,6 +597,46 @@ public class WqAecProcessor {
             return null;
         }
         return nativeConvertCleanAudioToWAVBytes(audioFramesBytes, inputSampleRate, outputSampleRate);
+    }
+    
+    /**
+     * 将PCM数据转换为不同采样率的PCM数据
+     * @param inputPcmData 输入PCM字节数据
+     * @param inputSampleRate 输入采样率
+     * @param outputSampleRate 输出采样率
+     * @return 转换后的PCM数据字节数组，出错时返回null
+     */
+    public byte[] convertPCMData(byte[] inputPcmData, int inputSampleRate, int outputSampleRate) {
+        if (!initialized || inputPcmData == null) {
+            return null;
+        }
+        return nativeConvertPCMData(inputPcmData, inputSampleRate, outputSampleRate);
+    }
+    
+    /**
+     * 将PCM数据重采样并分割为480样本块 (用于WebRTC AEC3)
+     * @param inputPcmData 输入PCM字节数据
+     * @param inputSampleRate 输入采样率
+     * @param outputSampleRate 输出采样率 (通常48000)
+     * @param hasMoreData 是否还有更多数据 (false时会flush剩余数据)
+     * @return 480样本块的二维字节数组，出错时返回null
+     */
+    public byte[][] resamplePCMTo480SampleChunks(byte[] inputPcmData, int inputSampleRate, int outputSampleRate, boolean hasMoreData) {
+        if (!initialized || inputPcmData == null) {
+            return null;
+        }
+        return nativeResamplePCMTo480SampleChunks(inputPcmData, inputSampleRate, outputSampleRate, hasMoreData);
+    }
+    
+    /**
+     * 将PCM数据重采样并分割为480样本块 (默认输出48kHz)
+     * @param inputPcmData 输入PCM字节数据
+     * @param inputSampleRate 输入采样率
+     * @param hasMoreData 是否还有更多数据
+     * @return 480样本块的二维字节数组，出错时返回null
+     */
+    public byte[][] resamplePCMTo480SampleChunks(byte[] inputPcmData, int inputSampleRate, boolean hasMoreData) {
+        return resamplePCMTo480SampleChunks(inputPcmData, inputSampleRate, 48000, hasMoreData);
     }
     
 /**

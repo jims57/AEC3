@@ -669,6 +669,135 @@ Java_cn_watchfun_aec3_WqAecProcessor_nativeWriteWavHeader(JNIEnv *env, jobject t
 }
 
 /**
+ * 将PCM数据转换为PCM格式（重采样）- 字节数组版本
+ * @param inputPcmData 输入PCM字节数据
+ * @param inputSampleRate 输入采样率
+ * @param outputSampleRate 输出采样率
+ * @return PCM数据的字节数组，出错时返回null
+ */
+JNIEXPORT jbyteArray JNICALL
+Java_cn_watchfun_aec3_WqAecProcessor_nativeConvertPCMData(JNIEnv *env, jobject thiz,
+                                                          jbyteArray inputPcmData,
+                                                          jint inputSampleRate,
+                                                          jint outputSampleRate) {
+    if (!inputPcmData) {
+        return nullptr;
+    }
+    
+    jsize inputLength = env->GetArrayLength(inputPcmData);
+    if (inputLength == 0) {
+        return nullptr;
+    }
+    
+    jbyte* inputData = env->GetByteArrayElements(inputPcmData, nullptr);
+    if (!inputData) {
+        return nullptr;
+    }
+    
+    // Convert Java byte array to C++ vector
+    std::vector<std::vector<uint8_t>> audioFramesBytes;
+    std::vector<uint8_t> singleFrame(inputLength);
+    memcpy(singleFrame.data(), inputData, inputLength);
+    audioFramesBytes.push_back(std::move(singleFrame));
+    
+    env->ReleaseByteArrayElements(inputPcmData, inputData, JNI_ABORT);
+    
+    // Convert using C++ method
+    uint8_t* pcmData = nullptr;
+    size_t pcmSize = 0;
+    int result = webrtc_aec3_tts::WqAec3Convertor::convertCleanAudioToPCM(
+        audioFramesBytes, inputSampleRate, &pcmData, &pcmSize, outputSampleRate);
+    
+    if (result != 0 || !pcmData || pcmSize == 0) {
+        if (pcmData) free(pcmData);
+        return nullptr;
+    }
+    
+    // Create Java byte array
+    jbyteArray pcmArray = env->NewByteArray(static_cast<jsize>(pcmSize));
+    if (!pcmArray) {
+        free(pcmData);
+        return nullptr;
+    }
+    
+    env->SetByteArrayRegion(pcmArray, 0, static_cast<jsize>(pcmSize), 
+                           reinterpret_cast<const jbyte*>(pcmData));
+    
+    free(pcmData);
+    return pcmArray;
+}
+
+/**
+ * 将PCM数据重采样并分割为480样本块
+ * @param inputPcmData 输入PCM字节数据
+ * @param inputSampleRate 输入采样率
+ * @param outputSampleRate 输出采样率
+ * @param hasMoreData 是否还有更多数据
+ * @return 480样本块的二维字节数组，出错时返回null
+ */
+JNIEXPORT jobjectArray JNICALL
+Java_cn_watchfun_aec3_WqAecProcessor_nativeResamplePCMTo480SampleChunks(JNIEnv *env, jobject thiz,
+                                                                        jbyteArray inputPcmData,
+                                                                        jint inputSampleRate,
+                                                                        jint outputSampleRate,
+                                                                        jboolean hasMoreData) {
+    if (!inputPcmData) {
+        return nullptr;
+    }
+    
+    jsize inputLength = env->GetArrayLength(inputPcmData);
+    if (inputLength == 0) {
+        return nullptr;
+    }
+    
+    jbyte* inputData = env->GetByteArrayElements(inputPcmData, nullptr);
+    if (!inputData) {
+        return nullptr;
+    }
+    
+    // Convert Java byte array to C++ vector
+    std::vector<uint8_t> inputVector(inputLength);
+    memcpy(inputVector.data(), inputData, inputLength);
+    
+    env->ReleaseByteArrayElements(inputPcmData, inputData, JNI_ABORT);
+    
+    // Call C++ method
+    std::vector<std::vector<uint8_t>> outputChunks;
+    int result = webrtc_aec3_tts::WqAec3Convertor::resamplePCMTo480SampleChunks(
+        inputVector, inputSampleRate, outputSampleRate, outputChunks, hasMoreData == JNI_TRUE);
+    
+    if (result != 0) {
+        return nullptr;
+    }
+    
+    // Create Java 2D byte array
+    jclass byteArrayClass = env->FindClass("[B");
+    if (!byteArrayClass) {
+        return nullptr;
+    }
+    
+    jobjectArray result2D = env->NewObjectArray(static_cast<jsize>(outputChunks.size()), byteArrayClass, nullptr);
+    if (!result2D) {
+        return nullptr;
+    }
+    
+    for (size_t i = 0; i < outputChunks.size(); ++i) {
+        jbyteArray chunkArray = env->NewByteArray(static_cast<jsize>(outputChunks[i].size()));
+        if (!chunkArray) {
+            return nullptr;
+        }
+        
+        env->SetByteArrayRegion(chunkArray, 0, static_cast<jsize>(outputChunks[i].size()),
+                               reinterpret_cast<const jbyte*>(outputChunks[i].data()));
+        
+        env->SetObjectArrayElement(result2D, static_cast<jsize>(i), chunkArray);
+        env->DeleteLocalRef(chunkArray);
+    }
+    
+    return result2D;
+}
+
+/**
  * 将清洁音频帧转换为WAV格式 - 字节数组版本
  * @param audioFramesBytes 音频帧字节数据的二维数组
  * @param inputSampleRate 输入采样率
