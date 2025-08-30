@@ -9,12 +9,15 @@
 #include <deque>
 #include <algorithm>
 #include <cmath>
+#include <atomic>
+#include <thread>
 
 #include "api/echo_canceller3_factory.h"
 #include "api/echo_canceller3_config.h"
 #include "audio_processing/audio_buffer.h"
 #include "audio_processing/audio_frame.h"
 #include "audio_processing/high_pass_filter.h"
+#include "oboe/Oboe.h"
 
 namespace webrtc_aec3_tts {
 
@@ -40,7 +43,7 @@ struct TimedFrame {
  * - 移动开发者参数控制
  * - 生产就绪的稳定性
  */
-class WqAec3Processor {
+class WqAec3Processor : public oboe::AudioStreamCallback {
 public:
     // 音频配置常量
     static constexpr int kSampleRate = 48000;
@@ -215,6 +218,38 @@ public:
      */
     void SetDelayEstimateSmoothing(float smoothing);
 
+    // ========== C++ Oboe PCM播放方法 ==========
+    
+    /**
+     * 初始化Oboe音频流用于C++级别的PCM播放
+     * @return 初始化成功则返回true
+     */
+    bool InitializeOboePlayback();
+    
+    /**
+     * 开始C++级别的PCM块播放，实现精确时序同步
+     * @param pcm_chunks_path PCM块文件的路径（assets目录）
+     * @return 播放开始成功则返回true
+     */
+    bool StartCppPcmPlayback(const std::string& pcm_chunks_path);
+    
+    /**
+     * 停止C++级别的PCM播放
+     */
+    void StopCppPcmPlayback();
+    
+    /**
+     * 检查C++播放是否正在进行
+     * @return 正在播放则返回true
+     */
+    bool IsCppPlaybackActive() const;
+    
+    /**
+     * 获取当前播放的PCM块索引
+     * @return 当前播放的块索引
+     */
+    int GetCurrentPlaybackChunkIndex() const;
+
 private:
     // 内部实现方法
     double CalculateFrameEnergy(const int16_t* samples, size_t length) const;
@@ -274,6 +309,28 @@ private:
     // 实时清洁音频缓冲系统
     std::vector<std::vector<float>> clean_audio_buffer_;
     std::mutex clean_audio_buffer_mutex_;
+    
+    // ========== C++ Oboe PCM播放组件 ==========
+    std::shared_ptr<oboe::AudioStream> oboe_playback_stream_;
+    std::atomic<bool> cpp_playback_active_;
+    std::atomic<int> current_chunk_index_;
+    std::vector<std::vector<int16_t>> pcm_chunks_;
+    std::mutex pcm_chunks_mutex_;
+    std::thread playback_thread_;
+    
+    // Oboe播放内部方法
+    void PlaybackThreadFunction();
+    bool LoadPcmChunks(const std::string& chunks_path);
+    
+    // Oboe AudioStreamCallback interface implementation
+    oboe::DataCallbackResult onAudioReady(oboe::AudioStream* audioStream, void* audioData, int32_t numFrames) override;
+    
+public:
+    // PCM块管理方法
+    bool SetPcmChunks(const std::vector<std::vector<int16_t>>& chunks);
+    bool AddPcmChunk(const std::vector<int16_t>& chunk);
+
+private:
     
 
     

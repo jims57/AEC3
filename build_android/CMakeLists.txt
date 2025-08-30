@@ -30,6 +30,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../base)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../base/rtc_base)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../base/system_wrappers)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../base/abseil)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/oboe)
 
 # 定义WebRTC AEC3核心源文件及所需工具
 set(AEC3_CORE_SOURCES
@@ -141,12 +142,19 @@ set(ALL_SOURCES
 # 创建共享库
 add_library(wq_aec3_tts SHARED ${ALL_SOURCES})
 
+# 添加Oboe预构建库
+add_library(oboe SHARED IMPORTED)
+set_target_properties(oboe PROPERTIES
+    IMPORTED_LOCATION ${CMAKE_CURRENT_SOURCE_DIR}/${ANDROID_ABI}/oboe_libs/liboboe.so
+)
+
 # 链接Android库
 if(ANDROID)
     target_link_libraries(wq_aec3_tts
         android
         log
         OpenSLES
+        oboe
     )
 endif()
 

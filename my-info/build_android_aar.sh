@@ -15,6 +15,10 @@ OUTPUT_DIR="$PROJECT_ROOT/android_output"
 AAR_NAME="wq-aec3"
 JAVA_PACKAGE="cn.watchfun.aec3"
 
+# Oboe集成配置
+OBOE_AAR_PATH="/Users/mac/Documents/GitHub/oboe/my-info/aar/oboe-1.9.3.aar"
+OBOE_EXTRACT_DIR="$BUILD_DIR/oboe_extracted"
+
 # Android NDK配置
 ANDROID_NDK_HOME=${ANDROID_NDK_HOME:-"/Users/mac/Library/Android/sdk/ndk/25.2.9519653"}
 ANDROID_API_LEVEL=27
@@ -49,6 +53,42 @@ ARCHITECTURES=("arm64-v8a" "armeabi-v7a" "x86_64" "x86")
 for arch in "${ARCHITECTURES[@]}"; do
     mkdir -p "$BUILD_DIR/$arch"
 done
+
+# ============================================================================
+# 提取并集成Oboe AAR
+# ============================================================================
+echo "📦 正在提取Oboe AAR并集成到构建中..."
+mkdir -p "$OBOE_EXTRACT_DIR"
+cd "$OBOE_EXTRACT_DIR"
+unzip -q "$OBOE_AAR_PATH"
+
+# 复制Oboe头文件到构建目录
+mkdir -p "$BUILD_DIR/oboe"
+cp -r "$OBOE_EXTRACT_DIR/prefab/modules/oboe/include/oboe" "$BUILD_DIR/oboe/"
+
+# 为每个架构复制Oboe库文件
+for arch in "${ARCHITECTURES[@]}"; do
+    case $arch in
+        "arm64-v8a")
+            OBOE_ARCH_DIR="android.arm64-v8a"
+            ;;
+        "armeabi-v7a")
+            OBOE_ARCH_DIR="android.armeabi-v7a"
+            ;;
+        "x86_64")
+            OBOE_ARCH_DIR="android.x86_64"
+            ;;
+        "x86")
+            OBOE_ARCH_DIR="android.x86"
+            ;;
+    esac
+    
+    mkdir -p "$BUILD_DIR/$arch/oboe_libs"
+    cp "$OBOE_EXTRACT_DIR/prefab/modules/oboe/libs/$OBOE_ARCH_DIR/liboboe.so" "$BUILD_DIR/$arch/oboe_libs/"
+done
+
+cd "$PROJECT_ROOT"
+echo "✅ Oboe AAR集成完成"
 
 # ============================================================================
 # 为AEC3 TTS生成CMakeLists.txt
@@ -88,6 +128,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../base)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../base/rtc_base)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../base/system_wrappers)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../base/abseil)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/oboe)
 
 # 定义WebRTC AEC3核心源文件及所需工具
 set(AEC3_CORE_SOURCES
@@ -199,12 +240,19 @@ set(ALL_SOURCES
 # 创建共享库
 add_library(wq_aec3_tts SHARED ${ALL_SOURCES})
 
+# 添加Oboe预构建库
+add_library(oboe SHARED IMPORTED)
+set_target_properties(oboe PROPERTIES
+    IMPORTED_LOCATION ${CMAKE_CURRENT_SOURCE_DIR}/${ANDROID_ABI}/oboe_libs/liboboe.so
+)
+
 # 链接Android库
 if(ANDROID)
     target_link_libraries(wq_aec3_tts
         android
         log
         OpenSLES
+        oboe
     )
 endif()
 
@@ -367,6 +415,14 @@ mkdir -p "$AAR_DIR"/{classes,jni,res,assets}
 
 # 复制原生库
 cp -r "$OUTPUT_DIR/jni" "$AAR_DIR/"
+
+# 复制Oboe库到AAR
+for arch in "${ARCHITECTURES[@]}"; do
+    if [ -f "$BUILD_DIR/$arch/oboe_libs/liboboe.so" ]; then
+        cp "$BUILD_DIR/$arch/oboe_libs/liboboe.so" "$AAR_DIR/jni/$arch/"
+        echo "✅ 复制liboboe.so到$arch架构"
+    fi
+done
 
 # 编译Java类
 javac -d "$AAR_DIR/classes" -cp "$ANDROID_SDK_ROOT/platforms/android-$ANDROID_API_LEVEL/android.jar" \

@@ -98,6 +98,7 @@ libwq_aec3_tts.so: \
  /Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/lib/arm-linux-androideabi/27/libandroid.so \
  /Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/lib/arm-linux-androideabi/27/liblog.so \
  /Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/lib/arm-linux-androideabi/27/libOpenSLES.so \
+ oboe_libs/liboboe.so \
  /Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/lib64/clang/14.0.7/lib/linux/arm/libatomic.a \
  /Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/lib/arm-linux-androideabi/27/libm.so \
  /Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/lib/arm-linux-androideabi/27/libc++.a \
@@ -306,6 +307,8 @@ CMakeFiles/wq_aec3_tts.dir/tts_aec3_wrapper.cc.o:
 /Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/lib/arm-linux-androideabi/27/liblog.so:
 
 /Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/lib/arm-linux-androideabi/27/libOpenSLES.so:
+
+oboe_libs/liboboe.so:
 
 /Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/lib64/clang/14.0.7/lib/linux/arm/libatomic.a:
 

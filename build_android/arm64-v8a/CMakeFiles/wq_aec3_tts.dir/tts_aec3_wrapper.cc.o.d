@@ -150,6 +150,7 @@ CMakeFiles/wq_aec3_tts.dir/tts_aec3_wrapper.cc.o: \
   /Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include/c++/v1/queue \
   /Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include/c++/v1/deque \
   /Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include/c++/v1/cmath \
+  /Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include/c++/v1/thread \
   /Users/mac/Documents/GitHub/AEC3/build_android/../api/echo_canceller3_factory.h \
   /Users/mac/Documents/GitHub/AEC3/build_android/../api/echo_canceller3_config.h \
   /Users/mac/Documents/GitHub/AEC3/build_android/../base/rtc_base/system/rtc_export.h \
@@ -193,6 +194,32 @@ CMakeFiles/wq_aec3_tts.dir/tts_aec3_wrapper.cc.o: \
   /Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include/c++/v1/__bsd_locale_fallbacks.h \
   /Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include/c++/v1/bitset \
   /Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include/c++/v1/istream \
+  /Users/mac/Documents/GitHub/AEC3/build_android/oboe/oboe/Oboe.h \
+  /Users/mac/Documents/GitHub/AEC3/build_android/oboe/oboe/Definitions.h \
+  /Users/mac/Documents/GitHub/AEC3/build_android/oboe/oboe/ResultWithValue.h \
+  /Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include/c++/v1/iostream \
+  /Users/mac/Documents/GitHub/AEC3/build_android/oboe/oboe/LatencyTuner.h \
+  /Users/mac/Documents/GitHub/AEC3/build_android/oboe/oboe/AudioStream.h \
+  /Users/mac/Documents/GitHub/AEC3/build_android/oboe/oboe/AudioStreamBuilder.h \
+  /Users/mac/Documents/GitHub/AEC3/build_android/oboe/oboe/AudioStreamBase.h \
+  /Users/mac/Documents/GitHub/AEC3/build_android/oboe/oboe/AudioStreamCallback.h \
+  /Users/mac/Documents/GitHub/AEC3/build_android/oboe/oboe/Utilities.h \
+  /Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include/unistd.h \
+  /Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include/bits/fcntl.h \
+  /Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include/bits/getopt.h \
+  /Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include/bits/ioctl.h \
+  /Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include/bits/lockf.h \
+  /Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include/bits/sysconf.h \
+  /Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include/bits/fortify/unistd.h \
+  /Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include/android/legacy_unistd_inlines.h \
+  /Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include/bits/swab.h \
+  /Users/mac/Documents/GitHub/AEC3/build_android/oboe/oboe/Version.h \
+  /Users/mac/Documents/GitHub/AEC3/build_android/oboe/oboe/StabilizedCallback.h \
+  /Users/mac/Documents/GitHub/AEC3/build_android/oboe/oboe/FifoBuffer.h \
+  /Users/mac/Documents/GitHub/AEC3/build_android/oboe/oboe/FifoControllerBase.h \
+  /Users/mac/Documents/GitHub/AEC3/build_android/oboe/oboe/OboeExtensions.h \
+  /Users/mac/Documents/GitHub/AEC3/build_android/oboe/oboe/FullDuplexStream.h \
+  /Users/mac/Documents/GitHub/AEC3/build_android/oboe/oboe/AudioClock.h \
   /Users/mac/Documents/GitHub/AEC3/build_android/webrtc_compat.h \
   /Users/mac/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include/android/log.h \
   /Users/mac/Documents/GitHub/AEC3/build_android/webrtc_compat.cpp \

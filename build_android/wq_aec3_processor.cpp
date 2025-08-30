@@ -30,6 +30,8 @@ WqAec3Processor::WqAec3Processor() :
     is_initialization_complete_(false),
     current_delay_ms_(kStreamDelay),
     manual_delay_ms_(0),
+    cpp_playback_active_(false),
+    current_chunk_index_(0),
     // 🎯 BALANCED DEFAULTS FOR UNIVERSAL CONVERGENCE + GOOD ERLE (2025-01-31)
     config_change_duration_blocks_(125),
     initial_state_seconds_(2.5f),
@@ -52,6 +54,15 @@ WqAec3Processor::WqAec3Processor() :
 }
 
 WqAec3Processor::~WqAec3Processor() {
+    // 停止C++播放
+    StopCppPcmPlayback();
+    
+    // 清理Oboe流
+    if (oboe_playback_stream_) {
+        oboe_playback_stream_->close();
+        oboe_playback_stream_.reset();
+    }
+    
     std::lock_guard<std::mutex> lock(mutex_);
     echo_controller_.reset();
     aec_factory_.reset();
@@ -884,6 +895,163 @@ bool WqAec3Processor::ProcessMicrophoneAudioBytes(const uint8_t* mic_byte_data, 
     }
     
     return true;
+}
+
+// ========== C++ Oboe PCM播放实现 ==========
+
+bool WqAec3Processor::InitializeOboePlayback() {
+    LOGI("🎵 初始化Oboe音频流用于C++级别PCM播放");
+    
+    oboe::AudioStreamBuilder builder;
+    builder.setDirection(oboe::Direction::Output)
+           ->setPerformanceMode(oboe::PerformanceMode::LowLatency)
+           ->setSharingMode(oboe::SharingMode::Exclusive)
+           ->setFormat(oboe::AudioFormat::I16)
+           ->setChannelCount(kChannels)
+           ->setSampleRate(kSampleRate)
+           ->setCallback(this);
+    
+    oboe::Result result = builder.openStream(oboe_playback_stream_);
+    if (result != oboe::Result::OK) {
+        LOGE("❌ Oboe流创建失败: %s", oboe::convertToText(result));
+        return false;
+    }
+    
+    LOGI("✅ Oboe音频流初始化成功 - 采样率: %dHz, 帧大小: %d", kSampleRate, kFrameSize);
+    return true;
+}
+
+bool WqAec3Processor::StartCppPcmPlayback(const std::string& pcm_chunks_path) {
+    LOGI("🎵 开始C++级别PCM块播放: %s", pcm_chunks_path.c_str());
+    
+    // 停止当前播放
+    StopCppPcmPlayback();
+    
+    // 加载PCM块
+    if (!LoadPcmChunks(pcm_chunks_path)) {
+        LOGE("❌ 加载PCM块失败");
+        return false;
+    }
+    
+    // 初始化Oboe流（如果尚未初始化）
+    if (!oboe_playback_stream_ && !InitializeOboePlayback()) {
+        return false;
+    }
+    
+    // 启动音频流
+    oboe::Result result = oboe_playback_stream_->requestStart();
+    if (result != oboe::Result::OK) {
+        LOGE("❌ Oboe流启动失败: %s", oboe::convertToText(result));
+        return false;
+    }
+    
+    // 设置播放状态
+    cpp_playback_active_ = true;
+    current_chunk_index_ = 0;
+    
+    LOGI("✅ C++级别PCM播放已开始 - 总块数: %zu", pcm_chunks_.size());
+    return true;
+}
+
+void WqAec3Processor::StopCppPcmPlayback() {
+    if (!cpp_playback_active_) {
+        return;
+    }
+    
+    LOGI("🛑 停止C++级别PCM播放");
+    
+    cpp_playback_active_ = false;
+    
+    if (oboe_playback_stream_) {
+        oboe_playback_stream_->requestStop();
+    }
+    
+    // 等待播放线程结束
+    if (playback_thread_.joinable()) {
+        playback_thread_.join();
+    }
+    
+    LOGI("✅ C++级别PCM播放已停止");
+}
+
+bool WqAec3Processor::IsCppPlaybackActive() const {
+    return cpp_playback_active_;
+}
+
+int WqAec3Processor::GetCurrentPlaybackChunkIndex() const {
+    return current_chunk_index_;
+}
+
+bool WqAec3Processor::LoadPcmChunks(const std::string& chunks_path) {
+    LOGI("📂 加载PCM块从: %s", chunks_path.c_str());
+    
+    std::lock_guard<std::mutex> lock(pcm_chunks_mutex_);
+    pcm_chunks_.clear();
+    
+    // 由于这是C++代码，PCM数据需要从Java层通过JNI传递
+    // 这个方法主要用于准备接收数据，实际数据加载通过SetPcmChunks完成
+    // Java层会读取assets中的PCM文件并通过JNI调用SetPcmChunks
+    
+    LOGI("✅ PCM块加载准备完成，等待Java层传递数据");
+    return true;
+}
+
+bool WqAec3Processor::SetPcmChunks(const std::vector<std::vector<int16_t>>& chunks) {
+    std::lock_guard<std::mutex> lock(pcm_chunks_mutex_);
+    pcm_chunks_ = chunks;
+    
+    LOGI("✅ 设置PCM块完成 - 总块数: %zu", pcm_chunks_.size());
+    return true;
+}
+
+bool WqAec3Processor::AddPcmChunk(const std::vector<int16_t>& chunk) {
+    std::lock_guard<std::mutex> lock(pcm_chunks_mutex_);
+    pcm_chunks_.push_back(chunk);
+    
+    LOGV("📂 添加PCM块 - 当前总块数: %zu, 块大小: %zu样本", pcm_chunks_.size(), chunk.size());
+    return true;
+}
+
+oboe::DataCallbackResult WqAec3Processor::onAudioReady(oboe::AudioStream* audioStream, void* audioData, int32_t numFrames) {
+    if (!cpp_playback_active_ || pcm_chunks_.empty()) {
+        // 填充静音
+        memset(audioData, 0, numFrames * sizeof(int16_t));
+        return oboe::DataCallbackResult::Continue;
+    }
+    
+    int16_t* outputBuffer = static_cast<int16_t*>(audioData);
+    int currentIndex = current_chunk_index_;
+    
+    std::lock_guard<std::mutex> lock(pcm_chunks_mutex_);
+    
+    if (currentIndex < pcm_chunks_.size()) {
+        const auto& chunk = pcm_chunks_[currentIndex];
+        int framesToCopy = std::min(numFrames, static_cast<int32_t>(chunk.size()));
+        
+        // 复制PCM数据
+        memcpy(outputBuffer, chunk.data(), framesToCopy * sizeof(int16_t));
+        
+        // 如果需要，填充剩余部分为静音
+        if (framesToCopy < numFrames) {
+            memset(outputBuffer + framesToCopy, 0, (numFrames - framesToCopy) * sizeof(int16_t));
+        }
+        
+        // 同时处理TTS音频用于AEC
+        ProcessTtsAudio(chunk.data(), std::min(static_cast<size_t>(framesToCopy), static_cast<size_t>(kFrameSize)));
+        
+        // 移动到下一个块
+        current_chunk_index_++;
+        
+        LOGV("🎵 播放PCM块 %d/%zu - 帧数: %d", currentIndex + 1, pcm_chunks_.size(), framesToCopy);
+    } else {
+        // 播放完成
+        memset(audioData, 0, numFrames * sizeof(int16_t));
+        cpp_playback_active_ = false;
+        LOGI("🎵 PCM播放完成");
+        return oboe::DataCallbackResult::Stop;
+    }
+    
+    return oboe::DataCallbackResult::Continue;
 }
 
 } // namespace webrtc_aec3_tts

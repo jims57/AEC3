@@ -741,4 +741,129 @@ Java_cn_watchfun_aec3_WqAecProcessor_nativeConvertCleanAudioToWAVBytes(JNIEnv *e
     return wavArray;
 }
 
+// ========== C++ Oboe PCM播放 JNI方法 ==========
+
+/**
+ * 初始化Oboe音频流用于C++级别PCM播放
+ * @return 初始化成功则返回true
+ */
+JNIEXPORT jboolean JNICALL
+Java_cn_watchfun_aec3_WqAecProcessor_nativeInitializeOboePlayback(JNIEnv *env, jobject thiz) {
+    if (!g_processor) return JNI_FALSE;
+    return g_processor->InitializeOboePlayback() ? JNI_TRUE : JNI_FALSE;
+}
+
+/**
+ * 开始C++级别PCM块播放
+ * @param pcm_chunks_path PCM块文件路径
+ * @return 播放开始成功则返回true
+ */
+JNIEXPORT jboolean JNICALL
+Java_cn_watchfun_aec3_WqAecProcessor_nativeStartCppPcmPlayback(JNIEnv *env, jobject thiz, jstring pcm_chunks_path) {
+    if (!g_processor) return JNI_FALSE;
+    
+    const char* path = env->GetStringUTFChars(pcm_chunks_path, nullptr);
+    bool result = g_processor->StartCppPcmPlayback(std::string(path));
+    env->ReleaseStringUTFChars(pcm_chunks_path, path);
+    
+    return result ? JNI_TRUE : JNI_FALSE;
+}
+
+/**
+ * 停止C++级别PCM播放
+ */
+JNIEXPORT void JNICALL
+Java_cn_watchfun_aec3_WqAecProcessor_nativeStopCppPcmPlayback(JNIEnv *env, jobject thiz) {
+    if (g_processor) {
+        g_processor->StopCppPcmPlayback();
+    }
+}
+
+/**
+ * 检查C++播放是否正在进行
+ * @return 正在播放则返回true
+ */
+JNIEXPORT jboolean JNICALL
+Java_cn_watchfun_aec3_WqAecProcessor_nativeIsCppPlaybackActive(JNIEnv *env, jobject thiz) {
+    if (!g_processor) return JNI_FALSE;
+    return g_processor->IsCppPlaybackActive() ? JNI_TRUE : JNI_FALSE;
+}
+
+/**
+ * 获取当前播放的PCM块索引
+ * @return 当前播放的块索引
+ */
+JNIEXPORT jint JNICALL
+Java_cn_watchfun_aec3_WqAecProcessor_nativeGetCurrentPlaybackChunkIndex(JNIEnv *env, jobject thiz) {
+    if (!g_processor) return -1;
+    return static_cast<jint>(g_processor->GetCurrentPlaybackChunkIndex());
+}
+
+/**
+ * 加载PCM块数据从Java字节数组
+ * @param pcm_data PCM数据字节数组
+ * @param chunk_size 每个块的大小（字节）
+ * @return 加载成功则返回true
+ */
+JNIEXPORT jboolean JNICALL
+Java_cn_watchfun_aec3_WqAecProcessor_nativeLoadPcmChunksFromBytes(JNIEnv *env, jobject thiz, jbyteArray pcm_data, jint chunk_size) {
+    if (!g_processor) return JNI_FALSE;
+    
+    jsize data_length = env->GetArrayLength(pcm_data);
+    jbyte* data = env->GetByteArrayElements(pcm_data, nullptr);
+    
+    // 将字节数据转换为PCM块
+    std::vector<std::vector<int16_t>> chunks;
+    int samples_per_chunk = chunk_size / 2; // 16位PCM，每个样本2字节
+    int total_chunks = data_length / chunk_size;
+    
+    for (int i = 0; i < total_chunks; i++) {
+        std::vector<int16_t> chunk(samples_per_chunk);
+        const uint8_t* chunk_data = reinterpret_cast<const uint8_t*>(data + i * chunk_size);
+        
+        // 转换字节到16位PCM样本（小端序）
+        for (int j = 0; j < samples_per_chunk; j++) {
+            chunk[j] = static_cast<int16_t>(chunk_data[j * 2] | (chunk_data[j * 2 + 1] << 8));
+        }
+        chunks.push_back(chunk);
+    }
+    
+    // 调用处理器的内部方法设置PCM块
+    bool result = g_processor->SetPcmChunks(chunks);
+    
+    env->ReleaseByteArrayElements(pcm_data, data, JNI_ABORT);
+    return result ? JNI_TRUE : JNI_FALSE;
+}
+
+/**
+ * 加载单个PCM文件数据从assets
+ * @param asset_path 资产文件路径
+ * @param file_data 文件数据字节数组
+ * @return 加载成功则返回true
+ */
+JNIEXPORT jboolean JNICALL
+Java_cn_watchfun_aec3_WqAecProcessor_nativeLoadSinglePcmFile(JNIEnv *env, jobject thiz, jstring asset_path, jbyteArray file_data) {
+    if (!g_processor) return JNI_FALSE;
+    
+    const char* path = env->GetStringUTFChars(asset_path, nullptr);
+    jsize data_length = env->GetArrayLength(file_data);
+    jbyte* data = env->GetByteArrayElements(file_data, nullptr);
+    
+    // 将单个文件数据添加到PCM块集合
+    int samples_count = data_length / 2; // 16位PCM
+    std::vector<int16_t> chunk(samples_count);
+    const uint8_t* byte_data = reinterpret_cast<const uint8_t*>(data);
+    
+    // 转换字节到16位PCM样本（小端序）
+    for (int i = 0; i < samples_count; i++) {
+        chunk[i] = static_cast<int16_t>(byte_data[i * 2] | (byte_data[i * 2 + 1] << 8));
+    }
+    
+    bool result = g_processor->AddPcmChunk(chunk);
+    
+    env->ReleaseStringUTFChars(asset_path, path);
+    env->ReleaseByteArrayElements(file_data, data, JNI_ABORT);
+    return result ? JNI_TRUE : JNI_FALSE;
+}
+
 } // extern "C"

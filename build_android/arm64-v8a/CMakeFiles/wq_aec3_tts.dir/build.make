@@ -1603,6 +1603,7 @@ libwq_aec3_tts.so: CMakeFiles/wq_aec3_tts.dir/Users/mac/Documents/GitHub/AEC3/au
 libwq_aec3_tts.so: CMakeFiles/wq_aec3_tts.dir/tts_aec3_wrapper.cc.o
 libwq_aec3_tts.so: CMakeFiles/wq_aec3_tts.dir/build.make
 libwq_aec3_tts.so: CMakeFiles/wq_aec3_tts.dir/compiler_depend.ts
+libwq_aec3_tts.so: oboe_libs/liboboe.so
 libwq_aec3_tts.so: CMakeFiles/wq_aec3_tts.dir/link.txt
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/Users/mac/Documents/GitHub/AEC3/build_android/arm64-v8a/CMakeFiles --progress-num=$(CMAKE_PROGRESS_96) "Linking CXX shared library libwq_aec3_tts.so"
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/wq_aec3_tts.dir/link.txt --verbose=$(VERBOSE)

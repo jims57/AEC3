@@ -667,4 +667,115 @@ public static class AecMetrics {
             return ratio > 0.95; // 在5%以内视为同步
         }
     } // End of EnhancedAecMetrics class
+
+    // ========== C++ Oboe PCM播放方法 ==========
+
+    /**
+     * 初始化Oboe音频流用于C++级别PCM播放
+     * @return 初始化成功则返回true
+     */
+    public native boolean nativeInitializeOboePlayback();
+
+    /**
+     * 开始C++级别PCM块播放
+     * @param pcmChunksPath PCM块文件路径
+     * @return 播放开始成功则返回true
+     */
+    public native boolean nativeStartCppPcmPlayback(String pcmChunksPath);
+
+    /**
+     * 停止C++级别PCM播放
+     */
+    public native void nativeStopCppPcmPlayback();
+
+    /**
+     * 检查C++播放是否正在进行
+     * @return 正在播放则返回true
+     */
+    public native boolean nativeIsCppPlaybackActive();
+
+    /**
+     * 获取当前播放的PCM块索引
+     * @return 当前播放的块索引
+     */
+    public native int nativeGetCurrentPlaybackChunkIndex();
+
+    /**
+     * 加载PCM块数据从Java字节数组
+     * @param pcmData PCM数据字节数组
+     * @param chunkSize 每个块的大小（字节）
+     * @return 加载成功则返回true
+     */
+    public native boolean nativeLoadPcmChunksFromBytes(byte[] pcmData, int chunkSize);
+
+    // ========== C++ Oboe PCM播放公共方法 ==========
+
+    /**
+     * 初始化Oboe音频流用于C++级别PCM播放
+     * @return 初始化成功则返回true
+     */
+    public boolean initializeOboePlayback() {
+        return nativeInitializeOboePlayback();
+    }
+
+    /**
+     * 开始C++级别PCM块播放，实现精确时序同步
+     * @param pcmChunksPath PCM块文件路径（assets目录）
+     * @return 播放开始成功则返回true
+     */
+    public boolean startCppPcmPlayback(String pcmChunksPath) {
+        return nativeStartCppPcmPlayback(pcmChunksPath);
+    }
+
+    /**
+     * 停止C++级别PCM播放
+     */
+    public void stopCppPcmPlayback() {
+        nativeStopCppPcmPlayback();
+    }
+
+    /**
+     * 检查C++播放是否正在进行
+     * @return 正在播放则返回true
+     */
+    public boolean isCppPlaybackActive() {
+        return nativeIsCppPlaybackActive();
+    }
+
+    /**
+     * 获取当前播放的PCM块索引
+     * @return 当前播放的块索引
+     */
+    public int getCurrentPlaybackChunkIndex() {
+        return nativeGetCurrentPlaybackChunkIndex();
+    }
+
+    /**
+     * 加载PCM块数据从Java字节数组
+     * @param pcmData PCM数据字节数组
+     * @param chunkSize 每个块的大小（字节）
+     * @return 加载成功则返回true
+     */
+    public boolean loadPcmChunksFromBytes(byte[] pcmData, int chunkSize) {
+        return nativeLoadPcmChunksFromBytes(pcmData, chunkSize);
+    }
+
+    /**
+     * 加载单个PCM文件从assets
+     * @param assetPath 资产文件路径
+     * @param fileData 文件数据字节数组
+     * @return 加载成功则返回true
+     */
+    public native boolean nativeLoadSinglePcmFile(String assetPath, byte[] fileData);
+
+    /**
+     * 加载单个PCM文件从assets（Java包装方法）
+     * @param assetPath 资产文件路径
+     * @param fileData 文件数据字节数组
+     * @return 加载成功则返回true
+     */
+    public boolean loadSinglePcmFile(String assetPath, byte[] fileData) {
+        return nativeLoadSinglePcmFile(assetPath, fileData);
+    }
+
 } // End of WqAecProcessor class
