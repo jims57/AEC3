@@ -796,4 +796,60 @@ public static class AecMetrics {
         return nativeLoadSinglePcmFile(assetPath, fileData);
     }
 
+    // ========== C++ Oboe录音公共方法 ==========
+    
+    /**
+     * 初始化C++录音器
+     * @return 初始化成功则返回true
+     */
+    public boolean initializeCppRecorder() {
+        return nativeInitializeCppRecorder();
+    }
+    
+    /**
+     * 开始C++录音（使用Oboe）
+     * @return 录音开始成功则返回true
+     */
+    public boolean startCppRecording() {
+        return nativeStartCppRecording();
+    }
+    
+    /**
+     * 停止C++录音
+     */
+    public void stopCppRecording() {
+        nativeStopCppRecording();
+    }
+    
+    /**
+     * 检查C++录音是否正在进行
+     * @return 正在录音则返回true
+     */
+    public boolean isCppRecordingActive() {
+        return nativeIsCppRecordingActive();
+    }
+    
+    /**
+     * 获取C++录音的清洁音频帧数量
+     * @return 清洁音频帧数量
+     */
+    public int getCppRecordingFrameCount() {
+        return nativeGetCppRecordingFrameCount();
+    }
+    
+    /**
+     * 清空C++录音的音频缓冲
+     */
+    public void clearCppRecordingFrames() {
+        nativeClearCppRecordingFrames();
+    }
+    
+    // Native方法声明
+    private native boolean nativeInitializeCppRecorder();
+    private native boolean nativeStartCppRecording();
+    private native void nativeStopCppRecording();
+    private native boolean nativeIsCppRecordingActive();
+    private native int nativeGetCppRecordingFrameCount();
+    private native void nativeClearCppRecordingFrames();
+
 } // End of WqAecProcessor class

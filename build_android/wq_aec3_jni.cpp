@@ -855,6 +855,69 @@ Java_cn_watchfun_aec3_WqAecProcessor_nativeGetCurrentPlaybackTtsFrame(JNIEnv *en
     return result ? JNI_TRUE : JNI_FALSE;
 }
 
+// ========== C++ Oboe录音JNI方法 ==========
+
+/**
+ * 初始化C++录音器
+ * @return 初始化成功则返回true
+ */
+JNIEXPORT jboolean JNICALL
+Java_cn_watchfun_aec3_WqAecProcessor_nativeInitializeCppRecorder(JNIEnv *env, jobject thiz) {
+    if (!g_processor) return JNI_FALSE;
+    return g_processor->InitializeCppRecorder() ? JNI_TRUE : JNI_FALSE;
+}
+
+/**
+ * 开始C++录音
+ * @return 录音开始成功则返回true
+ */
+JNIEXPORT jboolean JNICALL
+Java_cn_watchfun_aec3_WqAecProcessor_nativeStartCppRecording(JNIEnv *env, jobject thiz) {
+    if (!g_processor) return JNI_FALSE;
+    return g_processor->StartCppRecording() ? JNI_TRUE : JNI_FALSE;
+}
+
+/**
+ * 停止C++录音
+ */
+JNIEXPORT void JNICALL
+Java_cn_watchfun_aec3_WqAecProcessor_nativeStopCppRecording(JNIEnv *env, jobject thiz) {
+    if (g_processor) {
+        g_processor->StopCppRecording();
+    }
+}
+
+/**
+ * 检查C++录音是否正在进行
+ * @return 正在录音则返回true
+ */
+JNIEXPORT jboolean JNICALL
+Java_cn_watchfun_aec3_WqAecProcessor_nativeIsCppRecordingActive(JNIEnv *env, jobject thiz) {
+    if (!g_processor) return JNI_FALSE;
+    return g_processor->IsCppRecordingActive() ? JNI_TRUE : JNI_FALSE;
+}
+
+/**
+ * 获取C++录音的清洁音频帧数量
+ * @return 清洁音频帧数量
+ */
+JNIEXPORT jint JNICALL
+Java_cn_watchfun_aec3_WqAecProcessor_nativeGetCppRecordingFrameCount(JNIEnv *env, jobject thiz) {
+    if (!g_processor) return 0;
+    auto frames = g_processor->GetCppRecordingCleanFrames();
+    return static_cast<jint>(frames.size());
+}
+
+/**
+ * 清空C++录音的音频缓冲
+ */
+JNIEXPORT void JNICALL
+Java_cn_watchfun_aec3_WqAecProcessor_nativeClearCppRecordingFrames(JNIEnv *env, jobject thiz) {
+    if (g_processor) {
+        g_processor->ClearCppRecordingFrames();
+    }
+}
+
 /**
  * 加载单个PCM文件数据从assets
  * @param asset_path 资产文件路径

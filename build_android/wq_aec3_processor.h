@@ -18,6 +18,7 @@
 #include "audio_processing/audio_frame.h"
 #include "audio_processing/high_pass_filter.h"
 #include "oboe/Oboe.h"
+#include "wq_aec3_recorder.h"
 
 namespace webrtc_aec3_tts {
 
@@ -262,6 +263,42 @@ public:
      */
     bool GetCurrentPlaybackTtsFrame(int16_t* output_buffer) const;
 
+    // ========== C++ Oboe录音方法 ==========
+    
+    /**
+     * 初始化C++录音器
+     * @return 初始化成功则返回true
+     */
+    bool InitializeCppRecorder();
+    
+    /**
+     * 开始C++录音
+     * @return 开始成功则返回true
+     */
+    bool StartCppRecording();
+    
+    /**
+     * 停止C++录音
+     */
+    void StopCppRecording();
+    
+    /**
+     * 检查C++录音是否正在进行
+     * @return 正在录音则返回true
+     */
+    bool IsCppRecordingActive() const;
+    
+    /**
+     * 获取C++录音的清洁音频帧
+     * @return 清洁音频帧向量
+     */
+    std::vector<std::vector<int16_t>> GetCppRecordingCleanFrames();
+    
+    /**
+     * 清空C++录音的音频缓冲
+     */
+    void ClearCppRecordingFrames();
+
 private:
     // 内部实现方法
     double CalculateFrameEnergy(const int16_t* samples, size_t length) const;
@@ -333,6 +370,9 @@ private:
     std::atomic<bool> async_loading_active_{false};
     std::thread playback_thread_;
     std::thread async_loading_thread_;
+    
+    // C++ Oboe录音相关成员变量
+    std::unique_ptr<WqAec3Recorder> cpp_recorder_;
     
     // Oboe播放内部方法
     void PlaybackThreadFunction();

@@ -271,6 +271,8 @@ echo "📝 正在复制C++源文件到构建目录..."
 # 从my-cpp-files/复制C++实现文件
 cp "$PROJECT_ROOT/my-info/my-cpp-files/wq_aec3_processor.h" "$BUILD_DIR/"
 cp "$PROJECT_ROOT/my-info/my-cpp-files/wq_aec3_processor.cpp" "$BUILD_DIR/"
+cp "$PROJECT_ROOT/my-info/my-cpp-files/wq_aec3_recorder.h" "$BUILD_DIR/"
+cp "$PROJECT_ROOT/my-info/my-cpp-files/wq_aec3_recorder.cpp" "$BUILD_DIR/"
 cp "$PROJECT_ROOT/my-info/my-cpp-files/webrtc_compat.h" "$BUILD_DIR/"
 cp "$PROJECT_ROOT/my-info/my-cpp-files/webrtc_compat.cpp" "$BUILD_DIR/"
 cp "$PROJECT_ROOT/my-info/my-cpp-files/wq_aec3_convertor.h" "$BUILD_DIR/"
@@ -288,6 +290,9 @@ echo "✅ C++源文件和文档复制成功"
 cat > "$BUILD_DIR/tts_aec3_wrapper.cc" << 'EOWRAPPER'
 // TTS AEC3包装器 - 主入口点
 // 该文件组合了WebRTC AEC3 TTS库的所有C++组件
+
+// 包含录音器实现
+#include "wq_aec3_recorder.cpp"
 
 // 包含主处理器实现
 #include "wq_aec3_processor.cpp"

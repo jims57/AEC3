@@ -1042,6 +1042,50 @@ bool WqAec3Processor::GetCurrentPlaybackTtsFrame(int16_t* output_buffer) const {
     return true;
 }
 
+// ========== C++ Oboe录音功能实现 ==========
+
+bool WqAec3Processor::InitializeCppRecorder() {
+    if (!cpp_recorder_) {
+        cpp_recorder_ = std::make_unique<WqAec3Recorder>();
+        cpp_recorder_->SetAec3Processor(this);
+    }
+    
+    return cpp_recorder_->Initialize();
+}
+
+bool WqAec3Processor::StartCppRecording() {
+    if (!cpp_recorder_) {
+        LOGE("🎙️ C++ recorder not initialized");
+        return false;
+    }
+    
+    return cpp_recorder_->StartRecording();
+}
+
+void WqAec3Processor::StopCppRecording() {
+    if (cpp_recorder_) {
+        cpp_recorder_->StopRecording();
+    }
+}
+
+bool WqAec3Processor::IsCppRecordingActive() const {
+    return cpp_recorder_ && cpp_recorder_->IsRecording();
+}
+
+std::vector<std::vector<int16_t>> WqAec3Processor::GetCppRecordingCleanFrames() {
+    if (!cpp_recorder_) {
+        return {};
+    }
+    
+    return cpp_recorder_->GetCleanAudioFrames();
+}
+
+void WqAec3Processor::ClearCppRecordingFrames() {
+    if (cpp_recorder_) {
+        cpp_recorder_->ClearAudioFrames();
+    }
+}
+
 bool WqAec3Processor::LoadPcmChunks(const std::string& chunks_path) {
     LOGI("📂 开始加载PCM块从路径: %s", chunks_path.c_str());
     
