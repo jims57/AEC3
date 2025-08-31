@@ -753,6 +753,22 @@ public static class AecMetrics {
     }
 
     /**
+     * 获取当前C++播放的TTS参考帧数据
+     * @param outputBuffer 输出缓冲区（480个样本）
+     * @return 获取成功则返回true
+     */
+    public boolean getCurrentPlaybackTtsFrame(short[] outputBuffer) {
+        return nativeGetCurrentPlaybackTtsFrame(outputBuffer);
+    }
+
+    /**
+     * Native方法：获取当前C++播放的TTS参考帧数据
+     * @param outputBuffer 输出缓冲区（480个样本）
+     * @return 获取成功则返回true
+     */
+    private native boolean nativeGetCurrentPlaybackTtsFrame(short[] outputBuffer);
+
+    /**
      * 加载PCM块数据从Java字节数组
      * @param pcmData PCM数据字节数组
      * @param chunkSize 每个块的大小（字节）

@@ -255,6 +255,13 @@ public:
      */
     int GetCurrentPlaybackChunkIndex() const;
 
+    /**
+     * 获取当前C++播放的TTS参考帧数据
+     * @param output_buffer 输出缓冲区（480个样本）
+     * @return 获取成功则返回true
+     */
+    bool GetCurrentPlaybackTtsFrame(int16_t* output_buffer) const;
+
 private:
     // 内部实现方法
     double CalculateFrameEnergy(const int16_t* samples, size_t length) const;
@@ -318,7 +325,7 @@ private:
     // C++ PCM播放相关成员变量
     std::shared_ptr<oboe::AudioStream> oboe_playback_stream_;
     std::vector<std::vector<int16_t>> pcm_chunks_;
-    std::mutex pcm_chunks_mutex_;
+    mutable std::mutex pcm_chunks_mutex_;
     std::atomic<bool> cpp_playback_active_{false};
     std::atomic<int> current_chunk_index_{0};
     std::atomic<int> current_chunk_offset_{0};

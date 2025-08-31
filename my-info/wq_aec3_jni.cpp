@@ -837,6 +837,25 @@ Java_cn_watchfun_aec3_WqAecProcessor_nativeLoadPcmChunksFromBytes(JNIEnv *env, j
 }
 
 /**
+ * 获取当前C++播放的TTS参考帧数据
+ * @param output_buffer 输出缓冲区（480个样本）
+ * @return 获取成功则返回true
+ */
+JNIEXPORT jboolean JNICALL
+Java_cn_watchfun_aec3_WqAecProcessor_nativeGetCurrentPlaybackTtsFrame(JNIEnv *env, jobject thiz, jshortArray output_buffer) {
+    if (!g_processor) return JNI_FALSE;
+    
+    jsize length = env->GetArrayLength(output_buffer);
+    if (length != webrtc_aec3_tts::WqAec3Processor::kFrameSize) return JNI_FALSE;
+    
+    jshort* buffer = env->GetShortArrayElements(output_buffer, nullptr);
+    bool result = g_processor->GetCurrentPlaybackTtsFrame(reinterpret_cast<int16_t*>(buffer));
+    env->ReleaseShortArrayElements(output_buffer, buffer, 0);
+    
+    return result ? JNI_TRUE : JNI_FALSE;
+}
+
+/**
  * 加载单个PCM文件数据从assets
  * @param asset_path 资产文件路径
  * @param file_data 文件数据字节数组

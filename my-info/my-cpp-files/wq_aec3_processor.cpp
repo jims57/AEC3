@@ -1016,6 +1016,32 @@ int WqAec3Processor::GetCurrentPlaybackChunkIndex() const {
     return current_chunk_index_;
 }
 
+bool WqAec3Processor::GetCurrentPlaybackTtsFrame(int16_t* output_buffer) const {
+    if (!output_buffer || !cpp_playback_active_ || current_chunk_index_ < 0) {
+        return false;
+    }
+    
+    std::lock_guard<std::mutex> lock(pcm_chunks_mutex_);
+    
+    // 检查当前块索引是否有效
+    if (current_chunk_index_ >= static_cast<int>(pcm_chunks_.size())) {
+        return false;
+    }
+    
+    // 获取当前播放的PCM块
+    const auto& current_chunk = pcm_chunks_[current_chunk_index_];
+    
+    // 确保块大小正确
+    if (current_chunk.size() != kFrameSize) {
+        return false;
+    }
+    
+    // 复制当前TTS帧数据到输出缓冲区
+    std::memcpy(output_buffer, current_chunk.data(), kFrameSize * sizeof(int16_t));
+    
+    return true;
+}
+
 bool WqAec3Processor::LoadPcmChunks(const std::string& chunks_path) {
     LOGI("📂 开始加载PCM块从路径: %s", chunks_path.c_str());
     
