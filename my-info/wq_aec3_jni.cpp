@@ -912,10 +912,47 @@ Java_cn_watchfun_aec3_WqAecProcessor_nativeGetCppRecordingFrameCount(JNIEnv *env
  * 清空C++录音的音频缓冲
  */
 JNIEXPORT void JNICALL
-Java_cn_watchfun_aec3_WqAecProcessor_nativeClearCppRecordingFrames(JNIEnv *env, jobject thiz) {
+Java_cn_watchfun_aec3_WqAecProcessor_clearCppRecordingFrames(JNIEnv* env, jobject /* this */) {
     if (g_processor) {
         g_processor->ClearCppRecordingFrames();
     }
+}
+
+/**
+ * 获取C++录音的WAV字节数据
+ * @return WAV字节数据
+ */
+JNIEXPORT jbyteArray JNICALL
+Java_cn_watchfun_aec3_WqAecProcessor_getCppRecordingWavBytes(JNIEnv* env, jobject /* this */) {
+    if (!g_processor) {
+        return nullptr;
+    }
+    
+    auto wav_data = g_processor->GetCppRecordingWavBytes();
+    if (wav_data.empty()) {
+        return nullptr;
+    }
+    
+    jbyteArray result = env->NewByteArray(static_cast<jsize>(wav_data.size()));
+    if (result) {
+        env->SetByteArrayRegion(result, 0, static_cast<jsize>(wav_data.size()),
+                               reinterpret_cast<const jbyte*>(wav_data.data()));
+    }
+    
+    return result;
+}
+
+/**
+ * 获取C++录音的清洁音频帧数量
+ * @return 清洁音频帧数量
+ */
+JNIEXPORT jint JNICALL
+Java_cn_watchfun_aec3_WqAecProcessor_getCppRecordingFrameCount(JNIEnv* env, jobject /* this */) {
+    if (!g_processor) {
+        return 0;
+    }
+    
+    return g_processor->GetCppRecordingFrameCount();
 }
 
 /**

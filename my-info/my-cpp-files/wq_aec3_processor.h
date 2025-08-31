@@ -295,6 +295,18 @@ public:
     std::vector<std::vector<int16_t>> GetCppRecordingCleanFrames();
     
     /**
+     * 获取C++录音的WAV字节数据
+     * @return WAV字节数据向量
+     */
+    std::vector<uint8_t> GetCppRecordingWavBytes();
+    
+    /**
+     * 获取C++录音的帧数量
+     * @return 录音帧数量
+     */
+    int GetCppRecordingFrameCount();
+    
+    /**
      * 清空C++录音的音频缓冲
      */
     void ClearCppRecordingFrames();

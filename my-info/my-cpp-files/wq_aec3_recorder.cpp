@@ -177,6 +177,27 @@ void WqAec3Recorder::ProcessAudioFrame(const int16_t* input_data, int32_t frame_
         std::lock_guard<std::mutex> lock(clean_audio_mutex_);
         clean_audio_frames_.push_back(clean_output);
         
+        // 获取并显示实时ERLE和延迟指标
+        double erl, erle;
+        int delay_ms;
+        uint64_t render_frames, capture_frames;
+        int optimal_delay;
+        
+        if (aec3_processor_->GetEnhancedMetrics(&erl, &erle, &delay_ms, &render_frames, &capture_frames, &optimal_delay)) {
+            // 每50帧显示一次指标（约0.5秒）
+            if (clean_audio_frames_.size() % 50 == 0) {
+                LOGI("📊 C++ Recording Metrics: ERLE=%.2fdB, ERL=%.2fdB, Delay=%dms, Frames=%zu, Suppression=%.3f", 
+                     erle, erl, delay_ms, clean_audio_frames_.size(), 
+                     (erle > 0) ? (1.0 - pow(10.0, -erle/20.0)) : 0.0);
+            }
+            
+            // 每10帧显示详细处理信息
+            if (clean_audio_frames_.size() % 10 == 0) {
+                LOGV("🎯 C++ Recording Frame %zu: ERLE=%.2fdB, Delay=%dms, OptimalDelay=%dms", 
+                     clean_audio_frames_.size(), erle, delay_ms, optimal_delay);
+            }
+        }
+        
         // 限制缓冲区大小（最多保存10秒音频）
         const size_t max_frames = kSampleRate / kFrameSize * 10; // 10秒
         if (clean_audio_frames_.size() > max_frames) {
@@ -239,6 +260,65 @@ void WqAec3Recorder::OptimizeDelayThread() {
     }
     
     LOGI("🎯 Adaptive delay optimization completed. Optimal delay: %dms", optimal_delay_ms_.load());
+}
+
+std::vector<uint8_t> WqAec3Recorder::ConvertToWavBytes() {
+    std::lock_guard<std::mutex> lock(clean_audio_mutex_);
+    
+    if (clean_audio_frames_.empty()) {
+        LOGE("❌ No clean audio frames to convert to WAV");
+        return {};
+    }
+    
+    // WAV header structure
+    struct WavHeader {
+        char riff[4] = {'R', 'I', 'F', 'F'};
+        uint32_t file_size;
+        char wave[4] = {'W', 'A', 'V', 'E'};
+        char fmt[4] = {'f', 'm', 't', ' '};
+        uint32_t fmt_size = 16;
+        uint16_t audio_format = 1; // PCM
+        uint16_t num_channels = kChannels;
+        uint32_t sample_rate = kSampleRate;
+        uint32_t byte_rate = kSampleRate * kChannels * 2; // 16-bit
+        uint16_t block_align = kChannels * 2;
+        uint16_t bits_per_sample = 16;
+        char data[4] = {'d', 'a', 't', 'a'};
+        uint32_t data_size;
+    };
+    
+    // Calculate sizes
+    size_t total_samples = clean_audio_frames_.size() * kFrameSize;
+    size_t data_size = total_samples * sizeof(int16_t);
+    size_t file_size = sizeof(WavHeader) + data_size - 8; // -8 for RIFF header
+    
+    WavHeader header;
+    header.file_size = static_cast<uint32_t>(file_size);
+    header.data_size = static_cast<uint32_t>(data_size);
+    
+    // Create WAV byte vector
+    std::vector<uint8_t> wav_data;
+    wav_data.reserve(sizeof(WavHeader) + data_size);
+    
+    // Add header
+    const uint8_t* header_bytes = reinterpret_cast<const uint8_t*>(&header);
+    wav_data.insert(wav_data.end(), header_bytes, header_bytes + sizeof(WavHeader));
+    
+    // Add audio data
+    for (const auto& frame : clean_audio_frames_) {
+        for (int16_t sample : frame) {
+            wav_data.push_back(static_cast<uint8_t>(sample & 0xFF));
+            wav_data.push_back(static_cast<uint8_t>((sample >> 8) & 0xFF));
+        }
+    }
+    
+    LOGI("📁 WAV conversion completed: %zu frames, %zu bytes", clean_audio_frames_.size(), wav_data.size());
+    return wav_data;
+}
+
+int WqAec3Recorder::GetRecordedFrameCount() const {
+    std::lock_guard<std::mutex> lock(clean_audio_mutex_);
+    return static_cast<int>(clean_audio_frames_.size());
 }
 
 } // namespace webrtc_aec3_tts

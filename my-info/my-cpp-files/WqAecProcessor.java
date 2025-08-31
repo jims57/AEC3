@@ -838,11 +838,15 @@ public static class AecMetrics {
     }
     
     /**
+     * 获取C++录音的WAV字节数据
+     * @return WAV字节数据
+     */
+    public native byte[] getCppRecordingWavBytes();
+    
+    /**
      * 清空C++录音的音频缓冲
      */
-    public void clearCppRecordingFrames() {
-        nativeClearCppRecordingFrames();
-    }
+    public native void clearCppRecordingFrames();
     
     // Native方法声明
     private native boolean nativeInitializeCppRecorder();

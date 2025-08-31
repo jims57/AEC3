@@ -1086,6 +1086,20 @@ void WqAec3Processor::ClearCppRecordingFrames() {
     }
 }
 
+std::vector<uint8_t> WqAec3Processor::GetCppRecordingWavBytes() {
+    if (cpp_recorder_) {
+        return cpp_recorder_->ConvertToWavBytes();
+    }
+    return {};
+}
+
+int WqAec3Processor::GetCppRecordingFrameCount() {
+    if (cpp_recorder_) {
+        return cpp_recorder_->GetRecordedFrameCount();
+    }
+    return 0;
+}
+
 bool WqAec3Processor::LoadPcmChunks(const std::string& chunks_path) {
     LOGI("📂 开始加载PCM块从路径: %s", chunks_path.c_str());
     

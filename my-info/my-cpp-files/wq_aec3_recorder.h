@@ -36,6 +36,10 @@ public:
     std::vector<std::vector<int16_t>> GetCleanAudioFrames();
     void ClearAudioFrames();
     
+    // WAV文件保存
+    std::vector<uint8_t> ConvertToWavBytes();
+    int GetRecordedFrameCount() const;
+    
     // 设置AEC3处理器引用（用于实时AEC处理）
     void SetAec3Processor(class WqAec3Processor* processor);
     
