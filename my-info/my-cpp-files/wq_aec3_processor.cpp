@@ -286,47 +286,18 @@ bool WqAec3Processor::ProcessTtsAudio(const int16_t* tts_data, size_t length) {
                 int target_delay = 30; // Ultra-low target delay for 6ms timing sync precision
                 
                 if (aec3_detected_delay > target_delay && aec3_detected_delay <= 2000) {
-                    // ULTRA-AGGRESSIVE CLEANUP: Remove 90% of buffer immediately when large delay detected
-                    int delay_gap = aec3_detected_delay - target_delay;
+                    // 100% BUFFER CLEANUP: Remove entire buffer when delay doesn't meet target
                     size_t current_buffer_size = render_buffer_.size();
                     
-                    if (delay_gap > 100) { // If delay > 130ms, do ultra-aggressive cleanup
-                        // Remove 90% of buffer immediately to force ultra-fast convergence to 6ms precision
-                        int frames_to_remove = static_cast<int>(current_buffer_size * 0.9);
-                        frames_to_remove = std::max(frames_to_remove, delay_gap / 5); // Even more aggressive: delay_gap/5
-                        frames_to_remove = std::min(frames_to_remove, static_cast<int>(current_buffer_size) - 2); // Keep minimum 2 frames
-                        
-                        if (frames_to_remove > 0) {
-                            for (int i = 0; i < frames_to_remove && !render_buffer_.empty(); ++i) {
-                                render_buffer_.pop_front();
-                            }
-                            LOGI("🎯 ULTRA-AGGRESSIVE cleanup: AEC3 delay %dms >> target %dms, removed %d frames (90%% of buffer), buffer: %zu -> %zu -> targeting 6ms precision", 
-                                 aec3_detected_delay, target_delay, frames_to_remove, current_buffer_size, render_buffer_.size());
+                    // Clear entire buffer except keep 1 frame minimum for continuity
+                    int frames_to_remove = static_cast<int>(current_buffer_size) - 1;
+                    
+                    if (frames_to_remove > 0) {
+                        for (int i = 0; i < frames_to_remove && !render_buffer_.empty(); ++i) {
+                            render_buffer_.pop_front();
                         }
-                    } else if (delay_gap > 20) { // If delay > 50ms, do aggressive cleanup
-                        // Remove frames very aggressively for sub-50ms target
-                        int frames_to_remove = delay_gap / 3; // Ultra-aggressive: delay_gap/3
-                        frames_to_remove = std::min(frames_to_remove, static_cast<int>(current_buffer_size) - 3);
-                        
-                        if (frames_to_remove > 0) {
-                            for (int i = 0; i < frames_to_remove && !render_buffer_.empty(); ++i) {
-                                render_buffer_.pop_front();
-                            }
-                            LOGI("🎯 AGGRESSIVE cleanup: AEC3 delay %dms > target %dms, removed %d frames, buffer: %zu -> %zu -> targeting sub-50ms", 
-                                 aec3_detected_delay, target_delay, frames_to_remove, current_buffer_size, render_buffer_.size());
-                        }
-                    } else if (delay_gap > 5) { // If delay > 35ms, do moderate cleanup for fine-tuning
-                        // Fine-tune for 6ms precision
-                        int frames_to_remove = delay_gap / 2; // Fine-tuning: delay_gap/2
-                        frames_to_remove = std::min(frames_to_remove, static_cast<int>(current_buffer_size) - 4);
-                        
-                        if (frames_to_remove > 0) {
-                            for (int i = 0; i < frames_to_remove && !render_buffer_.empty(); ++i) {
-                                render_buffer_.pop_front();
-                            }
-                            LOGI("🎯 FINE-TUNE cleanup: AEC3 delay %dms > target %dms, removed %d frames for 6ms precision, buffer: %zu -> %zu", 
-                                 aec3_detected_delay, target_delay, frames_to_remove, current_buffer_size, render_buffer_.size());
-                        }
+                        LOGI("🎯 100%% BUFFER CLEANUP: AEC3 delay %dms > target %dms, removed %d frames (100%% cleanup), buffer: %zu -> %zu -> forcing immediate 30ms target", 
+                             aec3_detected_delay, target_delay, frames_to_remove, current_buffer_size, render_buffer_.size());
                     }
                     
                     // Update last stable delay for regression prevention
