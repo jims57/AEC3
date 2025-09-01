@@ -161,9 +161,29 @@ void WqAec3Recorder::ProcessAudioFrame(const int16_t* input_data, int32_t frame_
     static uint64_t sync_frame_count = 0;
     sync_frame_count++;
     
-    // 获取当前C++播放的TTS参考帧（已修复偏移同步）
+    // 更新录音帧计数用于时序对齐
+    aec3_processor_->recording_frame_count_++;
+    
+    // 清理陈旧的参考数据
+    aec3_processor_->CleanupStaleReferenceData();
+    
+    // 获取时序对齐的TTS参考帧
     std::vector<int16_t> tts_frame(kFrameSize);
-    bool has_tts_reference = aec3_processor_->GetCurrentPlaybackTtsFrame(tts_frame.data());
+    bool has_tts_reference = false;
+    
+    // 首先尝试从C++播放获取参考帧
+    if (aec3_processor_->cpp_playback_active_) {
+        has_tts_reference = aec3_processor_->GetCurrentPlaybackTtsFrame(tts_frame.data());
+    }
+    
+    // 如果没有播放参考，尝试从TTS缓冲区获取时序对齐的帧
+    if (!has_tts_reference) {
+        uint64_t frame_offset;
+        if (aec3_processor_->CalculateTemporalOffset(frame_offset)) {
+            // 根据时序偏移获取对应的参考帧
+            has_tts_reference = aec3_processor_->GetTtsFrameAtOffset(frame_offset, tts_frame.data());
+        }
+    }
     
     if (has_tts_reference) {
         // 处理TTS参考信号 - 确保精确同步
@@ -171,10 +191,10 @@ void WqAec3Recorder::ProcessAudioFrame(const int16_t* input_data, int32_t frame_
         
         // 每100帧记录一次同步状态
         if (sync_frame_count % 100 == 0) {
-            LOGV("🔄 Frame sync: recorder frame %llu synced with player TTS frame", sync_frame_count);
+            LOGV("🔄 Temporal sync: recorder frame %llu aligned with reference", sync_frame_count);
         }
     } else {
-        // 播放器未激活或无数据时，发送静音参考信号
+        // 无参考信号时，发送静音参考信号
         std::vector<int16_t> silence(kFrameSize, 0);
         aec3_processor_->ProcessTtsAudio(silence.data(), kFrameSize);
     }

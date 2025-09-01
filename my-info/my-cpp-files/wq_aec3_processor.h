@@ -376,11 +376,14 @@ private:
     std::vector<std::vector<int16_t>> pcm_chunks_;
     std::atomic<int> current_chunk_index_{0};
     std::atomic<int> current_chunk_offset_{0};  // 当前块内的偏移量
-    std::atomic<bool> cpp_playback_active_{false};
     mutable std::mutex pcm_chunks_mutex_;
     std::atomic<uint64_t> playback_frame_position_{0};  // 精确追踪播放帧位置
     std::atomic<bool> async_loading_active_{false};    // 异步加载状态
     int min_buffer_chunks_{100};                       // 最小缓冲块数
+    
+    // 生产级时序对齐（录音先于PCM到达的场景）
+    std::chrono::high_resolution_clock::time_point recording_start_time_;
+    std::atomic<bool> temporal_alignment_active_{false};
     std::thread playback_thread_;
     std::thread async_loading_thread_;
     
@@ -390,6 +393,17 @@ private:
     // Oboe播放内部方法
     void PlaybackThreadFunction();
     bool LoadPcmChunks(const std::string& chunks_path);
+    
+public:
+    // 生产级时序对齐方法（供recorder使用）
+    void InitializeRecordingTimestamp();
+    bool CalculateTemporalOffset(uint64_t& frame_offset) const;
+    void CleanupStaleReferenceData();
+    bool GetTtsFrameAtOffset(uint64_t frame_offset, int16_t* output_buffer) const;
+    
+    // 录音帧计数和播放状态访问
+    std::atomic<uint64_t> recording_frame_count_{0};
+    std::atomic<bool> cpp_playback_active_{false};
     
     // Oboe AudioStreamCallback interface implementation
     oboe::DataCallbackResult onAudioReady(oboe::AudioStream* audioStream, void* audioData, int32_t numFrames) override;
