@@ -381,6 +381,10 @@ private:
     std::atomic<bool> async_loading_active_{false};    // 异步加载状态
     int min_buffer_chunks_{100};                       // 最小缓冲块数
     
+    // 快速语音恢复相关成员变量
+    std::atomic<bool> pcm_playback_just_started_{false}; // PCM播放刚开始标志
+    std::atomic<int> playback_startup_frames_{0};        // 播放启动帧计数
+    
     // 生产级时序对齐（录音先于PCM到达的场景）
     std::chrono::high_resolution_clock::time_point recording_start_time_;
     std::atomic<bool> temporal_alignment_active_{false};

@@ -280,39 +280,61 @@ bool WqAec3Processor::ProcessTtsAudio(const int16_t* tts_data, size_t length) {
             // Immediate ultra-aggressive cleanup targeting 6ms timing sync precision
             static int delay_check_counter = 0;
             static int last_stable_delay = 30;
+            
+            // 🎯 FASTER VOICE RECOVERY: Extra aggressive cleanup during PCM playback startup
+            bool is_startup_phase = pcm_playback_just_started_ && (playback_startup_frames_ < 100); // First 100 frames (1 second)
+            if (is_startup_phase) {
+                playback_startup_frames_++;
+                if (playback_startup_frames_ >= 100) {
+                    pcm_playback_just_started_ = false; // End startup phase
+                }
+            }
+            
             if (++delay_check_counter % 1 == 0 && echo_controller_) { // Check EVERY frame for immediate response
                 webrtc::EchoControl::Metrics current_metrics = echo_controller_->GetMetrics();
                 int aec3_detected_delay = current_metrics.delay_ms;
                 int target_delay = 30; // Ultra-low target delay for 6ms timing sync precision
                 
                 if (aec3_detected_delay > target_delay && aec3_detected_delay <= 2000) {
-                    // ULTRA-AGGRESSIVE CLEANUP: Remove 90% of buffer immediately when large delay detected
+                    // ULTRA-AGGRESSIVE CLEANUP: Remove 99% of buffer immediately when large delay detected
                     int delay_gap = aec3_detected_delay - target_delay;
                     size_t current_buffer_size = render_buffer_.size();
                     
-                    if (delay_gap > 100) { // If delay > 130ms, do ultra-aggressive cleanup
-                        // Remove 90% of buffer immediately to force ultra-fast convergence to 6ms precision
-                        int frames_to_remove = static_cast<int>(current_buffer_size * 0.9);
-                        frames_to_remove = std::max(frames_to_remove, delay_gap / 5); // Even more aggressive: delay_gap/5
-                        frames_to_remove = std::min(frames_to_remove, static_cast<int>(current_buffer_size) - 2); // Keep minimum 2 frames
+                    // 🎯 STARTUP PHASE: Even more aggressive cleanup for immediate voice clarity
+                    if (is_startup_phase && delay_gap > 20) { // During startup, cleanup at even smaller delays
+                        int frames_to_remove = static_cast<int>(current_buffer_size * 0.98); // Remove 98% during startup
+                        frames_to_remove = std::min(frames_to_remove, static_cast<int>(current_buffer_size) - 1);
                         
                         if (frames_to_remove > 0) {
                             for (int i = 0; i < frames_to_remove && !render_buffer_.empty(); ++i) {
                                 render_buffer_.pop_front();
                             }
-                            LOGI("🎯 ULTRA-AGGRESSIVE cleanup: AEC3 delay %dms >> target %dms, removed %d frames (90%% of buffer), buffer: %zu -> %zu -> targeting 6ms precision", 
+                            LOGI("🎯 STARTUP cleanup: AEC3 delay %dms during startup, removed %d frames (98%%) for immediate voice clarity", 
+                                 aec3_detected_delay, frames_to_remove);
+                        }
+                    } else if (delay_gap > 50) { // If delay > 80ms, do ultra-aggressive cleanup (lowered threshold for fast phones)
+                        // Remove 99% of buffer immediately to counter fast phone PCM appending
+                        int frames_to_remove = static_cast<int>(current_buffer_size * 0.99);
+                        frames_to_remove = std::max(frames_to_remove, delay_gap / 3); // Ultra-aggressive: delay_gap/3
+                        frames_to_remove = std::min(frames_to_remove, static_cast<int>(current_buffer_size) - 1); // Keep minimum 1 frame
+                        
+                        if (frames_to_remove > 0) {
+                            for (int i = 0; i < frames_to_remove && !render_buffer_.empty(); ++i) {
+                                render_buffer_.pop_front();
+                            }
+                            LOGI("🎯 ULTRA-AGGRESSIVE cleanup: AEC3 delay %dms >> target %dms, removed %d frames (99%% of buffer), buffer: %zu -> %zu -> countering fast phone PCM appending", 
                                  aec3_detected_delay, target_delay, frames_to_remove, current_buffer_size, render_buffer_.size());
                         }
-                    } else if (delay_gap > 20) { // If delay > 50ms, do aggressive cleanup
-                        // Remove frames very aggressively for sub-50ms target
-                        int frames_to_remove = delay_gap / 3; // Ultra-aggressive: delay_gap/3
-                        frames_to_remove = std::min(frames_to_remove, static_cast<int>(current_buffer_size) - 3);
+                    } else if (delay_gap > 10) { // If delay > 40ms, do aggressive cleanup (lowered threshold)
+                        // Remove frames very aggressively for 30ms target
+                        int frames_to_remove = delay_gap / 2; // More aggressive: delay_gap/2
+                        frames_to_remove = std::min(frames_to_remove, static_cast<int>(current_buffer_size) - 2);
                         
                         if (frames_to_remove > 0) {
                             for (int i = 0; i < frames_to_remove && !render_buffer_.empty(); ++i) {
                                 render_buffer_.pop_front();
                             }
-                            LOGI("🎯 AGGRESSIVE cleanup: AEC3 delay %dms > target %dms, removed %d frames, buffer: %zu -> %zu -> targeting sub-50ms", 
+                            LOGI("🎯 AGGRESSIVE cleanup: AEC3 delay %dms > target %dms, removed %d frames, buffer: %zu -> %zu -> targeting 30ms for clear voice", 
                                  aec3_detected_delay, target_delay, frames_to_remove, current_buffer_size, render_buffer_.size());
                         }
                     } else if (delay_gap > 5) { // If delay > 35ms, do moderate cleanup for fine-tuning
@@ -338,13 +360,13 @@ bool WqAec3Processor::ProcessTtsAudio(const int16_t* tts_data, size_t length) {
                     last_stable_delay = aec3_detected_delay;
                 }
                 
-                // PREVENT DELAY REGRESSION: If delay suddenly jumps back up, immediate 90% cleanup
-                if (aec3_detected_delay > last_stable_delay + 100 && last_stable_delay < 100) {
-                    size_t frames_to_remove = static_cast<size_t>(render_buffer_.size() * 0.9); // Remove 90% immediately
+                // PREVENT DELAY REGRESSION: If delay suddenly jumps back up, immediate 99% cleanup
+                if (aec3_detected_delay > last_stable_delay + 50 && last_stable_delay < 80) { // More sensitive regression detection
+                    size_t frames_to_remove = static_cast<size_t>(render_buffer_.size() * 0.99); // Remove 99% immediately
                     for (size_t i = 0; i < frames_to_remove && !render_buffer_.empty(); ++i) {
                         render_buffer_.pop_front();
                     }
-                    LOGI("🎯 REGRESSION prevention: delay jumped %dms -> %dms, removed %zu frames (90%%) for immediate recovery", 
+                    LOGI("🎯 REGRESSION prevention: delay jumped %dms -> %dms, removed %zu frames (99%%) for immediate recovery to 30ms target", 
                          last_stable_delay, aec3_detected_delay, frames_to_remove);
                 }
             }
@@ -1064,6 +1086,23 @@ bool WqAec3Processor::StartCppPcmPlayback(const std::string& pcm_chunks_path, in
     
     // 设置播放状态为激活
     cpp_playback_active_ = true;
+    
+    // 🎯 PROACTIVE BUFFER CLEANUP FOR IMMEDIATE VOICE CLARITY
+    // Clear buffer aggressively when PCM playback starts to prevent initial voice quality issues
+    pcm_playback_just_started_ = true;
+    playback_startup_frames_ = 0;
+    
+    // Immediate aggressive buffer cleanup to ensure clear voice from beginning of sentence B
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (!render_buffer_.empty()) {
+            size_t frames_to_remove = static_cast<size_t>(render_buffer_.size() * 0.95); // Remove 95% immediately
+            for (size_t i = 0; i < frames_to_remove && !render_buffer_.empty(); ++i) {
+                render_buffer_.pop_front();
+            }
+            LOGI("🎯 PROACTIVE startup cleanup: removed %zu frames (95%%) at PCM playback start for immediate voice clarity", frames_to_remove);
+        }
+    }
     // 启动异步加载线程（如果还有更多块需要加载）
     {
         std::lock_guard<std::mutex> lock(pcm_chunks_mutex_);
@@ -1092,6 +1131,10 @@ void WqAec3Processor::StopCppPcmPlayback() {
     
     cpp_playback_active_ = false;
     async_loading_active_ = false;
+    
+    // Reset startup flags when playback stops
+    pcm_playback_just_started_ = false;
+    playback_startup_frames_ = 0;
     
     if (oboe_playback_stream_) {
         oboe_playback_stream_->requestStop();
