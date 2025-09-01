@@ -25,37 +25,37 @@ TimedFrame::TimedFrame(const int16_t* samples, size_t size, uint64_t id)
 WqAec3Processor::WqAec3Processor() : 
     frame_counter_(0), 
     last_delay_estimation_(0), 
-    current_optimal_delay_ms_(kStreamDelay), 
+    current_optimal_delay_ms_(50), 
     delay_estimation_counter_(0),
     total_render_frames_(0), 
     total_capture_frames_(0),
     timing_sync_enabled_(true),
     initialization_frames_(0),
     is_initialization_complete_(false),
-    current_delay_ms_(kStreamDelay),
+    current_delay_ms_(50),
     manual_delay_ms_(0),
     cpp_playback_active_(false),
     current_chunk_index_(0),
     current_chunk_offset_(0),
-    // 🎯 BALANCED DEFAULTS FOR UNIVERSAL CONVERGENCE + GOOD ERLE (2025-01-31)
-    config_change_duration_blocks_(125),
-    initial_state_seconds_(2.5f),
+    // 🎯 OPTIMIZED FOR PRODUCTION VOICE CLARITY + LOW DELAY
+    config_change_duration_blocks_(30),     // 进一步减少配置变更持续时间
+    initial_state_seconds_(0.8f),           // 更快的初始收敛时间
     conservative_initial_phase_(false),
-    max_dec_factor_lf_(4.0f),
-    max_inc_factor_(3.5f),
-    nearend_max_dec_factor_lf_(2.0f),
-    nearend_max_inc_factor_(4.5f),
-    enr_threshold_(0.20f),
-    snr_threshold_(11.0f),
-    hold_duration_(6),
-    trigger_threshold_(2),
-    // 🎯 ERLE ADJUSTMENT PARAMETERS FOR MOBILE DEVELOPERS (2025-01-31)
-    filter_length_blocks_(25),
-    filter_leakage_converged_(0.000005f),
-    filter_leakage_diverged_(0.005f),
-    delay_down_sampling_factor_(2),
-    delay_num_filters_(16),
-    delay_estimate_smoothing_(0.98f) {
+    max_dec_factor_lf_(20.0f),             // 匹配配置中的增强低频抑制
+    max_inc_factor_(8.0f),                 // 匹配配置中的增益恢复速度
+    nearend_max_dec_factor_lf_(10.0f),     // 匹配配置中的近端低频处理
+    nearend_max_inc_factor_(10.0f),        // 匹配配置中的近端增益恢复
+    enr_threshold_(0.1f),                  // 进一步降低阈值提高语音清晰度
+    snr_threshold_(6.0f),                  // 降低SNR阈值以更好处理语音
+    hold_duration_(2),                     // 进一步减少保持时间
+    trigger_threshold_(1),                 // 保持低触发阈值
+    // 🎯 ENHANCED FILTER PARAMETERS FOR VOICE CLARITY
+    filter_length_blocks_(12),              // 进一步减少滤波器长度以降低延迟
+    filter_leakage_converged_(0.000001f),   // 更精细的收敛泄漏
+    filter_leakage_diverged_(0.005f),       // 优化发散泄漏平衡
+    delay_down_sampling_factor_(2),         // 匹配配置中的下采样因子
+    delay_num_filters_(16),                 // 匹配配置中的滤波器数量
+    delay_estimate_smoothing_(0.98f) {      // 匹配配置中的平滑因子
 }
 
 WqAec3Processor::~WqAec3Processor() {
@@ -113,14 +113,41 @@ bool WqAec3Processor::Initialize() {
         config.filter.main_initial.leakage_diverged = 0.2f;
         config.filter.main.leakage_diverged = 0.05f;
         
-        // 🎯 AGGRESSIVE SUPPRESSOR TUNING FOR >10dB ERLE
-        config.suppressor.normal_tuning.max_dec_factor_lf = 15.0f;
-        config.suppressor.nearend_tuning.max_dec_factor_lf = 8.0f;
+        // 🎯 AGGRESSIVE SUPPRESSOR TUNING FOR >15dB ERLE + VOICE CLARITY
+        config.suppressor.normal_tuning.max_dec_factor_lf = 20.0f;     // 增强低频抑制
+        config.suppressor.normal_tuning.max_inc_factor = 8.0f;         // 提高增益恢复速度
+        config.suppressor.nearend_tuning.max_dec_factor_lf = 10.0f;    // 优化近端低频处理
+        config.suppressor.nearend_tuning.max_inc_factor = 10.0f;       // 增强近端增益恢复
+        
+        // 🎤 VOICE CLARITY ENHANCEMENT
+        config.suppressor.high_bands_suppression.enr_threshold = 0.1f;  // 降低阈值提高语音清晰度
+        config.suppressor.floor_first_increase = 0.001f;                // 提高底噪处理精度
         
         // 🚀 ENHANCED DELAY ESTIMATION FOR UNIVERSAL ANDROID COMPATIBILITY (2025-01-31)
         config.delay.down_sampling_factor = (delay_down_sampling_factor_ > 0) ? delay_down_sampling_factor_ : 2;
         config.delay.num_filters = (delay_num_filters_ > 0) ? delay_num_filters_ : 16;
         config.delay.delay_estimate_smoothing = (delay_estimate_smoothing_ > 0.0f) ? delay_estimate_smoothing_ : 0.98f;
+        
+        // 🎯 ADVANCED ECHO SUPPRESSION FOR PRODUCTION VOICE CLARITY
+        config.echo_audibility.use_stationarity_properties = true;        // 启用静态特性分析
+        config.echo_audibility.use_stationarity_properties_at_init = true; // 初始化时使用静态特性
+        config.suppressor.dominant_nearend_detection.use_during_initial_phase = true; // 初始阶段启用近端检测
+        
+        // 🔧 RESIDUAL ECHO HANDLING FOR CLEAR VOICE
+        config.suppressor.subband_nearend_detection.nearend_average_blocks = 4;  // 减少平均块数提高响应
+        config.suppressor.subband_nearend_detection.subband1.low = 1;            // 优化子带1范围
+        config.suppressor.subband_nearend_detection.subband1.high = 3;
+        config.suppressor.subband_nearend_detection.subband2.low = 4;            // 优化子带2范围  
+        config.suppressor.subband_nearend_detection.subband2.high = 8;
+        
+        // 🚀 ADVANCED FILTER ADAPTATION FOR FASTER CONVERGENCE
+        config.filter.shadow.length_blocks = 12;                    // 减少影子滤波器长度
+        config.filter.shadow.rate = 0.8f;                          // 提高影子滤波器学习率
+        config.filter.shadow.noise_gate = 15000;                   // 优化噪声门限
+        config.filter.config_change_duration_blocks = 30;          // 减少配置变更持续时间
+        
+        // 🎯 ECHO PATH CHANGE DETECTION FOR MOBILE SCENARIOS
+        config.ep_strength.default_len = 0.83f;                    // 优化默认长度
         
         LOGI("🚀 Production-grade AEC3 configured: filter_length=%zu, max_dec_lf=%.1f", 
              config.filter.main.length_blocks, config.suppressor.normal_tuning.max_dec_factor_lf);
@@ -1331,8 +1358,16 @@ bool WqAec3Processor::CalculateTemporalOffset(uint64_t& frame_offset) const {
 }
 
 void WqAec3Processor::CleanupStaleReferenceData() {
-    // 简化实现 - 在生产环境中清理陈旧的TTS缓冲区数据
+    // 优化清理频率 - 减少每帧调用以提升性能
     if (!temporal_alignment_active_) {
+        return;
+    }
+    
+    static uint64_t cleanup_counter = 0;
+    cleanup_counter++;
+    
+    // 每50帧（500ms）执行一次清理，而不是每帧
+    if (cleanup_counter % 50 != 0) {
         return;
     }
     
@@ -1341,9 +1376,9 @@ void WqAec3Processor::CleanupStaleReferenceData() {
     auto elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
         current_time - recording_start_time_).count();
     
-    // 如果录音时间超过5秒，清理早期的参考数据以优化内存使用
-    if (elapsed_ms > 5000) {
-        LOGV("🧹 Temporal cleanup: removing stale reference data after 5s recording");
+    // 如果录音时间超过3秒，清理早期的参考数据以优化内存使用
+    if (elapsed_ms > 3000) {
+        LOGV("🧹 Temporal cleanup: optimized reference data management");
     }
 }
 

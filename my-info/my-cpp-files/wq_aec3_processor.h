@@ -50,7 +50,7 @@ public:
     static constexpr int kSampleRate = 48000;
     static constexpr int kFrameSize = 480;  // 48kHz下10ms
     static constexpr int kChannels = 1;     // 单声道
-    static constexpr int kStreamDelay = 100; // Android典型延迟
+    static constexpr int kStreamDelay = 50;  // 优化延迟以提升ERLE性能
 
     // 增强ERLE优化常量
     static constexpr int kMaxDelayMs = 500; // 最大延迟时间（毫秒）
