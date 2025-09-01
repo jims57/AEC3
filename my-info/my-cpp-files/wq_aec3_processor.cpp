@@ -957,11 +957,13 @@ bool WqAec3Processor::StartCppPcmPlayback(const std::string& pcm_chunks_path, in
         return false;
     }
     
-    // 设置播放状态
-    cpp_playback_active_ = true;
+    // 重置播放状态
     current_chunk_index_ = 0;
     current_chunk_offset_ = 0;
+    playback_frame_position_ = 0;
     
+    // 设置播放状态为激活
+    cpp_playback_active_ = true;
     // 启动异步加载线程（如果还有更多块需要加载）
     {
         std::lock_guard<std::mutex> lock(pcm_chunks_mutex_);
@@ -1031,13 +1033,45 @@ bool WqAec3Processor::GetCurrentPlaybackTtsFrame(int16_t* output_buffer) const {
     // 获取当前播放的PCM块
     const auto& current_chunk = pcm_chunks_[current_chunk_index_];
     
-    // 确保块大小正确
-    if (current_chunk.size() != kFrameSize) {
-        return false;
+    // 获取当前偏移量
+    int offset = current_chunk_offset_.load();
+    
+    // 计算剩余样本数
+    int remaining_samples = static_cast<int>(current_chunk.size()) - offset;
+    
+    // 如果当前块剩余样本不足kFrameSize，需要从下一块获取
+    if (remaining_samples < kFrameSize) {
+        // 先填充当前块剩余部分
+        if (remaining_samples > 0) {
+            std::memcpy(output_buffer, current_chunk.data() + offset, 
+                       remaining_samples * sizeof(int16_t));
+        }
+        
+        // 检查是否有下一块
+        int next_chunk_index = current_chunk_index_ + 1;
+        if (next_chunk_index < static_cast<int>(pcm_chunks_.size())) {
+            const auto& next_chunk = pcm_chunks_[next_chunk_index];
+            int samples_needed = kFrameSize - remaining_samples;
+            
+            // 从下一块填充剩余样本
+            if (next_chunk.size() >= samples_needed) {
+                std::memcpy(output_buffer + remaining_samples, 
+                           next_chunk.data(), 
+                           samples_needed * sizeof(int16_t));
+                return true;
+            }
+        }
+        
+        // 如果没有足够数据，填充静音
+        if (remaining_samples < kFrameSize) {
+            std::memset(output_buffer + remaining_samples, 0, 
+                       (kFrameSize - remaining_samples) * sizeof(int16_t));
+        }
+        return remaining_samples > 0;
     }
     
-    // 复制当前TTS帧数据到输出缓冲区
-    std::memcpy(output_buffer, current_chunk.data(), kFrameSize * sizeof(int16_t));
+    // 从当前偏移位置复制kFrameSize个样本
+    std::memcpy(output_buffer, current_chunk.data() + offset, kFrameSize * sizeof(int16_t));
     
     return true;
 }
@@ -1226,13 +1260,17 @@ oboe::DataCallbackResult WqAec3Processor::onAudioReady(oboe::AudioStream* audioS
         framesWritten += framesToCopy;
         current_chunk_offset_ += framesToCopy;
         
+        // 更新精确的播放帧位置
+        playback_frame_position_ += framesToCopy;
+        
         // 检查当前块是否完全消费完毕
         if (current_chunk_offset_.load() >= chunk.size()) {
             // 移动到下一个块
             current_chunk_index_++;
             current_chunk_offset_ = 0;
             if (currentIndex % 100 == 0 || currentIndex < 10) { // Log first 10 and every 100th
-                LOGI("🎵 完成PCM块 %d/%zu - 480样本/10ms (精确时序同步)", currentIndex + 1, pcm_chunks_.size());
+                LOGI("🎵 完成PCM块 %d/%zu - 480样本/10ms (精确时序同步), 总播放位置: %llu", 
+                     currentIndex + 1, pcm_chunks_.size(), playback_frame_position_.load());
             }
         } else {
             if (callback_count % 100 == 1) {

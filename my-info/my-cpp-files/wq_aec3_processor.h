@@ -374,12 +374,13 @@ private:
     // C++ PCM播放相关成员变量
     std::shared_ptr<oboe::AudioStream> oboe_playback_stream_;
     std::vector<std::vector<int16_t>> pcm_chunks_;
-    mutable std::mutex pcm_chunks_mutex_;
-    std::atomic<bool> cpp_playback_active_{false};
     std::atomic<int> current_chunk_index_{0};
-    std::atomic<int> current_chunk_offset_{0};
-    std::atomic<int> min_buffer_chunks_{100};
-    std::atomic<bool> async_loading_active_{false};
+    std::atomic<int> current_chunk_offset_{0};  // 当前块内的偏移量
+    std::atomic<bool> cpp_playback_active_{false};
+    mutable std::mutex pcm_chunks_mutex_;
+    std::atomic<uint64_t> playback_frame_position_{0};  // 精确追踪播放帧位置
+    std::atomic<bool> async_loading_active_{false};    // 异步加载状态
+    int min_buffer_chunks_{100};                       // 最小缓冲块数
     std::thread playback_thread_;
     std::thread async_loading_thread_;
     

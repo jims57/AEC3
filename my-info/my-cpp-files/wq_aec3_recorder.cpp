@@ -158,13 +158,25 @@ void WqAec3Recorder::ProcessAudioFrame(const int16_t* input_data, int32_t frame_
         return;
     }
     
-    // 获取当前C++播放的TTS参考帧
+    static uint64_t sync_frame_count = 0;
+    sync_frame_count++;
+    
+    // 获取当前C++播放的TTS参考帧（已修复偏移同步）
     std::vector<int16_t> tts_frame(kFrameSize);
     bool has_tts_reference = aec3_processor_->GetCurrentPlaybackTtsFrame(tts_frame.data());
     
     if (has_tts_reference) {
-        // 处理TTS参考信号
+        // 处理TTS参考信号 - 确保精确同步
         aec3_processor_->ProcessTtsAudio(tts_frame.data(), kFrameSize);
+        
+        // 每100帧记录一次同步状态
+        if (sync_frame_count % 100 == 0) {
+            LOGV("🔄 Frame sync: recorder frame %llu synced with player TTS frame", sync_frame_count);
+        }
+    } else {
+        // 播放器未激活或无数据时，发送静音参考信号
+        std::vector<int16_t> silence(kFrameSize, 0);
+        aec3_processor_->ProcessTtsAudio(silence.data(), kFrameSize);
     }
     
     // 处理音频帧进行AEC
@@ -198,10 +210,15 @@ void WqAec3Recorder::ProcessAudioFrame(const int16_t* input_data, int32_t frame_
             }
         }
         
-        // 限制缓冲区大小（最多保存10秒音频）
-        const size_t max_frames = kSampleRate / kFrameSize * 10; // 10秒
+        // 限制缓冲区大小（最多保存300秒音频）- 支持长时间录音
+        const size_t max_frames = kSampleRate / kFrameSize * 300; // 300秒 = 5分钟
         if (clean_audio_frames_.size() > max_frames) {
-            clean_audio_frames_.erase(clean_audio_frames_.begin());
+            // 删除最旧的帧，但保留大部分数据
+            size_t frames_to_remove = clean_audio_frames_.size() - max_frames + (max_frames / 10);
+            clean_audio_frames_.erase(clean_audio_frames_.begin(), 
+                                    clean_audio_frames_.begin() + frames_to_remove);
+            LOGV("🗂️ Buffer management: removed %zu old frames, keeping %zu frames", 
+                 frames_to_remove, clean_audio_frames_.size());
         }
     }
 }
