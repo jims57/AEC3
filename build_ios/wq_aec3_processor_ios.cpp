@@ -103,7 +103,7 @@ bool WqAec3Processor::Initialize() {
         
         // 🚀 ENHANCED DELAY ESTIMATION FOR UNIVERSAL ANDROID COMPATIBILITY (2025-01-31)
         config.delay.down_sampling_factor = (delay_down_sampling_factor_ > 0) ? delay_down_sampling_factor_ : 2;
-        config.delay.num_filters = (delay_num_filters_ > 0) ? delay_num_filters_ : 16;
+        config.delay.num_filters = (delay_num_filters_ > 0) ? std::min(delay_num_filters_, 10) : 10;  // Max 10 to prevent matched_filter crash
         config.delay.delay_estimate_smoothing = (delay_estimate_smoothing_ > 0.0f) ? delay_estimate_smoothing_ : 0.98f;
         
         LOGI("🚀 Production-grade AEC3 configured: filter_length=%zu, max_dec_lf=%.1f", 
