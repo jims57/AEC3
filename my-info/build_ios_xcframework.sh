@@ -311,6 +311,10 @@ SOURCES=""
 # 添加主要源文件
 SOURCES="$SOURCES $BUILD_DIR/ios_aec3_wrapper.cc"
 
+# 添加C API包装器文件
+SOURCES="$SOURCES $PROJECT_ROOT/my-info/my-cpp-files/ios-cpp/wq_aec3_c_api.cpp"
+SOURCES="$SOURCES $PROJECT_ROOT/my-info/my-cpp-files/ios-cpp/wq_aec3_convertor.cpp"
+
 # 添加API层源文件
 SOURCES="$SOURCES $PROJECT_ROOT/api/echo_canceller3_factory.cc"
 SOURCES="$SOURCES $PROJECT_ROOT/api/echo_canceller3_config.cc"
@@ -352,6 +356,7 @@ SOURCES="$SOURCES $PROJECT_ROOT/base/abseil/absl/strings/internal/memutil.cc"
 SOURCES="$SOURCES $PROJECT_ROOT/base/abseil/absl/strings/match.cc"
 SOURCES="$SOURCES $PROJECT_ROOT/base/abseil/absl/strings/ascii.cc"
 SOURCES="$SOURCES $PROJECT_ROOT/base/abseil/absl/numeric/int128.cc"
+SOURCES="$SOURCES $PROJECT_ROOT/base/abseil/absl/types/bad_optional_access.cc"
 
 # 添加rtc_base工具
 SOURCES="$SOURCES $PROJECT_ROOT/base/rtc_base/strings/string_builder.cc"
@@ -407,7 +412,8 @@ for arch in "${ARCHITECTURES[@]}"; do
     INCLUDES="-I$BUILD_DIR -I$PROJECT_ROOT -I$PROJECT_ROOT/api -I$PROJECT_ROOT/audio_processing"
     INCLUDES="$INCLUDES -I$PROJECT_ROOT/audio_processing/include -I$PROJECT_ROOT/base"
     INCLUDES="$INCLUDES -I$PROJECT_ROOT/base/rtc_base -I$PROJECT_ROOT/base/system_wrappers"
-    INCLUDES="$INCLUDES -I$PROJECT_ROOT/base/abseil"
+    INCLUDES="$INCLUDES -I$PROJECT_ROOT/base/abseil -I$PROJECT_ROOT/my-info/my-cpp-files"
+    INCLUDES="$INCLUDES -I$PROJECT_ROOT/my-info/my-cpp-files/ios-cpp"
 
     # 创建输出目录
     mkdir -p "$OUTPUT_DIR/lib/$arch"
@@ -471,6 +477,8 @@ mkdir -p "$OUTPUT_DIR/include"
 cp "$PROJECT_ROOT/my-info/my-cpp-files/wq_aec3_processor.h" "$OUTPUT_DIR/include/"
 cp "$PROJECT_ROOT/my-info/my-cpp-files/webrtc_compat.h" "$OUTPUT_DIR/include/"
 cp "$PROJECT_ROOT/my-info/my-cpp-files/wq_aec3_convertor.h" "$OUTPUT_DIR/include/"
+cp "$PROJECT_ROOT/my-info/my-cpp-files/ios-cpp/wq_aec3_c_api.h" "$OUTPUT_DIR/include/"
+cp "$PROJECT_ROOT/my-info/my-cpp-files/ios-cpp/wq_aec3_convertor.h" "$OUTPUT_DIR/include/"
 
 # 使用xcodebuild创建XCFramework
 if [ -f "$OUTPUT_DIR/lib/arm64/libwq_aec3_tts.a" ]; then
@@ -539,22 +547,47 @@ EOUSAGE
 # 最终摘要
 # ============================================================================
 echo ""
-echo "🎉 构建完成！"
-echo "📁 输出目录: $OUTPUT_DIR"
-echo "📦 XCFramework: $OUTPUT_DIR/$FRAMEWORK_NAME.xcframework"
-echo "📚 文档: $OUTPUT_DIR/iOS_USAGE.md"
+echo "📊🎉 构建完成！"
+echo "📁 输出目录: /Users/mac/Documents/GitHub/AEC3/ios_output"
+echo "📦 XCFramework: /Users/mac/Documents/GitHub/AEC3/ios_output/WqAec3.xcframework"
+echo "📚 文档: /Users/mac/Documents/GitHub/AEC3/ios_output/iOS_USAGE.md"
+
 echo ""
 echo "📊 构建摘要:"
-echo "  - 采样率: ${AEC3_SAMPLE_RATE}Hz"
-echo "  - 帧大小: ${AEC3_FRAME_SIZE} 样本 (10ms)"
-echo "  - 流延迟: ${IOS_STREAM_DELAY}ms"
-echo "  - 架构: ${ARCHITECTURES[*]}"
+echo "  - 采样率: 48000Hz"
+echo "  - 帧大小: 480 样本 (10ms)"
+echo "  - 流延迟: 100ms"
+echo "  - 架构: arm64"
+
+# 复制XCFramework到iOS演示项目
+echo "📦 正在复制XCFramework到iOS演示项目..."
+IOS_DEMO_PATH="/Users/mac/Documents/GitHub/ios_use_cpp_demo/iOSUseCppDemo1"
+if [ -d "$IOS_DEMO_PATH" ]; then
+    # 删除旧的XCFramework（如果存在）
+    if [ -d "$IOS_DEMO_PATH/WqAec3.xcframework" ]; then
+        rm -rf "$IOS_DEMO_PATH/WqAec3.xcframework"
+        echo "🗑️  删除旧的XCFramework"
+    fi
+    
+    # 复制新的XCFramework
+    cp -R "$OUTPUT_DIR/WqAec3.xcframework" "$IOS_DEMO_PATH/"
+    
+    if [ $? -eq 0 ]; then
+        echo "✅ XCFramework已成功复制到: $IOS_DEMO_PATH/WqAec3.xcframework"
+    else
+        echo "❌ 复制XCFramework失败"
+    fi
+else
+    echo "⚠️  iOS演示项目目录不存在: $IOS_DEMO_PATH"
+fi
+
 echo ""
 echo "🚀 下一步:"
-echo "  1. 将 $FRAMEWORK_NAME.xcframework 添加到你的iOS项目"
+echo "  1. XCFramework已自动复制到iOS演示项目"
 echo "  2. 设置为静态库（不要选择Embed & Sign）"
 echo "  3. 按照 iOS_USAGE.md 中的指南进行集成"
 echo "  4. 在真机上测试TTS回声消除功能"
+
 echo ""
 echo "⚠️  重要: 该XCFramework仅支持iOS真机（arm64架构）"
 echo "📈 预期性能: 增强的ERLE (>15dB目标) 与精确时序同步"
