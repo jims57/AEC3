@@ -15,6 +15,9 @@
 ########################
 
 //Path to a library.
+ACCELERATE_FRAMEWORK:FILEPATH=/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.5.sdk/System/Library/Frameworks/Accelerate.framework
+
+//Path to a library.
 AUDIOTOOLBOX_FRAMEWORK:FILEPATH=/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.5.sdk/System/Library/Frameworks/AudioToolbox.framework
 
 //Path to a library.
@@ -220,6 +223,9 @@ CMAKE_TAPI:FILEPATH=/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeD
 // during the make.  This is useful for debugging only. With Visual
 // Studio IDE projects all commands are done without /nologo.
 CMAKE_VERBOSE_MAKEFILE:BOOL=FALSE
+
+//Path to a library.
+COREAUDIO_FRAMEWORK:FILEPATH=/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.5.sdk/System/Library/Frameworks/CoreAudio.framework
 
 //Path to a library.
 FOUNDATION_FRAMEWORK:FILEPATH=/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.5.sdk/System/Library/Frameworks/Foundation.framework

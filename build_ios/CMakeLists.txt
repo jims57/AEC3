@@ -17,7 +17,7 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
 endif()
 
 # 编译标志，用于优化和WebRTC兼容性（iOS优化）
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-rtti -O3")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-rtti -O3 -stdlib=libc++")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DWEBRTC_APM_DEBUG_DUMP=0")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DRTC_DISABLE_CHECK_MSG=1")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DWEBRTC_INCLUDE_INTERNAL_AUDIO_DEVICE")
@@ -28,6 +28,11 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_GNU_SOURCE")   # Enable GNU extension
 # C编译标志（修复size_t未定义问题）
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D_GNU_SOURCE")
+
+# 链接标志（确保正确链接C++标准库和线程库）
+# 注意：静态库不需要链接库，只在最终应用中链接
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -stdlib=libc++ -lc++ -lpthread")
+set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -stdlib=libc++ -lc++ -lpthread")
 
 # 包含目录
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/..)
@@ -87,11 +92,10 @@ set(ADDITIONAL_SOURCES
     ../base/abseil/absl/strings/ascii.cc
     ../base/abseil/absl/numeric/int128.cc
     
-    # 必要的rtc_base工具（排除iOS不兼容的文件）
+    # 必要的rtc_base工具（iOS兼容版本）
     ../base/rtc_base/strings/string_builder.cc
     ../base/rtc_base/string_encode.cc
     ../base/rtc_base/string_utils.cc
-    # ../base/rtc_base/platform_thread_types.cc  # 排除：包含sys/prctl.h，iOS不支持
     ../base/rtc_base/checks.cc
     ../base/rtc_base/logging.cc
     ../base/rtc_base/time_utils.cc
@@ -148,21 +152,45 @@ set(ALL_SOURCES
     # iOS特定包装器
     ../ios-cpp/WQDenoiserWrapper.cpp
     ../ios-cpp/WQAecProcessor.mm
+    ../ios-cpp/ios_threading.cpp
 )
 
 # 创建静态库用于XCFramework
 add_library(WQAec STATIC ${ALL_SOURCES})
 
 # iOS特定链接库
-if(IOS OR CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+if(IOS OR CMAKE_SYSTEM_NAME STREQUAL "iOS")
     find_library(FOUNDATION_FRAMEWORK Foundation)
     find_library(AUDIOTOOLBOX_FRAMEWORK AudioToolbox)
     find_library(AVFOUNDATION_FRAMEWORK AVFoundation)
+    find_library(COREAUDIO_FRAMEWORK CoreAudio)
+# CoreAudioTypes framework doesn't exist in iOS, removing
+    find_library(ACCELERATE_FRAMEWORK Accelerate)
     
     target_link_libraries(WQAec
         ${FOUNDATION_FRAMEWORK}
         ${AUDIOTOOLBOX_FRAMEWORK}
         ${AVFOUNDATION_FRAMEWORK}
+        ${COREAUDIO_FRAMEWORK}
+        ${ACCELERATE_FRAMEWORK}
+        "-lc++"
+        "-lpthread"
+    )
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+    find_library(FOUNDATION_FRAMEWORK Foundation)
+    find_library(AUDIOTOOLBOX_FRAMEWORK AudioToolbox)
+    find_library(AVFOUNDATION_FRAMEWORK AVFoundation)
+    find_library(COREAUDIO_FRAMEWORK CoreAudio)
+    find_library(ACCELERATE_FRAMEWORK Accelerate)
+    
+    target_link_libraries(WQAec
+        ${FOUNDATION_FRAMEWORK}
+        ${AUDIOTOOLBOX_FRAMEWORK}
+        ${AVFOUNDATION_FRAMEWORK}
+        ${COREAUDIO_FRAMEWORK}
+        ${ACCELERATE_FRAMEWORK}
+        "-lc++"
+        "-lpthread"
     )
 endif()
 

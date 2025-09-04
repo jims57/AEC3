@@ -1416,6 +1416,20 @@ CMakeFiles/WQAec.dir/Users/mac/Documents/GitHub/AEC3/ios-cpp/WQAecProcessor.mm.s
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/WQAec.dir/Users/mac/Documents/GitHub/AEC3/ios-cpp/WQAecProcessor.mm.s"
 	/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /Users/mac/Documents/GitHub/AEC3/ios-cpp/WQAecProcessor.mm -o CMakeFiles/WQAec.dir/Users/mac/Documents/GitHub/AEC3/ios-cpp/WQAecProcessor.mm.s
 
+CMakeFiles/WQAec.dir/Users/mac/Documents/GitHub/AEC3/ios-cpp/ios_threading.cpp.o: CMakeFiles/WQAec.dir/flags.make
+CMakeFiles/WQAec.dir/Users/mac/Documents/GitHub/AEC3/ios-cpp/ios_threading.cpp.o: /Users/mac/Documents/GitHub/AEC3/ios-cpp/ios_threading.cpp
+CMakeFiles/WQAec.dir/Users/mac/Documents/GitHub/AEC3/ios-cpp/ios_threading.cpp.o: CMakeFiles/WQAec.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/Users/mac/Documents/GitHub/AEC3/build_ios/ios-arm64/CMakeFiles --progress-num=$(CMAKE_PROGRESS_97) "Building CXX object CMakeFiles/WQAec.dir/Users/mac/Documents/GitHub/AEC3/ios-cpp/ios_threading.cpp.o"
+	/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/WQAec.dir/Users/mac/Documents/GitHub/AEC3/ios-cpp/ios_threading.cpp.o -MF CMakeFiles/WQAec.dir/Users/mac/Documents/GitHub/AEC3/ios-cpp/ios_threading.cpp.o.d -o CMakeFiles/WQAec.dir/Users/mac/Documents/GitHub/AEC3/ios-cpp/ios_threading.cpp.o -c /Users/mac/Documents/GitHub/AEC3/ios-cpp/ios_threading.cpp
+
+CMakeFiles/WQAec.dir/Users/mac/Documents/GitHub/AEC3/ios-cpp/ios_threading.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/WQAec.dir/Users/mac/Documents/GitHub/AEC3/ios-cpp/ios_threading.cpp.i"
+	/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /Users/mac/Documents/GitHub/AEC3/ios-cpp/ios_threading.cpp > CMakeFiles/WQAec.dir/Users/mac/Documents/GitHub/AEC3/ios-cpp/ios_threading.cpp.i
+
+CMakeFiles/WQAec.dir/Users/mac/Documents/GitHub/AEC3/ios-cpp/ios_threading.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/WQAec.dir/Users/mac/Documents/GitHub/AEC3/ios-cpp/ios_threading.cpp.s"
+	/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /Users/mac/Documents/GitHub/AEC3/ios-cpp/ios_threading.cpp -o CMakeFiles/WQAec.dir/Users/mac/Documents/GitHub/AEC3/ios-cpp/ios_threading.cpp.s
+
 # Object files for target WQAec
 WQAec_OBJECTS = \
 "CMakeFiles/WQAec.dir/Users/mac/Documents/GitHub/AEC3/api/echo_canceller3_factory.cc.o" \
@@ -1513,7 +1527,8 @@ WQAec_OBJECTS = \
 "CMakeFiles/WQAec.dir/Users/mac/Documents/GitHub/AEC3/my-info/my-cpp-files/webrtc_compat.cpp.o" \
 "CMakeFiles/WQAec.dir/Users/mac/Documents/GitHub/AEC3/my-info/my-cpp-files/wq_aec3_convertor.cpp.o" \
 "CMakeFiles/WQAec.dir/Users/mac/Documents/GitHub/AEC3/ios-cpp/WQDenoiserWrapper.cpp.o" \
-"CMakeFiles/WQAec.dir/Users/mac/Documents/GitHub/AEC3/ios-cpp/WQAecProcessor.mm.o"
+"CMakeFiles/WQAec.dir/Users/mac/Documents/GitHub/AEC3/ios-cpp/WQAecProcessor.mm.o" \
+"CMakeFiles/WQAec.dir/Users/mac/Documents/GitHub/AEC3/ios-cpp/ios_threading.cpp.o"
 
 # External object files for target WQAec
 WQAec_EXTERNAL_OBJECTS =
@@ -1614,9 +1629,10 @@ libWQAec.a: CMakeFiles/WQAec.dir/Users/mac/Documents/GitHub/AEC3/my-info/my-cpp-
 libWQAec.a: CMakeFiles/WQAec.dir/Users/mac/Documents/GitHub/AEC3/my-info/my-cpp-files/wq_aec3_convertor.cpp.o
 libWQAec.a: CMakeFiles/WQAec.dir/Users/mac/Documents/GitHub/AEC3/ios-cpp/WQDenoiserWrapper.cpp.o
 libWQAec.a: CMakeFiles/WQAec.dir/Users/mac/Documents/GitHub/AEC3/ios-cpp/WQAecProcessor.mm.o
+libWQAec.a: CMakeFiles/WQAec.dir/Users/mac/Documents/GitHub/AEC3/ios-cpp/ios_threading.cpp.o
 libWQAec.a: CMakeFiles/WQAec.dir/build.make
 libWQAec.a: CMakeFiles/WQAec.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/Users/mac/Documents/GitHub/AEC3/build_ios/ios-arm64/CMakeFiles --progress-num=$(CMAKE_PROGRESS_97) "Linking CXX static library libWQAec.a"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/Users/mac/Documents/GitHub/AEC3/build_ios/ios-arm64/CMakeFiles --progress-num=$(CMAKE_PROGRESS_98) "Linking CXX static library libWQAec.a"
 	$(CMAKE_COMMAND) -P CMakeFiles/WQAec.dir/cmake_clean_target.cmake
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/WQAec.dir/link.txt --verbose=$(VERBOSE)
 

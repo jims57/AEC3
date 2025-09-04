@@ -2361,6 +2361,30 @@ Users/mac/Documents/GitHub/AEC3/ios-cpp/WQDenoiserWrapper.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/WQAec.dir/build.make CMakeFiles/WQAec.dir/Users/mac/Documents/GitHub/AEC3/ios-cpp/WQDenoiserWrapper.cpp.s
 .PHONY : Users/mac/Documents/GitHub/AEC3/ios-cpp/WQDenoiserWrapper.cpp.s
 
+Users/mac/Documents/GitHub/AEC3/ios-cpp/ios_threading.o: Users/mac/Documents/GitHub/AEC3/ios-cpp/ios_threading.cpp.o
+.PHONY : Users/mac/Documents/GitHub/AEC3/ios-cpp/ios_threading.o
+
+# target to build an object file
+Users/mac/Documents/GitHub/AEC3/ios-cpp/ios_threading.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/WQAec.dir/build.make CMakeFiles/WQAec.dir/Users/mac/Documents/GitHub/AEC3/ios-cpp/ios_threading.cpp.o
+.PHONY : Users/mac/Documents/GitHub/AEC3/ios-cpp/ios_threading.cpp.o
+
+Users/mac/Documents/GitHub/AEC3/ios-cpp/ios_threading.i: Users/mac/Documents/GitHub/AEC3/ios-cpp/ios_threading.cpp.i
+.PHONY : Users/mac/Documents/GitHub/AEC3/ios-cpp/ios_threading.i
+
+# target to preprocess a source file
+Users/mac/Documents/GitHub/AEC3/ios-cpp/ios_threading.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/WQAec.dir/build.make CMakeFiles/WQAec.dir/Users/mac/Documents/GitHub/AEC3/ios-cpp/ios_threading.cpp.i
+.PHONY : Users/mac/Documents/GitHub/AEC3/ios-cpp/ios_threading.cpp.i
+
+Users/mac/Documents/GitHub/AEC3/ios-cpp/ios_threading.s: Users/mac/Documents/GitHub/AEC3/ios-cpp/ios_threading.cpp.s
+.PHONY : Users/mac/Documents/GitHub/AEC3/ios-cpp/ios_threading.s
+
+# target to generate assembly for a file
+Users/mac/Documents/GitHub/AEC3/ios-cpp/ios_threading.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/WQAec.dir/build.make CMakeFiles/WQAec.dir/Users/mac/Documents/GitHub/AEC3/ios-cpp/ios_threading.cpp.s
+.PHONY : Users/mac/Documents/GitHub/AEC3/ios-cpp/ios_threading.cpp.s
+
 Users/mac/Documents/GitHub/AEC3/my-info/my-cpp-files/webrtc_compat.o: Users/mac/Documents/GitHub/AEC3/my-info/my-cpp-files/webrtc_compat.cpp.o
 .PHONY : Users/mac/Documents/GitHub/AEC3/my-info/my-cpp-files/webrtc_compat.o
 
@@ -2721,6 +2745,9 @@ help:
 	@echo "... Users/mac/Documents/GitHub/AEC3/ios-cpp/WQDenoiserWrapper.o"
 	@echo "... Users/mac/Documents/GitHub/AEC3/ios-cpp/WQDenoiserWrapper.i"
 	@echo "... Users/mac/Documents/GitHub/AEC3/ios-cpp/WQDenoiserWrapper.s"
+	@echo "... Users/mac/Documents/GitHub/AEC3/ios-cpp/ios_threading.o"
+	@echo "... Users/mac/Documents/GitHub/AEC3/ios-cpp/ios_threading.i"
+	@echo "... Users/mac/Documents/GitHub/AEC3/ios-cpp/ios_threading.s"
 	@echo "... Users/mac/Documents/GitHub/AEC3/my-info/my-cpp-files/webrtc_compat.o"
 	@echo "... Users/mac/Documents/GitHub/AEC3/my-info/my-cpp-files/webrtc_compat.i"
 	@echo "... Users/mac/Documents/GitHub/AEC3/my-info/my-cpp-files/webrtc_compat.s"
