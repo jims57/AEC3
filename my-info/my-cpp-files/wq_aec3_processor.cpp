@@ -266,8 +266,18 @@ bool WqAec3Processor::ProcessTtsAudio(const int16_t* tts_data, size_t length) {
         
         double render_energy = CalculateFrameEnergy(tts_data, length);
         
+        // 🔍 DETAILED TTS REFERENCE LOGGING: 分析TTS参考信号质量
+        bool is_silence = render_energy < 1.0; // 低于1.0认为是静音
+        
         LOGV("Processed TTS reference signal: frame=%llu, energy=%.2f, buffer_size=%zu", 
              (unsigned long long)frame_counter_ - 1, render_energy, render_buffer_.size());
+             
+        // 额外的详细日志用于调试
+        if (frame_counter_ % 50 == 0 || is_silence) {
+            LOGI("🔍 TTS参考帧分析: frame=%llu, energy=%.2f, %s, buffer=%zu", 
+                 (unsigned long long)frame_counter_ - 1, render_energy,
+                 is_silence ? "SILENT" : "ACTIVE", render_buffer_.size());
+        }
         
         return true;
     } catch (const std::exception& e) {
@@ -411,6 +421,19 @@ bool WqAec3Processor::ProcessMicrophoneAudio(const int16_t* mic_data, int16_t* o
         
         LOGV("🎯 Enhanced AEC3 processing: frame=%llu, delay=%dms, suppression=%.3f, in_energy=%.2f, out_energy=%.2f", 
              (unsigned long long)total_capture_frames_, current_optimal_delay_ms_, suppression_ratio, capture_energy, output_energy);
+             
+        // 🔍 DETAILED SUPPRESSION ANALYSIS: 分析过度抑制问题
+        bool is_over_suppressed = (suppression_ratio < 0.1 && capture_energy > 100.0); // 输入有声音但输出很弱
+        bool has_strong_input = capture_energy > 1000.0; // 强输入信号
+        bool has_weak_output = output_energy < 100.0;   // 弱输出信号
+        
+        if (total_capture_frames_ % 25 == 0 || is_over_suppressed) {
+            LOGI("🔍 抑制分析: frame=%llu, in=%.1f, out=%.1f, ratio=%.3f, %s%s%s", 
+                 (unsigned long long)total_capture_frames_, capture_energy, output_energy, suppression_ratio,
+                 is_over_suppressed ? "OVER_SUPPRESSED " : "",
+                 has_strong_input ? "STRONG_INPUT " : "",
+                 has_weak_output ? "WEAK_OUTPUT" : "");
+        }
         
         // 🎯 Real-time clean audio buffering (2025-01-31)
         // Store processed clean audio frame for immediate availability
