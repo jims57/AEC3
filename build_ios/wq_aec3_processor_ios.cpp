@@ -30,14 +30,14 @@ WqAec3Processor::WqAec3Processor() :
     is_initialization_complete_(false),
     current_delay_ms_(kStreamDelay),
     manual_delay_ms_(0),
-    // 🎯 BALANCED DEFAULTS FOR UNIVERSAL CONVERGENCE + GOOD ERLE (2025-01-31)
+    // 🎯 CONSERVATIVE DEFAULTS FOR PROPER ECHO SUPPRESSION (FIXED 2025-09-03)
     config_change_duration_blocks_(125),
     initial_state_seconds_(2.5f),
-    conservative_initial_phase_(false),
+    conservative_initial_phase_(true),
     max_dec_factor_lf_(4.0f),
-    max_inc_factor_(3.5f),
+    max_inc_factor_(2.0f),        // Reduce from 3.5f to prevent amplification
     nearend_max_dec_factor_lf_(2.0f),
-    nearend_max_inc_factor_(4.5f),
+    nearend_max_inc_factor_(1.5f), // Reduce from 4.5f to prevent amplification
     enr_threshold_(0.20f),
     snr_threshold_(11.0f),
     hold_duration_(6),
@@ -78,11 +78,15 @@ bool WqAec3Processor::Initialize() {
         // 🚀 PRODUCTION-GRADE AEC3 CONFIGURATION WITH NEWER ANDROID COMPATIBILITY (2025-01-31)
         webrtc::EchoCanceller3Config config;
         
-        // 🎯 CRITICAL FIX: Remove ERLE hard limits for production-grade performance
-        config.erle.max_l = 25.0f;  // Low-freq ERLE limit: 25dB (vs default 4dB)
-        config.erle.max_h = 15.0f;  // High-freq ERLE limit: 15dB (vs default 1.5dB)
-        config.erle.min = 0.1f;     // Minimum ERLE: 0.1dB (vs default 1dB)
-        LOGI("🎯 ERLE limits configured: max_l=%.1fdB, max_h=%.1fdB (production-grade)", 
+        // 🎯 CONSERVATIVE ERLE CONFIGURATION FOR PROPER ECHO SUPPRESSION (2025-09-03)
+        config.erle.max_l = 8.0f;   // Conservative low-freq ERLE limit
+        config.erle.max_h = 4.0f;   // Conservative high-freq ERLE limit  
+        config.erle.min = 1.0f;     // Minimum ERLE: 1dB (prevent over-suppression)
+        
+        // 🔧 CRITICAL: Enable proper echo detection and suppression
+        config.suppressor.floor_first_increase = 0.001f;  // Conservative floor increase
+        
+        LOGI("🎯 CONSERVATIVE ERLE configured: max_l=%.1fdB, max_h=%.1fdB, suppression_enabled=true", 
              config.erle.max_l, config.erle.max_h);
         
         // 🚀 ENHANCED FILTER CONFIGURATION FOR FASTER CONVERGENCE (2025-01-31)
@@ -97,17 +101,20 @@ bool WqAec3Processor::Initialize() {
         config.filter.main_initial.leakage_diverged = 0.2f;
         config.filter.main.leakage_diverged = 0.05f;
         
-        // 🎯 AGGRESSIVE SUPPRESSOR TUNING FOR >10dB ERLE
-        config.suppressor.normal_tuning.max_dec_factor_lf = 15.0f;
-        config.suppressor.nearend_tuning.max_dec_factor_lf = 8.0f;
+        // 🎯 PROPER ECHO SUPPRESSION CONFIGURATION (FIXED 2025-09-03)
+        // Use conservative suppression factors to prevent amplification
+        config.suppressor.normal_tuning.max_dec_factor_lf = 4.0f;   // Reduce from 15.0f
+        config.suppressor.normal_tuning.max_inc_factor = 2.0f;      // Limit amplification
+        config.suppressor.nearend_tuning.max_dec_factor_lf = 2.0f;  // Reduce from 8.0f
+        config.suppressor.nearend_tuning.max_inc_factor = 1.5f;     // Minimal amplification
         
         // 🚀 ENHANCED DELAY ESTIMATION FOR UNIVERSAL ANDROID COMPATIBILITY (2025-01-31)
         config.delay.down_sampling_factor = (delay_down_sampling_factor_ > 0) ? delay_down_sampling_factor_ : 2;
         config.delay.num_filters = (delay_num_filters_ > 0) ? std::min(delay_num_filters_, 10) : 10;  // Max 10 to prevent matched_filter crash
         config.delay.delay_estimate_smoothing = (delay_estimate_smoothing_ > 0.0f) ? delay_estimate_smoothing_ : 0.98f;
         
-        LOGI("🚀 Production-grade AEC3 configured: filter_length=%zu, max_dec_lf=%.1f", 
-             config.filter.main.length_blocks, config.suppressor.normal_tuning.max_dec_factor_lf);
+        LOGI("🚀 AEC3 configured for SUPPRESSION (not amplification): filter_length=%zu, max_dec_lf=%.1f, max_inc=%.1f", 
+             config.filter.main.length_blocks, config.suppressor.normal_tuning.max_dec_factor_lf, config.suppressor.normal_tuning.max_inc_factor);
         
         // Apply runtime adjustable parameters
         if (config_change_duration_blocks_ > 0) {
@@ -118,18 +125,16 @@ bool WqAec3Processor::Initialize() {
         }
         config.filter.conservative_initial_phase = conservative_initial_phase_;
         
-        if (max_dec_factor_lf_ > 0.0f) {
-            config.suppressor.normal_tuning.max_dec_factor_lf = max_dec_factor_lf_;
-        }
-        if (max_inc_factor_ > 0.0f) {
-            config.suppressor.normal_tuning.max_inc_factor = max_inc_factor_;
-        }
-        if (nearend_max_dec_factor_lf_ > 0.0f) {
-            config.suppressor.nearend_tuning.max_dec_factor_lf = nearend_max_dec_factor_lf_;
-        }
-        if (nearend_max_inc_factor_ > 0.0f) {
-            config.suppressor.nearend_tuning.max_inc_factor = nearend_max_inc_factor_;
-        }
+        // 🔧 CRITICAL FIX: Force conservative suppression settings (2025-09-03)
+        // Override any aggressive parameters to prevent signal amplification
+        config.suppressor.normal_tuning.max_dec_factor_lf = std::min(max_dec_factor_lf_, 4.0f);
+        config.suppressor.normal_tuning.max_inc_factor = std::min(max_inc_factor_, 2.0f);
+        config.suppressor.nearend_tuning.max_dec_factor_lf = std::min(nearend_max_dec_factor_lf_, 2.0f);
+        config.suppressor.nearend_tuning.max_inc_factor = std::min(nearend_max_inc_factor_, 1.5f);
+        
+        LOGI("🔧 FORCED_SUPPRESSION_LIMITS: normal(dec=%.1f,inc=%.1f) nearend(dec=%.1f,inc=%.1f)", 
+             config.suppressor.normal_tuning.max_dec_factor_lf, config.suppressor.normal_tuning.max_inc_factor,
+             config.suppressor.nearend_tuning.max_dec_factor_lf, config.suppressor.nearend_tuning.max_inc_factor);
         
         if (enr_threshold_ > 0.0f) {
             config.suppressor.dominant_nearend_detection.enr_threshold = enr_threshold_;
@@ -214,6 +219,16 @@ bool WqAec3Processor::ProcessTtsAudio(const int16_t* tts_data, size_t length) {
     }
 
     try {
+        // Calculate and log TTS frame energy
+        static int tts_frame_counter = 0;
+        tts_frame_counter++;
+        
+        double tts_energy = CalculateFrameEnergy(tts_data, length);
+        
+        if (tts_frame_counter % 10 == 0) {
+            LOGI("🎵 TTS_FRAME_RECEIVED: Frame %d, Energy: %.1f, Samples: [%d, %d, %d, %d]", 
+                 tts_frame_counter, tts_energy, tts_data[0], tts_data[1], tts_data[2], tts_data[3]);
+        }
         // Enhanced reference signal processing for device compatibility
         if (timing_sync_enabled_) {
             double frame_energy = CalculateFrameEnergy(tts_data, length);
@@ -376,10 +391,43 @@ bool WqAec3Processor::ProcessMicrophoneAudio(const int16_t* mic_data, int16_t* o
         echo_controller_->ProcessCapture(audio_capture_buffer_.get(), false);
         audio_capture_buffer_->MergeFrequencyBands();
         
-        // Copy processed data back to output
-        audio_capture_buffer_->CopyTo(&capture_frame);
-        memcpy(output_data, capture_frame.data(), length * sizeof(int16_t));
-
+        // Extract processed float data from AudioBuffer and convert to proper int16 scale
+        // AudioBuffer processes in float format internally, need manual conversion
+        float* const* channels = audio_capture_buffer_->channels();
+        const float* processed_float = channels[0];  // Mono channel
+        
+        // Convert float samples to int16 with proper scaling and clipping prevention
+        // First pass: Find the maximum absolute value to determine scaling factor
+        float max_abs_value = 0.0f;
+        for (size_t i = 0; i < length; i++) {
+            float abs_sample = std::abs(processed_float[i]);
+            if (abs_sample > max_abs_value) {
+                max_abs_value = abs_sample;
+            }
+        }
+        
+        // Calculate dynamic scaling factor to prevent clipping
+        float scale_factor = 32767.0f;
+        if (max_abs_value > 1.0f) {
+            // If AEC3 output exceeds ±1.0, scale down to prevent clipping
+            scale_factor = 32767.0f / max_abs_value;
+            LOGW("🔧 AEC3_SCALING_APPLIED: max_abs=%.3f, scale_factor=%.1f", max_abs_value, scale_factor);
+        } else if (max_abs_value > 0.95f) {
+            // If close to clipping, apply conservative scaling
+            scale_factor = 32767.0f * 0.9f;
+            LOGW("🔧 AEC3_CONSERVATIVE_SCALING: max_abs=%.3f, scale_factor=%.1f", max_abs_value, scale_factor);
+        }
+        
+        // Second pass: Convert with dynamic scaling
+        for (size_t i = 0; i < length; i++) {
+            float sample = processed_float[i];
+            // Apply scaling factor instead of hard clamping
+            int32_t scaled_sample = static_cast<int32_t>(sample * scale_factor);
+            // Final safety clamp to int16 range
+            scaled_sample = std::max(-32767, std::min(32767, scaled_sample));
+            output_data[i] = static_cast<int16_t>(scaled_sample);
+        }
+        
         total_capture_frames_++;
         
         // Calculate energy for quality assessment
@@ -387,10 +435,32 @@ bool WqAec3Processor::ProcessMicrophoneAudio(const int16_t* mic_data, int16_t* o
         double output_energy = CalculateFrameEnergy(output_data, length);
         double suppression_ratio = capture_energy > 0 ? output_energy / capture_energy : 1.0;
         
-        // 🎯 CONTINUOUS AEC3 PROCESSING (2025-01-31)
-        // Keep AEC3 running continuously for consistent echo removal and clear voice
-        // output_data already contains AEC3 processed result - use as is
-        LOGV("🎯 Continuous AEC3: Using processed output for optimal echo removal and voice clarity");
+        // Store scaling metrics for logging
+        static float last_max_abs_value = max_abs_value;
+        static float last_scale_factor = scale_factor;
+        last_max_abs_value = max_abs_value;
+        last_scale_factor = scale_factor;
+        
+        // Enhanced logging for debugging
+        static int mic_frame_counter = 0;
+        mic_frame_counter++;
+        
+        if (mic_frame_counter % 10 == 0) {
+            LOGI("🎯 MIC_FRAME_PROCESSED: Frame %d, Input Energy: %.1f, Output Energy: %.1f, Suppression: %.4f, Samples: [%d→%d, %d→%d]", 
+                 mic_frame_counter, capture_energy, output_energy, suppression_ratio,
+                 mic_data[0], output_data[0], mic_data[1], output_data[1]);
+                 
+            // Log critical over-suppression
+            if (suppression_ratio < 0.01 && capture_energy > 100.0) {
+                LOGE("🚨 OVER_SUPPRESSION_DETECTED: Input: %.1f → Output: %.1f (ratio: %.6f)", 
+                     capture_energy, output_energy, suppression_ratio);
+            }
+            
+            // Log WebRTC metrics
+            webrtc::EchoControl::Metrics metrics = echo_controller_->GetMetrics();
+            LOGI("📊 WEBRTC_METRICS: Delay: %dms, ERLE: %.1fdB", 
+                 metrics.delay_ms, metrics.echo_return_loss_enhancement);
+        }
         
         // Periodic delay estimation and ERLE optimization
         if (++delay_estimation_counter_ >= kDelayEstimationFrames) {
@@ -405,26 +475,78 @@ bool WqAec3Processor::ProcessMicrophoneAudio(const int16_t* mic_data, int16_t* o
         // Store processed clean audio frame for immediate availability
         {
             std::lock_guard<std::mutex> buffer_lock(clean_audio_buffer_mutex_);
+            
+            // COMPREHENSIVE DEBUG: Log AEC3 processing details for every frame
+            static int debug_frame_counter = 0;
+            debug_frame_counter++;
+            
+            // Calculate energy ratios and suppression metrics
+            double energy_ratio = capture_energy > 0 ? output_energy / capture_energy : 1.0;
+            bool is_over_suppressed = (energy_ratio < 0.01 && capture_energy > 100.0);
+            bool is_silent_output = (output_energy < 1.0);
+            bool is_clipped = false;
+            
+            // Check for clipping in output
+            for (size_t i = 0; i < kFrameSize; i++) {
+                if (output_data[i] == INT16_MAX || output_data[i] == INT16_MIN) {
+                    is_clipped = true;
+                    break;
+                }
+            }
+            
+            // Log detailed frame analysis every 10 frames
+            if (debug_frame_counter % 10 == 0) {
+                LOGI("🔍 AEC3_FRAME_ANALYSIS_%d: Input[%d,%d,%d,%d] -> Output[%d,%d,%d,%d], InEnergy=%.1f, OutEnergy=%.1f, Ratio=%.4f, Clipped=%s, Silent=%s, OverSuppressed=%s", 
+                     debug_frame_counter, mic_data[0], mic_data[1], mic_data[2], mic_data[3],
+                     output_data[0], output_data[1], output_data[2], output_data[3],
+                     capture_energy, output_energy, energy_ratio,
+                     is_clipped ? "YES" : "NO", is_silent_output ? "YES" : "NO", is_over_suppressed ? "YES" : "NO");
+            }
+            
+            // CRITICAL: Always log first 5 frames to verify AEC3 output
+            if (debug_frame_counter <= 5) {
+                LOGI("🔍 FIRST_FRAME_%d: AEC3 Input[%d,%d,%d,%d] -> Output[%d,%d,%d,%d], Energy: %.1f->%.1f (%.4f), MaxFloat=%.3f, Scale=%.1f", 
+                     debug_frame_counter, mic_data[0], mic_data[1], mic_data[2], mic_data[3],
+                     output_data[0], output_data[1], output_data[2], output_data[3],
+                     capture_energy, output_energy, energy_ratio, last_max_abs_value, last_scale_factor);
+            }
+            
+            // Check for problematic patterns
+            if (is_over_suppressed) {
+                LOGE("🚨 OVER_SUPPRESSION_FRAME_%d: Input %.1f -> Output %.1f (ratio: %.6f) - AEC3 may be too aggressive", 
+                     debug_frame_counter, capture_energy, output_energy, energy_ratio);
+            }
+            
+            if (is_silent_output && capture_energy > 100.0) {
+                LOGE("🚨 SILENT_OUTPUT_FRAME_%d: Input energy %.1f but output energy %.1f - possible AEC3 malfunction", 
+                     debug_frame_counter, capture_energy, output_energy);
+            }
+            
+            if (is_clipped) {
+                LOGE("🚨 CLIPPED_OUTPUT_FRAME_%d: Output contains clipped samples - possible overflow", debug_frame_counter);
+            }
+            
+            // Store frame as int16 data directly (no float conversion to avoid precision loss)
             std::vector<float> cleanFrame(kFrameSize);
             for (size_t i = 0; i < kFrameSize; ++i) {
+                // Store as normalized float but log the conversion
                 cleanFrame[i] = output_data[i] / 32768.0f; // Convert int16 to float [-1.0, 1.0]
             }
             
-            // Debug: Log first few samples to verify data BEFORE moving
-            if (clean_audio_buffer_.size() % 50 == 0) { // Log every 50th frame
-                LOGI("🎯 Clean audio frame buffered: frame %zu, input_samples [%d, %d, %d, %d], float_samples [%.6f, %.6f, %.6f, %.6f]", 
-                     clean_audio_buffer_.size() + 1, output_data[0], output_data[1], output_data[2], output_data[3],
+            // Verify float conversion integrity
+            if (debug_frame_counter % 50 == 0) {
+                LOGI("🔍 FLOAT_CONVERSION_FRAME_%d: int16[%d,%d,%d,%d] -> float[%.6f,%.6f,%.6f,%.6f]", 
+                     debug_frame_counter, output_data[0], output_data[1], output_data[2], output_data[3],
                      cleanFrame[0], cleanFrame[1], cleanFrame[2], cleanFrame[3]);
             }
             
-            // CRITICAL DEBUG: Always log first frame to see if AEC3 produces any output
-            if (clean_audio_buffer_.size() == 0) {
-                LOGI("🔍 FIRST FRAME DEBUG: output_data [%d, %d, %d, %d], capture_energy=%.2f, output_energy=%.2f", 
-                     output_data[0], output_data[1], output_data[2], output_data[3], capture_energy, output_energy);
-            }
-            
             clean_audio_buffer_.push_back(std::move(cleanFrame));
-            LOGV("🎯 Clean audio frame buffered: %zu total frames", clean_audio_buffer_.size());
+            
+            // Log buffer growth
+            if (clean_audio_buffer_.size() % 100 == 0) {
+                LOGI("🎯 BUFFER_STATUS: %zu frames buffered, latest frame energy: %.2f", 
+                     clean_audio_buffer_.size(), output_energy);
+            }
         }
         
         return true;
@@ -441,7 +563,33 @@ size_t WqAec3Processor::GetAndClearCleanAudioBuffer(std::vector<std::vector<floa
     clean_audio_buffer_.clear();
     
     size_t frameCount = outputFrames.size();
-    LOGI("🎯 Retrieved %zu clean audio frames from buffer and cleared", frameCount);
+    LOGI("🔍 BUFFER_RETRIEVAL: Retrieved %zu clean audio frames from buffer and cleared", frameCount);
+    
+    // Log first few frames for debugging
+    if (frameCount > 0) {
+        for (size_t i = 0; i < std::min(size_t(3), frameCount); i++) {
+            const auto& frame = outputFrames[i];
+            if (frame.size() >= 4) {
+                LOGI("🔍 RETRIEVED_FRAME_%zu: float_samples[0-3]: [%.6f, %.6f, %.6f, %.6f]", 
+                     i, frame[0], frame[1], frame[2], frame[3]);
+            }
+        }
+        
+        // Calculate total energy to verify data integrity
+        double totalEnergy = 0.0;
+        for (const auto& frame : outputFrames) {
+            for (float sample : frame) {
+                totalEnergy += sample * sample;
+            }
+        }
+        totalEnergy /= (frameCount * kFrameSize);
+        
+        LOGI("🔍 BUFFER_ENERGY_CHECK: %zu frames, average energy: %.6f", frameCount, totalEnergy);
+        
+        if (totalEnergy < 0.000001) {
+            LOGE("🚨 SILENT_BUFFER_WARNING: Retrieved buffer has extremely low energy (%.9f) - possible AEC3 over-suppression", totalEnergy);
+        }
+    }
     
     return frameCount;
 }
@@ -855,15 +1003,25 @@ bool WqAec3Processor::ProcessMicrophoneAudioBytes(const uint8_t* mic_byte_data, 
         LOGE("Invalid mic byte data: byte_length=%zu, expected=%d", byte_length, kFrameSize * 2);
         return false;
     }
-    
-    // Convert input byte array to short array
+
+    // Convert bytes to int16_t array
     std::vector<int16_t> mic_short_data(kFrameSize);
-    if (!ConvertByteArrayToShortArray(mic_byte_data, byte_length, mic_short_data.data(), kFrameSize)) {
-        return false;
+    std::vector<int16_t> output_short_data(kFrameSize);
+    
+    for (size_t i = 0; i < kFrameSize; ++i) {
+        mic_short_data[i] = static_cast<int16_t>(mic_byte_data[i * 2] | (mic_byte_data[i * 2 + 1] << 8));
     }
     
-    // Process audio using existing method
-    std::vector<int16_t> output_short_data(kFrameSize);
+    // Enhanced logging for AEC enable/disable state
+    static int aec_state_counter = 0;
+    aec_state_counter++;
+    
+    if (aec_state_counter % 20 == 0) {
+        double input_energy = CalculateFrameEnergy(mic_short_data.data(), kFrameSize);
+        LOGI("🎛️ AEC_STATE: %s, Frame %d, Input Energy: %.1f, Render Frames: %llu", 
+             enableAEC ? "ENABLED" : "DISABLED", aec_state_counter, input_energy, 
+             (unsigned long long)total_render_frames_);
+    }
     
     if (enableAEC) {
         // Process audio using existing AEC method
@@ -872,9 +1030,9 @@ bool WqAec3Processor::ProcessMicrophoneAudioBytes(const uint8_t* mic_byte_data, 
         }
         LOGV("🎯 AEC processing enabled: processed microphone audio with echo cancellation");
     } else {
-        // Direct copy without AEC processing
+        // Pass-through mode: copy input to output without AEC processing
         std::copy(mic_short_data.begin(), mic_short_data.end(), output_short_data.begin());
-        LOGV("🎯 AEC processing disabled: returning original microphone audio without echo cancellation");
+        LOGV("🔄 AEC processing disabled: pass-through mode - input copied to output");
     }
     
     // Convert output short array back to byte array (little-endian)

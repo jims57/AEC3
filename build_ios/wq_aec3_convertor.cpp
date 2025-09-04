@@ -37,8 +37,22 @@ int WqAec3Convertor::convertCleanAudioToWAV(const std::vector<std::vector<uint8_
                                            size_t* outputSize,
                                            int outputSampleRate) {
     if (audioFramesBytes.empty() || !outputWavData || !outputSize) {
-        LOGE("convertCleanAudioToWAV: Invalid parameters");
+        LOGE("🔍 convertCleanAudioToWAV: Invalid parameters - frames=%zu, outputWavData=%p, outputSize=%p", 
+             audioFramesBytes.size(), outputWavData, outputSize);
         return -1;
+    }
+
+    LOGI("🔍 convertCleanAudioToWAV: START - %zu frames, %dHz->%dHz", 
+         audioFramesBytes.size(), inputSampleRate, outputSampleRate);
+
+    // Log first few frames for debugging
+    for (size_t i = 0; i < std::min(size_t(3), audioFramesBytes.size()); i++) {
+        const auto& frame = audioFramesBytes[i];
+        if (frame.size() >= 8) {
+            const int16_t* samples = reinterpret_cast<const int16_t*>(frame.data());
+            LOGI("🔍 INPUT_FRAME_%zu: %zu bytes, samples[0-3]: [%d, %d, %d, %d]", 
+                 i, frame.size(), samples[0], samples[1], samples[2], samples[3]);
+        }
     }
 
     try {
@@ -48,12 +62,21 @@ int WqAec3Convertor::convertCleanAudioToWAV(const std::vector<std::vector<uint8_
         int pcmResult = convertCleanAudioToPCM(audioFramesBytes, inputSampleRate, &pcmData, &pcmSize, outputSampleRate);
         
         if (pcmResult != 0 || !pcmData || pcmSize == 0) {
-            LOGE("convertCleanAudioToWAV: Failed to convert to PCM, result=%d", pcmResult);
+            LOGE("🔍 convertCleanAudioToWAV: Failed to convert to PCM, result=%d, pcmData=%p, pcmSize=%zu", 
+                 pcmResult, pcmData, pcmSize);
             if (pcmData) free(pcmData);
             return pcmResult;
         }
         
-        LOGI("convertCleanAudioToWAV: Got PCM data: %zu bytes", pcmSize);
+        LOGI("🔍 convertCleanAudioToWAV: Got PCM data: %zu bytes", pcmSize);
+        
+        // Log first few PCM samples
+        if (pcmSize >= 12) {
+            const int16_t* pcmSamples = reinterpret_cast<const int16_t*>(pcmData);
+            LOGI("🔍 PCM_SAMPLES: [%d, %d, %d, %d, %d, %d]", 
+                 pcmSamples[0], pcmSamples[1], pcmSamples[2], 
+                 pcmSamples[3], pcmSamples[4], pcmSamples[5]);
+        }
 
         // Step 2: Calculate WAV file size
         size_t wavHeaderSize = 44;
@@ -72,19 +95,35 @@ int WqAec3Convertor::convertCleanAudioToWAV(const std::vector<std::vector<uint8_
         // Step 4: Write WAV header using writeWavHeader method
         int headerResult = writeWavHeader(buffer, pcmSize, outputSampleRate);
         if (headerResult != 0) {
-            LOGE("convertCleanAudioToWAV: Failed to write WAV header, result=%d", headerResult);
+            LOGE("🔍 convertCleanAudioToWAV: Failed to write WAV header, result=%d", headerResult);
             free(*outputWavData);
             *outputWavData = nullptr;
             free(pcmData);
             return headerResult;
         }
         
+        LOGI("🔍 WAV_HEADER_WRITTEN: %dHz, %zu audio bytes", outputSampleRate, pcmSize);
+        
         // Step 5: Copy PCM data after header
         memcpy(buffer + wavHeaderSize, pcmData, pcmSize);
         
+        // Log WAV header bytes for debugging
+        LOGI("🔍 WAV_HEADER_BYTES: [%02X %02X %02X %02X] [%02X %02X %02X %02X] [%02X %02X %02X %02X]", 
+             buffer[0], buffer[1], buffer[2], buffer[3],
+             buffer[4], buffer[5], buffer[6], buffer[7],
+             buffer[8], buffer[9], buffer[10], buffer[11]);
+        
+        // Log first few audio samples in WAV
+        if (pcmSize >= 12) {
+            const int16_t* wavAudioSamples = reinterpret_cast<const int16_t*>(buffer + wavHeaderSize);
+            LOGI("🔍 WAV_AUDIO_SAMPLES: [%d, %d, %d, %d, %d, %d]", 
+                 wavAudioSamples[0], wavAudioSamples[1], wavAudioSamples[2], 
+                 wavAudioSamples[3], wavAudioSamples[4], wavAudioSamples[5]);
+        }
+        
         *outputSize = totalWavSize;
         
-        LOGI("convertCleanAudioToWAV: Created WAV file in memory: %zu bytes, %dHz", 
+        LOGI("🔍 convertCleanAudioToWAV: SUCCESS - Created WAV file: %zu bytes, %dHz", 
              totalWavSize, outputSampleRate);
         
         free(pcmData);
@@ -103,14 +142,18 @@ int WqAec3Convertor::convertCleanAudioToPCM(const std::vector<std::vector<uint8_
                                            size_t* outputSize,
                                            int outputSampleRate) {
     if (audioFramesBytes.empty() || !outputPcmData || !outputSize) {
-        LOGE("convertCleanAudioToPCM: Invalid parameters");
+        LOGE("🔍 convertCleanAudioToPCM: Invalid parameters - frames=%zu, outputPcmData=%p, outputSize=%p", 
+             audioFramesBytes.size(), outputPcmData, outputSize);
         return -1;
     }
 
     if (!isSupportedSampleRate(outputSampleRate)) {
-        LOGE("convertCleanAudioToPCM: Unsupported output sample rate: %d", outputSampleRate);
+        LOGE("🔍 convertCleanAudioToPCM: Unsupported output sample rate: %d", outputSampleRate);
         return -2;
     }
+
+    LOGI("🔍 convertCleanAudioToPCM: START - %zu frames, %dHz->%dHz", 
+         audioFramesBytes.size(), inputSampleRate, outputSampleRate);
 
     try {
         // Step 1: Combine all audio frame bytes into single vector
@@ -121,19 +164,89 @@ int WqAec3Convertor::convertCleanAudioToPCM(const std::vector<std::vector<uint8_
         }
         combinedBytes.reserve(totalBytes);
         
-        for (const auto& frame : audioFramesBytes) {
+        LOGI("🔍 COMBINING_FRAMES: %zu frames, expected total: %zu bytes", audioFramesBytes.size(), totalBytes);
+        
+        size_t validFramesAdded = 0;
+        size_t skippedZeroFrames = 0;
+        
+        for (size_t i = 0; i < audioFramesBytes.size(); i++) {
+            const auto& frame = audioFramesBytes[i];
+            
+            // Check if frame contains only zeros (silence) - check more samples for accuracy
+            bool isZeroFrame = true;
+            if (frame.size() >= 8) {
+                const int16_t* samples = reinterpret_cast<const int16_t*>(frame.data());
+                size_t samplesToCheck = std::min(size_t(50), frame.size() / 2); // Check first 50 samples
+                for (size_t j = 0; j < samplesToCheck; j++) {
+                    if (samples[j] != 0) {
+                        isZeroFrame = false;
+                        break;
+                    }
+                }
+                
+                // Log detailed frame analysis for first few frames
+                if (i < 5) {
+                    LOGI("🔍 FRAME_%zu_ANALYSIS: samples[0-9]: [%d,%d,%d,%d,%d,%d,%d,%d,%d,%d] isZero=%s", 
+                         i, samples[0], samples[1], samples[2], samples[3], samples[4],
+                         samples[5], samples[6], samples[7], samples[8], samples[9],
+                         isZeroFrame ? "true" : "false");
+                }
+            }
+            
+            // Skip ALL initial zero frames until we find valid audio
+            if (isZeroFrame && validFramesAdded == 0) {
+                skippedZeroFrames++;
+                LOGI("🔍 SKIPPING_ZERO_FRAME_%zu: All samples are zero", i);
+                continue;
+            }
+            
+            // Log when we find the first valid frame
+            if (validFramesAdded == 0 && !isZeroFrame) {
+                LOGI("🔍 FIRST_VALID_FRAME_%zu: Found first non-zero frame", i);
+            }
+            
             combinedBytes.insert(combinedBytes.end(), frame.begin(), frame.end());
+            validFramesAdded++;
+            
+            // Log every 20th frame to avoid spam
+            if (i % 20 == 0 && frame.size() >= 8) {
+                const int16_t* samples = reinterpret_cast<const int16_t*>(frame.data());
+                LOGI("🔍 FRAME_%zu: %zu bytes, samples[0-1]: [%d, %d] %s", 
+                     i, frame.size(), samples[0], samples[1], 
+                     isZeroFrame ? "(zero)" : "(valid)");
+            }
         }
+        
+        LOGI("🔍 FRAME_FILTERING: Skipped %zu zero frames, kept %zu valid frames", 
+             skippedZeroFrames, validFramesAdded);
 
-        LOGI("convertCleanAudioToPCM: Combined %zu frames into %zu bytes", audioFramesBytes.size(), totalBytes);
+        LOGI("🔍 COMBINED_RESULT: %zu frames -> %zu bytes (expected %zu)", 
+             audioFramesBytes.size(), combinedBytes.size(), totalBytes);
+        
+        // Verify combined data integrity
+        if (combinedBytes.size() >= 8) {
+            const int16_t* combinedSamples = reinterpret_cast<const int16_t*>(combinedBytes.data());
+            LOGI("🔍 COMBINED_SAMPLES: [%d, %d, %d, %d]", 
+                 combinedSamples[0], combinedSamples[1], combinedSamples[2], combinedSamples[3]);
+        }
 
         // Step 2: Resample if needed using new uint8_t method
         std::vector<uint8_t> resampledBytes;
         if (inputSampleRate != outputSampleRate) {
+            LOGI("🔍 RESAMPLING_START: %dHz -> %dHz, input size: %zu bytes", 
+                 inputSampleRate, outputSampleRate, combinedBytes.size());
             resampledBytes = resampleAudio(combinedBytes, inputSampleRate, outputSampleRate);
-            LOGI("convertCleanAudioToPCM: Resampled from %dHz to %dHz, %zu->%zu bytes", 
+            LOGI("🔍 RESAMPLING_RESULT: %dHz -> %dHz, %zu -> %zu bytes", 
                  inputSampleRate, outputSampleRate, combinedBytes.size(), resampledBytes.size());
+            
+            // Verify resampled data integrity
+            if (resampledBytes.size() >= 8) {
+                const int16_t* resampledSamples = reinterpret_cast<const int16_t*>(resampledBytes.data());
+                LOGI("🔍 RESAMPLED_SAMPLES: [%d, %d, %d, %d]", 
+                     resampledSamples[0], resampledSamples[1], resampledSamples[2], resampledSamples[3]);
+            }
         } else {
+            LOGI("🔍 NO_RESAMPLING: Same sample rate %dHz, using original data", inputSampleRate);
             resampledBytes = std::move(combinedBytes);
         }
 
@@ -149,7 +262,14 @@ int WqAec3Convertor::convertCleanAudioToPCM(const std::vector<std::vector<uint8_
         memcpy(*outputPcmData, resampledBytes.data(), pcmDataSize);
         *outputSize = pcmDataSize;
         
-        LOGI("convertCleanAudioToPCM: Created PCM data in memory: %zu bytes, %dHz", 
+        // Final verification of output PCM data
+        if (pcmDataSize >= 8) {
+            const int16_t* outputSamples = reinterpret_cast<const int16_t*>(*outputPcmData);
+            LOGI("🔍 FINAL_PCM_SAMPLES: [%d, %d, %d, %d]", 
+                 outputSamples[0], outputSamples[1], outputSamples[2], outputSamples[3]);
+        }
+        
+        LOGI("🔍 convertCleanAudioToPCM: SUCCESS - Created PCM data: %zu bytes, %dHz", 
              pcmDataSize, outputSampleRate);
         
         return 0; // Success
