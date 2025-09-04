@@ -1,13 +1,24 @@
 #include "wq_aec3_processor.h"
 #include "webrtc_compat.h"
+#ifdef ANDROID
 #include <android/log.h>
+#endif
 
 #define LOG_TAG "WebRTC_AEC3_TTS"
+#ifdef ANDROID
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
 #define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG, LOG_TAG, __VA_ARGS__)
 #define LOGV(...) __android_log_print(ANDROID_LOG_VERBOSE, LOG_TAG, __VA_ARGS__)
 #define LOGW(...) __android_log_print(ANDROID_LOG_WARN, LOG_TAG, __VA_ARGS__)
+#else
+#include <cstdio>
+#define LOGI(...) printf(__VA_ARGS__); printf("\n")
+#define LOGE(...) printf(__VA_ARGS__); printf("\n")
+#define LOGD(...) printf(__VA_ARGS__); printf("\n")
+#define LOGV(...) printf(__VA_ARGS__); printf("\n")
+#define LOGW(...) printf(__VA_ARGS__); printf("\n")
+#endif
 
 namespace webrtc_aec3_tts {
 

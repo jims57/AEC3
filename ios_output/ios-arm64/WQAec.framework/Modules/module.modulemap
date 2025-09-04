@@ -1,0 +1,6 @@
+framework module WQAec {
+    umbrella header "WQAecProcessor.h"
+    header "WQDenoiserWrapper.h"
+    export *
+    module * { export * }
+}

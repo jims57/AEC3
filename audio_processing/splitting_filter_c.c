@@ -15,6 +15,7 @@
 
 #include "rtc_base/checks.h"
 #include <stdint.h>
+#include <stddef.h>
 
 // Maximum number of samples in a low/high-band frame.
 enum
