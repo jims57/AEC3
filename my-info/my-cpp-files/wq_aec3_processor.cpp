@@ -41,13 +41,13 @@ WqAec3Processor::WqAec3Processor() :
     is_initialization_complete_(false),
     current_delay_ms_(kStreamDelay),
     manual_delay_ms_(0),
-    // 🎯 BALANCED DEFAULTS FOR UNIVERSAL CONVERGENCE + GOOD ERLE (2025-01-31)
+    // 🎯 VOICE-OPTIMIZED DEFAULTS FOR HUMAN VOICE PRESERVATION (2025-01-31)
     config_change_duration_blocks_(125),
     initial_state_seconds_(2.5f),
     conservative_initial_phase_(false),
-    max_dec_factor_lf_(4.0f),
+    max_dec_factor_lf_(3.0f),    // Reduced from 4.0f for gentler suppression
     max_inc_factor_(3.5f),
-    nearend_max_dec_factor_lf_(2.0f),
+    nearend_max_dec_factor_lf_(1.5f),  // Reduced from 2.0f for better voice clarity
     nearend_max_inc_factor_(4.5f),
     enr_threshold_(0.20f),
     snr_threshold_(11.0f),
@@ -89,11 +89,11 @@ bool WqAec3Processor::Initialize() {
         // 🚀 PRODUCTION-GRADE AEC3 CONFIGURATION WITH NEWER ANDROID COMPATIBILITY (2025-01-31)
         webrtc::EchoCanceller3Config config;
         
-        // 🎯 CRITICAL FIX: Remove ERLE hard limits for production-grade performance
-        config.erle.max_l = 25.0f;  // Low-freq ERLE limit: 25dB (vs default 4dB)
-        config.erle.max_h = 15.0f;  // High-freq ERLE limit: 15dB (vs default 1.5dB)
-        config.erle.min = 0.1f;     // Minimum ERLE: 0.1dB (vs default 1dB)
-        LOGI("🎯 ERLE limits configured: max_l=%.1fdB, max_h=%.1fdB (production-grade)", 
+        // 🎯 VOICE-OPTIMIZED: Balanced ERLE limits for preserving human voice during TTS
+        config.erle.max_l = 12.0f;  // Low-freq ERLE limit: 12dB (reduced from 25dB for voice preservation)
+        config.erle.max_h = 8.0f;   // High-freq ERLE limit: 8dB (reduced from 15dB for voice clarity)
+        config.erle.min = 0.5f;     // Minimum ERLE: 0.5dB (increased for gentler suppression)
+        LOGI("🎯 ERLE limits configured: max_l=%.1fdB, max_h=%.1fdB (voice-optimized)", 
              config.erle.max_l, config.erle.max_h);
         
         // 🚀 ENHANCED FILTER CONFIGURATION FOR FASTER CONVERGENCE (2025-01-31)
@@ -108,16 +108,16 @@ bool WqAec3Processor::Initialize() {
         config.filter.main_initial.leakage_diverged = 0.2f;
         config.filter.main.leakage_diverged = 0.05f;
         
-        // 🎯 AGGRESSIVE SUPPRESSOR TUNING FOR >10dB ERLE
-        config.suppressor.normal_tuning.max_dec_factor_lf = 15.0f;
-        config.suppressor.nearend_tuning.max_dec_factor_lf = 8.0f;
+        // 🎯 VOICE-OPTIMIZED: Gentler suppressor tuning for human voice preservation
+        config.suppressor.normal_tuning.max_dec_factor_lf = 6.0f;   // Reduced from 15.0f for better voice preservation
+        config.suppressor.nearend_tuning.max_dec_factor_lf = 3.5f;  // Reduced from 8.0f for clearer human voice
         
         // 🚀 ENHANCED DELAY ESTIMATION FOR UNIVERSAL ANDROID COMPATIBILITY (2025-01-31)
         config.delay.down_sampling_factor = (delay_down_sampling_factor_ > 0) ? delay_down_sampling_factor_ : 2;
         config.delay.num_filters = (delay_num_filters_ > 0) ? delay_num_filters_ : 16;
         config.delay.delay_estimate_smoothing = (delay_estimate_smoothing_ > 0.0f) ? delay_estimate_smoothing_ : 0.98f;
         
-        LOGI("🚀 Production-grade AEC3 configured: filter_length=%zu, max_dec_lf=%.1f", 
+        LOGI("🚀 Voice-optimized AEC3 configured: filter_length=%zu, max_dec_lf=%.1f", 
              config.filter.main.length_blocks, config.suppressor.normal_tuning.max_dec_factor_lf);
         
         // Apply runtime adjustable parameters
