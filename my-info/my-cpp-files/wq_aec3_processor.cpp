@@ -30,25 +30,25 @@ WqAec3Processor::WqAec3Processor() :
     is_initialization_complete_(false),
     current_delay_ms_(kStreamDelay),
     manual_delay_ms_(0),
-    // 🎯 BALANCED DEFAULTS FOR UNIVERSAL CONVERGENCE + GOOD ERLE (2025-01-31)
-    config_change_duration_blocks_(125),
-    initial_state_seconds_(2.5f),
+    // 🎯 FAST CONVERGENCE DEFAULTS FOR RAPID ECHO CANCELLATION (2025-09-16)
+    config_change_duration_blocks_(75),
+    initial_state_seconds_(1.0f),
     conservative_initial_phase_(false),
     max_dec_factor_lf_(4.0f),
-    max_inc_factor_(3.5f),
+    max_inc_factor_(5.0f),
     nearend_max_dec_factor_lf_(2.0f),
-    nearend_max_inc_factor_(4.5f),
-    enr_threshold_(0.20f),
-    snr_threshold_(11.0f),
-    hold_duration_(6),
-    trigger_threshold_(2),
-    // 🎯 ERLE ADJUSTMENT PARAMETERS FOR MOBILE DEVELOPERS (2025-01-31)
-    filter_length_blocks_(25),
-    filter_leakage_converged_(0.000005f),
-    filter_leakage_diverged_(0.005f),
+    nearend_max_inc_factor_(6.0f),
+    enr_threshold_(0.15f),
+    snr_threshold_(10.0f),
+    hold_duration_(4),
+    trigger_threshold_(1),
+    // 🎯 FAST CONVERGENCE PARAMETERS FOR MOBILE DEVELOPERS (2025-09-16)
+    filter_length_blocks_(20),
+    filter_leakage_converged_(0.000001f),
+    filter_leakage_diverged_(0.008f),
     delay_down_sampling_factor_(2),
-    delay_num_filters_(16),
-    delay_estimate_smoothing_(0.98f) {
+    delay_num_filters_(24),
+    delay_estimate_smoothing_(0.85f) {
 }
 
 WqAec3Processor::~WqAec3Processor() {
@@ -65,7 +65,7 @@ bool WqAec3Processor::Initialize() {
     std::lock_guard<std::mutex> lock(mutex_);
     
     try {
-        LOGI("Initializing Enhanced WebRTC AEC3 for TTS: %dHz, %d channels (ERLE Optimization 2025-01-31)", kSampleRate, kChannels);
+        LOGI("Initializing Fast Convergence WebRTC AEC3 for TTS: %dHz, %d channels (Fast Convergence 2025-09-16)", kSampleRate, kChannels);
         
         // 🔧 CRITICAL FIX: Destroy existing AEC3 components for fresh session
         echo_controller_.reset();
@@ -85,29 +85,30 @@ bool WqAec3Processor::Initialize() {
         LOGI("🎯 ERLE limits configured: max_l=%.1fdB, max_h=%.1fdB (production-grade)", 
              config.erle.max_l, config.erle.max_h);
         
-        // 🚀 ENHANCED FILTER CONFIGURATION FOR FASTER CONVERGENCE (2025-01-31)
-        config.filter.main.length_blocks = (filter_length_blocks_ > 0) ? filter_length_blocks_ : 25;
-        config.filter.main.leakage_converged = (filter_leakage_converged_ > 0.0f) ? filter_leakage_converged_ : 0.000005f;
-        config.filter.main.leakage_diverged = (filter_leakage_diverged_ > 0.0f) ? filter_leakage_diverged_ : 0.005f;
+        // 🚀 FAST CONVERGENCE FILTER CONFIGURATION (2025-09-16)
+        config.filter.main.length_blocks = (filter_length_blocks_ > 0) ? filter_length_blocks_ : 20;
+        config.filter.main.leakage_converged = (filter_leakage_converged_ > 0.0f) ? filter_leakage_converged_ : 0.000001f;
+        config.filter.main.leakage_diverged = (filter_leakage_diverged_ > 0.0f) ? filter_leakage_diverged_ : 0.008f;
         
-        // 🔧 CRITICAL FIX: Robust initialization for inconsistent devices
-        config.filter.main.error_floor = 0.001f;
-        config.filter.main.error_ceil = 2.0f;
-        config.filter.main_initial.leakage_converged = 0.01f;
-        config.filter.main_initial.leakage_diverged = 0.2f;
-        config.filter.main.leakage_diverged = 0.05f;
+        // 🔧 FAST CONVERGENCE: Aggressive initialization for rapid adaptation
+        config.filter.main.error_floor = 0.0005f;
+        config.filter.main.error_ceil = 1.5f;
+        config.filter.main_initial.leakage_converged = 0.02f;
+        config.filter.main_initial.leakage_diverged = 0.3f;
+        config.filter.main.leakage_diverged = 0.08f;
         
         // 🎯 AGGRESSIVE SUPPRESSOR TUNING FOR >10dB ERLE
         config.suppressor.normal_tuning.max_dec_factor_lf = 15.0f;
         config.suppressor.nearend_tuning.max_dec_factor_lf = 8.0f;
         
-        // 🚀 ENHANCED DELAY ESTIMATION FOR UNIVERSAL ANDROID COMPATIBILITY (2025-01-31)
+        // 🚀 FAST CONVERGENCE DELAY ESTIMATION (2025-09-16)
         config.delay.down_sampling_factor = (delay_down_sampling_factor_ > 0) ? delay_down_sampling_factor_ : 2;
-        config.delay.num_filters = (delay_num_filters_ > 0) ? delay_num_filters_ : 16;
-        config.delay.delay_estimate_smoothing = (delay_estimate_smoothing_ > 0.0f) ? delay_estimate_smoothing_ : 0.98f;
+        config.delay.num_filters = (delay_num_filters_ > 0) ? delay_num_filters_ : 24;
+        config.delay.delay_estimate_smoothing = (delay_estimate_smoothing_ > 0.0f) ? delay_estimate_smoothing_ : 0.85f;
         
-        LOGI("🚀 Production-grade AEC3 configured: filter_length=%zu, max_dec_lf=%.1f", 
-             config.filter.main.length_blocks, config.suppressor.normal_tuning.max_dec_factor_lf);
+        LOGI("🚀 Fast Convergence AEC3 configured: filter_length=%zu, max_dec_lf=%.1f, delay_filters=%d, smoothing=%.2f", 
+             config.filter.main.length_blocks, config.suppressor.normal_tuning.max_dec_factor_lf, 
+             config.delay.num_filters, config.delay.delay_estimate_smoothing);
         
         // Apply runtime adjustable parameters
         if (config_change_duration_blocks_ > 0) {

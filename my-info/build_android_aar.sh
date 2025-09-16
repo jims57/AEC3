@@ -15,6 +15,9 @@ OUTPUT_DIR="$PROJECT_ROOT/android_output"
 AAR_NAME="wq-aec3"
 JAVA_PACKAGE="cn.watchfun.aec3"
 
+# Android项目自动部署配置
+ANDROID_PROJECT_LIBS="/Users/mac/Documents/GitHub/android_use_cpp/app/libs"
+
 # Android NDK配置
 ANDROID_NDK_HOME=${ANDROID_NDK_HOME:-"/Users/mac/Library/Android/sdk/ndk/25.2.9519653"}
 ANDROID_API_LEVEL=27
@@ -426,7 +429,7 @@ echo "  - Stream Delay: ${ANDROID_STREAM_DELAY}ms"
 echo "  - Architectures: ${ARCHITECTURES[*]}"
 echo ""
 echo "🚀 Next Steps:"
-echo "  1. Copy ${AAR_NAME}-1.0.aar to your Android project's libs/ folder"
+echo "  1. AAR will be automatically deployed to Android project"
 echo "  2. Add implementation files('libs/${AAR_NAME}-1.0.aar') to build.gradle"
 echo "  3. Follow the usage guide in TTS_AEC3_USAGE.md"
 echo "  4. Test with your TTS service integration"
@@ -434,6 +437,32 @@ echo ""
 echo "⚠️  Important: Always call processTtsAudio() BEFORE playing TTS audio!"
 echo "📈 Expected Performance: Enhanced ERLE (>15dB target vs previous 6.2dB) with precise timing synchronization"
 echo "🎯 ERLE Optimization Features: Auto delay optimization, enhanced timing sync, demo.cc pipeline compliance"
+
+# ============================================================================
+# 自动部署到Android项目
+# ============================================================================
+echo ""
+echo "🚀 Deploying AAR to Android project..."
+
+# 检查Android项目libs目录是否存在
+if [ -d "$ANDROID_PROJECT_LIBS" ]; then
+    # 创建libs目录（如果不存在）
+    mkdir -p "$ANDROID_PROJECT_LIBS"
+    
+    # 复制AAR文件到Android项目
+    cp "$OUTPUT_DIR/${AAR_NAME}-1.0.aar" "$ANDROID_PROJECT_LIBS/"
+    
+    if [ $? -eq 0 ]; then
+        echo "✅ AAR successfully deployed to Android project: $ANDROID_PROJECT_LIBS/${AAR_NAME}-1.0.aar"
+        echo "📱 Android project is ready for testing with fast convergence AEC3!"
+    else
+        echo "❌ Failed to copy AAR to Android project"
+    fi
+else
+    echo "⚠️  Android project libs directory not found: $ANDROID_PROJECT_LIBS"
+    echo "📁 AAR is available at: $OUTPUT_DIR/${AAR_NAME}-1.0.aar"
+    echo "📋 Please manually copy to your Android project's libs/ folder"
+fi
 
 # ============================================================================
 # 最终摘要
@@ -451,7 +480,7 @@ echo "  - Stream Delay: ${ANDROID_STREAM_DELAY}ms"
 echo "  - Architectures: ${ARCHITECTURES[*]}"
 echo ""
 echo "🚀 Next Steps:"
-echo "  1. Copy ${AAR_NAME}-1.0.aar to your Android project's libs/ folder"
+echo "  1. AAR will be automatically deployed to Android project"
 echo "  2. Add implementation files('libs/${AAR_NAME}-1.0.aar') to build.gradle"
 echo "  3. Follow the usage guide in TTS_AEC3_USAGE.md"
 echo "  4. Test with your TTS service integration"
